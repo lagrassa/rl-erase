@@ -8,9 +8,9 @@ rospy.init_node("relative")
 uc= Uber()
 
 
-arm = 'l'
+arm = 'r'
 frame = 'base_link'
-pub = rospy.Publisher("l_cart/command_pose", PoseStamped, queue_size=1)
+pub = rospy.Publisher("r_cart/command_pose", PoseStamped, queue_size=1)
 
 
 def get_pose():
@@ -31,10 +31,18 @@ def command_delta(x,y,z):
     cmd = stamp_pose( (pos,quat))
     pub.publish(cmd)
 
+def go_to_start():
+    pos, quat = get_pose()
+    joint_angles = [0.29628785835607696, 0.11011554596095237, -1.8338543122460127, -0.1799232010879831, -13.940467600087464, -1.4902528179381358, 3.0453049548764994]
+
+    uc.command_joint_pose(arm,joint_angles, time=0.5, blocking=False)
+    rospy.sleep(2)
+
 def wipe():
     #it's a move in x space
-    num_micro_wipes = 60
+    go_to_start()
+    num_micro_wipes = 30
     for i in range(num_micro_wipes):
-        command_delta(0,-0.05,0)
+        command_delta(0,0.1,0)
         
 wipe()
