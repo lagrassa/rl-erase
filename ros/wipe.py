@@ -1,6 +1,6 @@
 import rospy 
 from geometry_msgs.msg import *
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float32
 from uber_controller import Uber
 
 rospy.init_node("relative")
@@ -43,9 +43,14 @@ class EraserController:
         #initialize the state
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
+        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
         num_params = 3+(2*45)
         self.state = np.zeros((1,num_params))
         self.params = np.zeros((1,num_params+1))
+        self.reward_prev = 0
+        self.epsilon = 0.01
+        self.alpha = 0.01
+        self.n = 0
         assert(len(self.state) == self.params)
         #self.state is comprised of forces, then joint efforts, then joint states in that order
 
@@ -63,6 +68,21 @@ class EraserController:
         z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         #z_press = 0.4 
         return z_press
+
+    def policy_gradient_descent(self, reward):
+        #from the previous step, the function was nudged by epsilon in some dimension
+        #update that and then
+        gradient = (reward.data - self.reward_prev) / (self.epsilon) 
+        self.reward_prev = reward.data
+        self.params = self.params + self.alpha*gradient
+
+        if self.n > len(self.params):
+            self.n = 0 
+        #nudge epsilon again
+        unit_vector = np.zeros(self.params.shape)
+        unit_vector[self.n] = epsilon
+        self.params = self.params + unit_vector
+        
 
     def wipe():
 	#it's a move in x space
