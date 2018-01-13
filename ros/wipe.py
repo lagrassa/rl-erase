@@ -38,11 +38,36 @@ def go_to_start():
     uc.command_joint_pose(arm,joint_angles, time=0.5, blocking=False)
     rospy.sleep(2)
 
-def wipe():
-    #it's a move in x space
-    go_to_start()
-    num_micro_wipes = 30
-    for i in range(num_micro_wipes):
-        command_delta(0,0.1,0)
+class EraserController:
+    def __init__(self):
+        #initialize the state
+        self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
+        self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
+        num_params = 3+(2*45)
+        self.state = np.zeros((1,num_params))
+        self.params = np.zeros((1,num_params+1))
+        assert(len(self.state) == self.params)
+        #self.state is comprised of forces, then joint efforts, then joint states in that order
+
+    def update_ft(self, data):
+        self.state[0:3] = data.force
+
+    def update_joint_state(self, data):
+        self.state[4:4+45+1] = data.effort
+        self.state[4+45:4+(2*45)+1] = data.effort
+
+    def policy(self):
+        #sample from gaussian
+        mu_of_s = self.state * self.params[:-1]
+        sigma = self.params[-1]
+        z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
+        #z_press = 0.4 
+        return z_press
+
+    def wipe():
+	#it's a move in x space
+	go_to_start()
+	z_press = self.policy(state)
+	command_delta(0,0.1,z_press)
         
 wipe()
