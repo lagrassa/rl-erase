@@ -1,7 +1,10 @@
 import rospy 
+import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
+from sensor_msgs.msg import JointState
 from uber_controller import Uber
+import numpy as np
 
 rospy.init_node("relative")
 
@@ -41,30 +44,30 @@ def go_to_start():
 class EraserController:
     def __init__(self):
         #initialize the state
-        self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
-        self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
-        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
         num_params = 3+(2*45)
-        self.state = np.zeros((1,num_params))
-        self.params = np.zeros((1,num_params+1))
+        self.state = np.zeros(num_params)
+        self.params = np.zeros(num_params+1)
+        self.params[-1] = 1
         self.reward_prev = 0
         self.epsilon = 0.01
         self.alpha = 0.01
         self.n = 0
-        assert(len(self.state) == self.params)
         #self.state is comprised of forces, then joint efforts, then joint states in that order
+        self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
+        self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
+        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
 
     def update_ft(self, data):
-        self.state[0:3] = data.force
+        self.state[0:3] = [data.wrench.force.x,data.wrench.force.y,data.wrench.force.z]
 
     def update_joint_state(self, data):
-        self.state[4:4+45+1] = data.effort
-        self.state[4+45:4+(2*45)+1] = data.effort
+        self.state[3:3+45] = data.effort
+        self.state[3+45:4+(2*45)] = data.effort
 
-    def policy(self):
+    def policy(self, state):
         #sample from gaussian
-        mu_of_s = self.state * self.params[:-1]
-        sigma = self.params[-1]
+        mu_of_s = state * self.params[:-1]
+        sigma = abs(self.params[-1])
         z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         #z_press = 0.4 
         return z_press
@@ -84,10 +87,11 @@ class EraserController:
         self.params = self.params + unit_vector
         
 
-    def wipe():
+    def wipe(self):
 	#it's a move in x space
 	go_to_start()
-	z_press = self.policy(state)
+	z_press = self.policy(self.state)
 	command_delta(0,0.1,z_press)
-        
-wipe()
+
+ec = EraserController()        
+ec.wipe()
