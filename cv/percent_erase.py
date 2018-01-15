@@ -10,9 +10,9 @@ from erase_globals import board_height as w
 def rectify(im_src):
     #corners of the paper TODO find these through CV
     #pts_src = np.array([[354,410],[19,300],[483,1],[137,-35]])
-    pts_src = np.array([[115,94],[474,85],[521,303],[69,311]])
+    pts_src = np.array([[115.0,94],[474,85],[521,303],[69,311]])
     #  Hard coded destination size ( I think this is ok)
-    pts_dst = np.array([[0,0],[w, 0],[w, h],[0, h]])
+    pts_dst = np.array([[0.0,0],[w, 0],[w, h],[0, h]])
  
     # Calculate Homography
     H, status = cv2.findHomography(pts_src, pts_dst)

@@ -1,4 +1,6 @@
 import rospy
+import numpy as np
+from cv_bridge import CvBridge
 from std_msgs.msg import Float32
 from sensor_msgs.msg import Image
 from erase_globals import board_height,board_width
@@ -7,16 +9,18 @@ from percent_erase import rectify, threshold_img
 class BoardUpdate: 
     def __init__(self):
         #probability has marker
-        self.belief = 0.5*np.ones(board_height, board_width)
+        self.belief = 0.5*np.ones((board_height, board_width))
         self.lower_marker = np.array([0,110,0])
         self.upper_marker = np.array([255,255,255])
         self.lower_white = np.array([0,0,0])
         self.upper_white = np.array([255,15,255])
-        self.sub = rospy.Subscriber("kinect", Image, self.update_belief)
-        self.pub = rospy.Publisher("rl-erase/reward", Float32,queue_size=10) 
+        self.bridge = CvBridge()
+        self.sub = rospy.Subscriber("/head_mount_kinect/rgb/image_rect_color", Image, self.update_belief)
+        self.pub = rospy.Publisher("/rl_erase/reward", Float32,queue_size=10) 
 
     def update_belief(self, img):
-        rectified_img = rectify(img.data)
+        image = self.bridge.imgmsg_to_cv2(img.data)
+        rectified_img = rectify(image)
         marker_img = threshold_img(rectified_img, lower_marker, upper_marker)
         white_img = threshold(rectified_img, lower_white, upper_white)
         for i in range(board_height):
