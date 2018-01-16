@@ -2,15 +2,16 @@ import cv2
 import numpy as np
 import pdb
 from erase_globals import board_height as h
-from erase_globals import board_height as w
+from erase_globals import board_width as w
 
 #rectify coordinates
 #do thresholding on it
 #detect portion thresholded
-def rectify(im_src):
+def rectify(im_src, corners):
     #corners of the paper TODO find these through CV
     #pts_src = np.array([[354,410],[19,300],[483,1],[137,-35]])
-    pts_src = np.array([[115.0,94],[474,85],[521,303],[69,311]])
+    #pts_src = np.array([[115.0,94],[474,85],[521,303],[69,311]])
+    pts_src = corners
     #  Hard coded destination size ( I think this is ok)
     pts_dst = np.array([[0.0,0],[w, 0],[w, h],[0, h]])
  
@@ -34,9 +35,10 @@ def threshold_img(img, lower, upper):
     mask = cv2.inRange(hsv, lower, upper)
     # Bitwise-AND mask and original image
     res = cv2.bitwise_and(img,img, mask= mask)
-    cv2.imshow("thresholded", res)
-    cv2.waitKey(0)
-    return res
+    #cv2.imshow("thresholded", res)
+    #cv2.waitKey(0)
+    gray =  cv2.cvtColor(res, cv2.COLOR_RGB2GRAY)
+    return gray
 
 
 def reward(im_src):
