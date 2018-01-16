@@ -14,10 +14,13 @@ class BoardUpdate:
     def __init__(self):
         #probability has marker
         self.belief = 0.5*np.ones((board_height, board_width))
-        self.lower_marker = np.array([0,30,0])
-        self.upper_marker = np.array([255,255,255])
+        #self.lower_marker = np.array([108,50,160])
+        #self.upper_marker = np.array([130,240,200])
+        self.lower_marker = np.array([100,90,120])
+        self.upper_marker = np.array([160,255,255])
+
         self.lower_white = np.array([0,0,200])
-        self.upper_white = np.array([255,16,255])
+        self.upper_white = np.array([255,30,255])
         point_topic = "/output"
         self.corners = self.get_corners(point_topic)
         self.bridge = CvBridge()
@@ -28,10 +31,10 @@ class BoardUpdate:
 
     def get_corners(self, topic):
         if DEBUG:
-            return np.array([[ 244.,   17.],
-       [ 443.,   50.],
-       [ 410.,  264.],
-       [ 204.,  235.]])
+            return np.array([[ 336.,   29.],
+       [ 537.,   59.],
+       [ 506.,  281.],
+       [ 299.,  242.]])
  
         upper_left = rospy.wait_for_message(topic, Point, timeout =60)
         upper_right = rospy.wait_for_message(topic, Point, timeout =60)
