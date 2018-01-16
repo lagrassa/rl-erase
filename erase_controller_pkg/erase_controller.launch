@@ -1,0 +1,15 @@
+<launch>
+<node pkg="erase_controller_pkg" name ="reward_node" type="rewardnode.py"/>
+<node pkg="erase_controller_pkg" name ="wipe_high_level" type="make_wipe.py"/>
+<node pkg="erase_controller_pkg" name ="wiping" type="wipe.py"/>
+<arg name="kinect_camera_name" default="head_mount_kinect" />
+<include file="$(find openni_launch)/launch/openni.launch">
+    <arg name="camera" value="$(arg kinect_camera_name)"/>
+    <arg name="rgb_frame_id" value= "$(arg kinect_camera_name)_rgb_optical_frame" />
+    <arg name="depth_frame_id" value= "$(arg kinect_camera_name)_depth_optical_frame" />
+    <arg name="publish_tf" value= "false" />
+    <arg name="depth_registration" default="true"/>
+    <rosparam command="load" file="$(openni_launch)/launch/openni_params.yaml"/>
+</include>
+<include file="$(find pr2_controller_configuration)/pr2_jt_controllers.launch"/>
+</launch>
