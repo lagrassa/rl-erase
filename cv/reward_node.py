@@ -14,15 +14,17 @@ class BoardUpdate:
     def __init__(self):
         #probability has marker
         self.belief = 0.5*np.ones((board_height, board_width))
-        self.lower_marker = np.array([0,110,0])
+        self.lower_marker = np.array([0,30,0])
         self.upper_marker = np.array([255,255,255])
-        self.lower_white = np.array([0,0,0])
-        self.upper_white = np.array([255,15,255])
+        self.lower_white = np.array([0,0,200])
+        self.upper_white = np.array([255,16,255])
         point_topic = "/output"
         self.corners = self.get_corners(point_topic)
         self.bridge = CvBridge()
         self.sub = rospy.Subscriber("/head_mount_kinect/rgb/image_rect_color", Image, self.update_belief)
         self.pub = rospy.Publisher("/rl_erase/reward", Float32,queue_size=10) 
+        self.marker_threshold_pub = rospy.Publisher("/rl_erase/marker_threshold", Image,queue_size=10) 
+        self.white_threshold_pub = rospy.Publisher("/rl_erase/white_threshold", Image,queue_size=10) 
 
     def get_corners(self, topic):
         if DEBUG:
@@ -46,9 +48,16 @@ class BoardUpdate:
         rectified_img = rectify(image, self.corners)
         marker_img = threshold_img(rectified_img, self.lower_marker, self.upper_marker)
         white_img = threshold_img(rectified_img, self.lower_white, self.upper_white)
+        if DEBUG:
+            #publish these messages
+             marker_msg = self.bridge.cv2_to_imgmsg(marker_img, encoding="passthrough")
+             white_msg = self.bridge.cv2_to_imgmsg(white_img, encoding="passthrough")
+             self.marker_threshold_pub.publish(marker_msg)
+             self.white_threshold_pub.publish(white_msg)
+
         for i in range(board_height):
             for j in range(board_width):
-                self.belief[i,j] = p_marked(marker_img[i,j],marker_img[i,j],white_img[i,j])
+                self.belief[i,j] = p_erased(marker_img[i,j],marker_img[i,j],white_img[i,j])
         self.update_reward()
         
     def update_reward(self):
@@ -58,10 +67,11 @@ class BoardUpdate:
         self.pub.publish(cmd)
 
     def current_reward(self):
-        #sum probability all the board is erased currently, so max reward - sum of all values on board
-        return board_height*board_width - sum(sum(self.belief))
+        #Sum over probabilities that board is completely erased 
+        #scaled by size of board
+        return sum(sum(self.belief))/(board_height*board_width)
 
-def p_marked(prior, m,w,lr=0.9):
+def p_erased(prior, m,w,lr=0.98):
     if m>0 and w == 0: #fairly certain marker
         pnew= 1    
     if m==0 and w == 0:
@@ -70,7 +80,9 @@ def p_marked(prior, m,w,lr=0.9):
         pnew =  0
     if w > 0 and m > 0: #????? confusion
         pnew =  0.5
-    return (1-lr)*prior + lr*pnew
+    pmarked =  (1-lr)*prior + lr*pnew
+    perased = 1-pmarked
+    return perased
 
 def point_to_array(point_msg):
     return [point_msg.x, point_msg.y]
