@@ -85,9 +85,14 @@ class EraserController:
         if self.n > len(self.params):
             self.n = 0 
         #nudge epsilon again
-        unit_vector = np.zeros(self.params.shape)
-        unit_vector[self.n] = self.epsilon
-        self.params = self.params + unit_vector
+        if alg == "SGD":
+            mu = np.zeros(self.params.shape)
+            add_vector = np.random.normal(loc = mu, scale = epsilon) 
+            
+        else:
+            add_vector = np.zeros(self.params.shape)
+            add_vector[self.n] = self.epsilon
+        self.params = self.params + add_vector
         print("Updated params")
         
 
