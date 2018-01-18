@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 import rospy 
+PR2 = False
 import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
 from sensor_msgs.msg import JointState
-from uber_controller import Uber
+if PR2:
+    from uber_controller import Uber
+    uc= Uber()
 import numpy as np
 
 rospy.init_node("relative")
 
-uc= Uber()
 
 
 arm = 'r'
@@ -59,6 +61,8 @@ class EraserController:
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
         #self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
         self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
+        self.gradient_pub = rospy.Publisher("/rl_erase/gradient", Float32, queue_size=1)
+        self.action_pub = rospy.Publisher("/rl_erase/action", Float32, queue_size=1)
         
 
     def update_ft(self, data):
@@ -71,11 +75,11 @@ class EraserController:
     def policy(self, state):
         #sample from gaussian
         mu_of_s = (self.params[:,:-1]*state).item()
-        print("Mu of s",mu_of_s)
+        #print("Mu of s",mu_of_s)
         sigma = abs(self.params[:,-1].item())
         z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         #z_press = 0.4 
-        print("Policy of s is", z_press)
+        #print("Policy of s is", z_press)
         (safe_z_press, was_safe) = self.safe_policy(z_press)
         if not was_safe:
             self.reward_prev = -1
@@ -97,12 +101,11 @@ class EraserController:
             gradient = 0
         else:
             gradient = (reward.data - self.reward_prev) / (self.epsilon) 
-            if gradient > 20:
-                gradient = 0  #find a way to deal with outliers
+        self.gradient_pub.publish(Float32(gradient))
 
         self.reward_prev = reward.data
-        print("params before", self.params)
-        print("Gradient",gradient)
+        #print("params before", self.params)
+        #nprint("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
 
         if self.n > len(self.params):
@@ -122,7 +125,9 @@ class EraserController:
 	#it's a move in x space
 	#go_to_start()
 	z_press = self.policy(self.state)
-	command_delta(0,pt.y,z_press)
+        self.gradient_pub.publish(Float32(z_press))
+        if PR2:
+	    command_delta(0,pt.y,z_press)
 
 ec = EraserController()        
 rospy.spin()
