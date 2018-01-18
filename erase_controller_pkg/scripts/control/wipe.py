@@ -46,12 +46,13 @@ class EraserController:
     def __init__(self):
         #initialize the state
         num_params = 3#+(2*45)
-        self.state = np.zeros(num_params)
-        self.params = np.zeros(num_params+1)
-        self.params[-1] = 1
-        self.reward_prev = 0
-        self.epsilon = 0.01
-        self.alpha = 0.01
+        self.state = np.matrix(np.zeros(num_params)).T
+        self.params = np.matrix(np.zeros(num_params+1))
+        
+        self.params[:,-1] = 1
+        self.reward_prev = None
+        self.epsilon = 0.001
+        self.alpha = 0.001
         self.n = 0
         #self.state is comprised of forces, then joint efforts, then joint states in that order
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
@@ -61,7 +62,7 @@ class EraserController:
         
 
     def update_ft(self, data):
-        self.state[0:3] = [data.wrench.force.x,data.wrench.force.y,data.wrench.force.z]
+        self.state[0:3] = np.matrix([data.wrench.force.x,data.wrench.force.y,data.wrench.force.z]).T
 
     def update_joint_state(self, data):
         self.state[3:3+45] = data.effort
@@ -69,27 +70,52 @@ class EraserController:
 
     def policy(self, state):
         #sample from gaussian
-        mu_of_s = state * self.params[:-1]
-        sigma = abs(self.params[-1])
+        mu_of_s = (self.params[:,:-1]*state).item()
+        print("Mu of s",mu_of_s)
+        sigma = abs(self.params[:,-1].item())
         z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         #z_press = 0.4 
-        return z_press
+        print("Policy of s is", z_press)
+        (safe_z_press, was_safe) = self.safe_policy(z_press)
+        if not was_safe:
+            self.reward_prev = -1
+        return safe_z_press
 
-    def policy_gradient_descent(self, reward):
+    #takes policy and makes it slow enough that robot won't destroy itself
+    def safe_policy(self, action):
+        #definition of safe: in same direction, but no more than -5
+        if abs(action) > 0.05:
+            if action < 0:
+                return -0.05, False
+            return 0.05, False
+        return action, True
+
+    def policy_gradient_descent(self, reward, alg='PGD'):
         #from the previous step, the function was nudged by epsilon in some dimension
         #update that and then
-        gradient = (reward.data - self.reward_prev) / (self.epsilon) 
-        print("The gradient was",gradient)
+        if self.reward_prev == None:
+            gradient = 0
+        else:
+            gradient = (reward.data - self.reward_prev) / (self.epsilon) 
+            if gradient > 20:
+                gradient = 0  #find a way to deal with outliers
+
         self.reward_prev = reward.data
+        print("params before", self.params)
+        print("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
 
         if self.n > len(self.params):
             self.n = 0 
         #nudge epsilon again
-        unit_vector = np.zeros(self.params.shape)
-        unit_vector[self.n] = self.epsilon
-        self.params = self.params + unit_vector
-        print("Updated params")
+        if alg == "SGD":
+            mu = np.zeros(self.params.shape)
+            add_vector = np.random.normal(loc = mu, scale = epsilon)
+
+        else:
+            add_vector = np.zeros(self.params.shape)
+            add_vector[self.n] = self.epsilon
+        self.params = self.params + add_vector
         
 
     def wipe(self, pt):

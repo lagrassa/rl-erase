@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from erase_globals import board_height,board_width
 from percent_erase import rectify, threshold_img
 
-DEBUG = True
+DEBUG = False
 
 class BoardUpdate: 
     def __init__(self):
