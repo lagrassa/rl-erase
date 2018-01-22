@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy 
 PR2 = False
+SIMPLE = True
 import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
@@ -48,6 +49,8 @@ class EraserController:
     def __init__(self):
         #initialize the state
         num_params = 3#+(2*45)
+        self.simple_state = 0
+        self.simple_param = -1
         self.state = np.matrix(np.zeros(num_params)).T
         self.params = np.matrix(np.zeros(num_params+1))
         
@@ -67,17 +70,21 @@ class EraserController:
 
     def update_ft(self, data):
         self.state[0:3] = np.matrix([data.wrench.force.x,data.wrench.force.y,data.wrench.force.z]).T
+        self.simple_state = data.wrench.force.z
 
     def update_joint_state(self, data):
         self.state[3:3+45] = data.effort
         self.state[3+45:4+(2*45)] = data.effort
 
     def policy(self, state):
-        #sample from gaussian
-        mu_of_s = (self.params[:,:-1]*state).item()
-        #print("Mu of s",mu_of_s)
-        sigma = abs(self.params[:,-1].item())
-        z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
+        if not SIMPLE:
+	    #sample from gaussian
+	    mu_of_s = (self.params[:,:-1]*state).item()
+	    #print("Mu of s",mu_of_s)
+	    sigma = abs(self.params[:,-1].item())
+	    z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
+        else:
+            z_press = self.simple_state*self.simple_param
         #z_press = 0.4 
         #print("Policy of s is", z_press)
         (safe_z_press, was_safe) = self.safe_policy(z_press)
@@ -107,6 +114,7 @@ class EraserController:
         #print("params before", self.params)
         #nprint("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
+        self.simple_param = self.simple_param + self.alpha*gradient
 
         if self.n > len(self.params):
             self.n = 0 
@@ -118,7 +126,9 @@ class EraserController:
         else:
             add_vector = np.zeros(self.params.shape)
             add_vector[self.n] = self.epsilon
+
         self.params = self.params + add_vector
+        self.simple_param = self.simple_param + self.epsilon
         
 
     def wipe(self, pt):
