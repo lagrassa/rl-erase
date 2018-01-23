@@ -18,10 +18,10 @@ joint_angles = [0.29628785835607696, 0.11011554596095237, -1.8338543122460127, -
 for i in range(numsteps):
     #go to start
     uc.start_joint('r')
-    uc.command_joint_pose('r',joint_angles, time=3, blocking=True)
+    uc.command_joint_pose('r',joint_angles, time=1, blocking=True)
     uc.start_cart('r')
     pt = Point()
-    pt.y = 0.3*(-1)**i
+    pt.y = -0.4 #*(-1)**i don't really need the alternating anymore?
     wipe_pub.publish(pt)
     rospy.sleep(5)
     update_pub.publish(pt)

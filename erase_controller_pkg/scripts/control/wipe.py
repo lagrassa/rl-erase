@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 import rospy 
-PR2 = False
+rospy.init_node("relative")
+import roslib
+PR2 = True
 SIMPLE = True
 import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
 from sensor_msgs.msg import JointState
 if PR2:
-    from uber_controller import Uber
+    roslib.load_manifest("gdm_arm_controller")
+    from gdm_arm_controller.uber_controller import Uber
     uc= Uber()
 import numpy as np
 
-rospy.init_node("relative")
 
 
 
@@ -105,7 +107,7 @@ class EraserController:
         return action, True
 
     def update_reward(self, reward):
-        self.return_val += self.discount_factor*reward.data
+        self.return_val += self.discount_factor*self.return_val + reward.data #so this is kind of weird, but I want to make the more recent rewards more important
 
     def policy_gradient_descent(self, data, alg='PGD'):
         #from the previous step, the function was nudged by epsilon in some dimension
@@ -113,7 +115,7 @@ class EraserController:
         if self.reward_prev == None:
             gradient = 0
         else:
-            gradient = (self.reward - self.reward_prev) / (self.epsilon) 
+            gradient = (self.return_val - self.reward_prev) / (self.epsilon) 
         self.gradient_pub.publish(Float32(gradient))
 
         self.reward_prev = self.return_val
@@ -140,6 +142,7 @@ class EraserController:
     def wipe(self, pt):
 	#it's a move in x space
 	#go_to_start()
+        print("Wiping")
 	z_press = self.policy(self.state)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:

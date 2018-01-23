@@ -1,11 +1,4 @@
 <launch>
-  <node name="unspawn_arms"
-        pkg="pr2_controller_manager" type="unspawner"
-        args="l_arm_controller r_arm_controller" />
-
-
-
-
   <rosparam ns="r_cart">
     type: robot_mechanism_controllers/JTCartesianController
     root_name: torso_lift_link
@@ -18,7 +11,7 @@
         p: 800.0
         d: 20.0
       rot:
-        p: 80.0
+        p: 200.0
         d: 1.2
     joint_feedforward:
       r_shoulder_pan_joint: 3.33
@@ -37,7 +30,7 @@
       r_wrist_flex_joint: 5.568
       r_wrist_roll_joint: 5.568
 
-    vel_saturation_trans: 0.3
+    vel_saturation_trans: 0.6
     vel_saturation_rot: 4.0
   </rosparam>
   

@@ -1,7 +1,7 @@
 import rospy 
 from geometry_msgs.msg import *
 from std_msgs.msg import Header
-from uber_controller import Uber
+from gdm_arm_controller.uber_controller import Uber
 
 rospy.init_node("relative")
 
