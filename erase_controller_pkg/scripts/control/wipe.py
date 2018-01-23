@@ -58,12 +58,15 @@ class EraserController:
         self.reward_prev = None
         self.epsilon = 0.001
         self.alpha = 0.001
+        self.discount_factor = 0.95
+        self.return_val = 0
         self.n = 0
         #self.state is comprised of forces, then joint efforts, then joint states in that order
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
         #self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
-        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
+        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.update_reward)
+        self.update_sub = rospy.Subscriber('/rl_erase/update', Point, self.policy_gradient_descent)
         self.gradient_pub = rospy.Publisher("/rl_erase/gradient", Float32, queue_size=1)
         self.action_pub = rospy.Publisher("/rl_erase/action", Float32, queue_size=1)
         
@@ -101,16 +104,19 @@ class EraserController:
             return 0.05, False
         return action, True
 
-    def policy_gradient_descent(self, reward, alg='PGD'):
+    def update_reward(self, reward):
+        self.return_val += self.discount_factor*reward.data
+
+    def policy_gradient_descent(self, data, alg='PGD'):
         #from the previous step, the function was nudged by epsilon in some dimension
         #update that and then
         if self.reward_prev == None:
             gradient = 0
         else:
-            gradient = (reward.data - self.reward_prev) / (self.epsilon) 
+            gradient = (self.reward - self.reward_prev) / (self.epsilon) 
         self.gradient_pub.publish(Float32(gradient))
 
-        self.reward_prev = reward.data
+        self.reward_prev = self.return_val
         #print("params before", self.params)
         #nprint("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
