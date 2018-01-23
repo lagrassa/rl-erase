@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from geometry_msgs.msg import Point
-from uber_controller import UberController
+from gdm_arm_controller.uber_controller import UberController
 rospy.init_node("wiper")
 wipe_pub= rospy.Publisher('/rl_erase/wipe',Point,queue_size=10)
 update_pub= rospy.Publisher('/rl_erase/update',Point,queue_size=10)
