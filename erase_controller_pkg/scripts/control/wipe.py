@@ -116,6 +116,7 @@ class EraserController:
             gradient = 0
         else:
             gradient = (self.return_val - self.reward_prev) / (self.epsilon) 
+        print("Return value", self.return_val)
         self.gradient_pub.publish(Float32(gradient))
 
         self.reward_prev = self.return_val
@@ -142,8 +143,8 @@ class EraserController:
     def wipe(self, pt):
 	#it's a move in x space
 	#go_to_start()
-        print("Wiping")
 	z_press = self.policy(self.state)
+        print("Wiping with zpress", z_press)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:
 	    command_delta(0,pt.y,z_press)
