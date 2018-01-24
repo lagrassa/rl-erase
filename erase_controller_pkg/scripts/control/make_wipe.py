@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import rospy
 from geometry_msgs.msg import Point
+from erase_control_globals import wipe_time
 from gdm_arm_controller.uber_controller import UberController
-rospy.init_node("wiper")
+rospy.init_node("make_wipe")
 wipe_pub= rospy.Publisher('/rl_erase/wipe',Point,queue_size=10)
 update_pub= rospy.Publisher('/rl_erase/update',Point,queue_size=10)
 numsteps = 200
@@ -25,7 +26,7 @@ for i in range(numsteps):
     pt = Point()
     pt.y = -0.2 #*(-1)**i don't really need the alternating anymore?
     wipe_pub.publish(pt)
-    rospy.sleep(5)
+    rospy.sleep(wipe_time)
     uc.start_joint('r')
     uc.command_joint_pose('r',away_joint_angles, time=3, blocking=True)
     update_pub.publish(pt)
