@@ -12,5 +12,5 @@
     <arg name="depth_registration" default="true"/>
     <rosparam command="load" file="$(openni_launch)/launch/openni_params.yaml"/>
 </include>
-<include file="$(find pr2_controller_configuration)/pr2_jt_controllers.launch"/>
+<include file="$(find pr2_controller_configuration)/pr2_jtv_controllers.launch"/>
 </launch>
