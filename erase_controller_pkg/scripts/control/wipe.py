@@ -62,7 +62,7 @@ class EraserController:
         self.reward_prev = None
         self.epsilon = 0.001
         self.alpha = 0.001
-        self.discount_factor = 0.95
+        self.discount_factor = 0.1
         self.return_val = 0
         self.n = 0
         #self.state is comprised of forces, then joint efforts, then joint states in that order
@@ -146,6 +146,7 @@ class EraserController:
 	#it's a move in x space
 	#go_to_start()
 	z_press = self.policy(self.state)
+        z_press = -0.2
         print("Wiping with zpress", z_press)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:

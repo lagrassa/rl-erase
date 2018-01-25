@@ -42,7 +42,9 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>openni_launch</build_depend>
   <build_depend>pr2_controller_configuration</build_depend>
+  <build_depend>gdm_arm_controller</build_depend>
   <run_depend>openni_launch</run_depend>
+  <run_depend>gdm_arm_controller</run_depend>
   <run_depend>pr2_controller_configuration</run_depend>
 
 

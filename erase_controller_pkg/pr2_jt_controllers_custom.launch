@@ -9,9 +9,9 @@
     cart_gains:
       trans:
         p: 800.0
-        d: 20.0
+        d: 15.0
       rot:
-        p: 200.0
+        p: 80.0
         d: 1.2
     joint_feedforward:
       r_shoulder_pan_joint: 3.33

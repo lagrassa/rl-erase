@@ -15,10 +15,10 @@
     pose_command_filter: 1.0
     cart_gains:
       trans:
-        p: 800.0
+        p: 300.0
         d: 15.0
       rot:
-        p: 800.0
+        p: 400.0
         d: 1.2
     joint_feedforward:
       r_shoulder_pan_joint: 3.33
@@ -37,7 +37,7 @@
       r_wrist_flex_joint: 5.568
       r_wrist_roll_joint: 5.568
 
-    vel_saturation_trans: 1.0
+    vel_saturation_trans: 8.0
     vel_saturation_rot: 16.0
   </rosparam>
   
@@ -80,10 +80,4 @@
         pkg="pr2_controller_manager" type="pr2_controller_manager"
         args="load l_cart r_cart" />
 
-  <node name="r_posture"
-        pkg="jtv_controller" type="posture.py"
-        args="r_cart elbowupr" />
-  <node name="l_posture"
-        pkg="jtv_controller" type="posture.py"
-        args="l_cart elbowupl" />
 </launch>

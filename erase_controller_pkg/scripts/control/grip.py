@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 from std_msgs.msg import String
 from pr2_controllers_msgs.msg import Pr2GripperCommand
@@ -9,7 +10,7 @@ def gripper():
     while not rospy.is_shutdown():
         grip_msg = Pr2GripperCommand()
         grip_msg.max_effort = -1
-        grip_msg.position = 0.05
+        grip_msg.position = 0.045
         pub.publish(grip_msg)
         rate.sleep()
 
