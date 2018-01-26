@@ -8,8 +8,9 @@ from std_msgs.msg import Float32
 from sensor_msgs.msg import Image
 from erase_globals import board_height,board_width
 from percent_erase import rectify, threshold_img
+from masking import p_erased_fast
 
-DEBUG = False
+DEBUG = True
 
 class BoardUpdate: 
     def __init__(self):
@@ -50,8 +51,8 @@ class BoardUpdate:
     def update_belief(self, img):
         image = self.bridge.imgmsg_to_cv2(img)
         rectified_img = rectify(image, self.corners)
-        marker_img = threshold_img(rectified_img, self.lower_marker, self.upper_marker)
-        white_img = threshold_img(rectified_img, self.lower_white, self.upper_white)
+        marker_img, marker_mask = threshold_img(rectified_img, self.lower_marker, self.upper_marker)
+        white_img, white_mask = threshold_img(rectified_img, self.lower_white, self.upper_white)
         if DEBUG:
             #publish these messages
              marker_msg = self.bridge.cv2_to_imgmsg(marker_img, encoding="passthrough")
@@ -59,9 +60,10 @@ class BoardUpdate:
              self.marker_threshold_pub.publish(marker_msg)
              self.white_threshold_pub.publish(white_msg)
 
-        for i in range(board_height):
-            for j in range(board_width):
-                self.belief[i,j] = p_erased(marker_img[i,j],marker_img[i,j],white_img[i,j])
+        #for i in range(board_height):
+        #    for j in range(board_width):
+        #        self.belief[i,j] = p_erased(marker_img[i,j],marker_img[i,j],white_img[i,j])
+        self.belief = p_erased_fast(self.belief, marker_mask, white_mask)
         self.update_reward()
         
     def update_reward(self):
@@ -75,7 +77,13 @@ class BoardUpdate:
         #scaled by size of board
         return sum(sum(self.belief))/(board_height*board_width)
 
+
+
 def p_erased(prior, m,w,lr=0.98):
+    #first case: marker and not white, set to 1
+    #second case, not marker and not white, set to prior
+    #third case: white and not marker, set to 0
+    #fourth case: white and marker: set to 0.5
     if m>0 and w == 0: #fairly certain marker
         pnew= 1    
     if m==0 and w == 0:

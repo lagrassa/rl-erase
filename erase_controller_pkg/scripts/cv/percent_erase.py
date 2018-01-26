@@ -38,7 +38,7 @@ def threshold_img(img, lower, upper):
     #cv2.imshow("thresholded", res)
     #cv2.waitKey(0)
     gray =  cv2.cvtColor(res, cv2.COLOR_RGB2GRAY)
-    return gray
+    return gray,mask
 
 
 def reward(im_src):

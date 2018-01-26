@@ -7,7 +7,7 @@ import cv2
 import pdb
 
 
-def p_marked(prior,marker, white, lr =1):
+def p_erased_fast(prior,marker, white, lr =1):
     not_white = cv2.bitwise_not(white)
     not_marker = cv2.bitwise_not(marker)
 
