@@ -55,7 +55,8 @@ class EraserController:
         self.params[:,-1] = 1
         self.reward_prev = None
         self.epsilon = 0.001
-        self.alpha = 0.001
+        self.alpha = 5 #max gradient is realistically 0.014 ish
+        #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
         self.discount_factor = 0.1
         self.return_val = 0
         self.n = 0
@@ -143,7 +144,7 @@ class EraserController:
 	#it's a move in x space
 	#go_to_start()
 	z_press = self.policy(self.state)
-        z_press = -0.1
+        z_press = -0.5
         print("Wiping with zpress", z_press)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:

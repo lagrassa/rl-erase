@@ -3,7 +3,6 @@ import rospy
 from std_msgs.msg import String
 from pr2_controllers_msgs.msg import Pr2GripperCommand
 
-rate = rospy.Rate(3) # 3hz
 class Gripper():
     def __init__(self):
 	self.pub = rospy.Publisher('r_gripper_controller/command', Pr2GripperCommand, queue_size=10)
@@ -21,8 +20,9 @@ class Gripper():
 
 
 if __name__ == '__main__':
+    rospy.init_node('gripper')
     try:
-        rospy.init_node('gripper', anonymous=True)
+        rospy.sleep(0.2)
         g = Gripper()
         g.grip_constantly()
     except rospy.ROSInterruptException:
