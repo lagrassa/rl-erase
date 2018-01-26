@@ -10,7 +10,8 @@ from erase_globals import board_height,board_width
 from percent_erase import rectify, threshold_img
 from masking import p_erased_fast
 
-DEBUG = True
+PRESET_CORNERS = False
+DISPLAY = True
 
 class BoardUpdate: 
     def __init__(self):
@@ -32,13 +33,14 @@ class BoardUpdate:
         self.white_threshold_pub = rospy.Publisher("/rl_erase/white_threshold", Image,queue_size=10) 
 
     def get_corners(self, topic):
-        if DEBUG:
+        if PRESET_CORNERS:
             return np.array([[ 336.,   29.],
        [ 537.,   59.],
        [ 506.,  281.],
        [ 299.,  242.]])
- 
+        print("Waiting for clicks") 
         upper_left = rospy.wait_for_message(topic, Point, timeout =60)
+        print("recieved first") 
         upper_right = rospy.wait_for_message(topic, Point, timeout =60)
         lower_right = rospy.wait_for_message(topic, Point, timeout =60)
         lower_left = rospy.wait_for_message(topic, Point, timeout =60)
@@ -53,7 +55,7 @@ class BoardUpdate:
         rectified_img = rectify(image, self.corners)
         marker_img, marker_mask = threshold_img(rectified_img, self.lower_marker, self.upper_marker)
         white_img, white_mask = threshold_img(rectified_img, self.lower_white, self.upper_white)
-        if DEBUG:
+        if DISPLAY:
             #publish these messages
              marker_msg = self.bridge.cv2_to_imgmsg(marker_img, encoding="passthrough")
              white_msg = self.bridge.cv2_to_imgmsg(white_img, encoding="passthrough")
