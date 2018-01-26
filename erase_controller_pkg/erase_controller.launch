@@ -1,7 +1,8 @@
 <launch>
 <node pkg="erase_controller_pkg" name ="reward_node" type="rewardnode.py"/>
-<node pkg="erase_controller_pkg" name ="safety_penalty" type="safety_penalty.py"/>
-<!--node pkg="erase_controller_pkg" name ="wiping" type="wipe.py"-->
+<-node pkg="erase_controller_pkg" name ="safety_penalty" type="safety_penalty.py"/-->
+<node pkg="erase_controller_pkg" name ="wiping" type="wipe.py">
+<node pkg="erase_controller_pkg" name ="high_level_wiping" type="make_wipe.py">
 <arg name="kinect_camera_name" default="head_mount_kinect" />
 <include file="$(find openni_launch)/launch/openni.launch">
     <arg name="camera" value="$(arg kinect_camera_name)"/>
