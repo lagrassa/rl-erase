@@ -68,16 +68,8 @@
     vel_saturation_rot: 4.0
   </rosparam>
   
-
-  <node name="spawn_cart"
-        pkg="pr2_controller_manager" type="spawner"
-        args="l_cart r_cart" />
-
-  <node name="r_posture"
-        pkg="robot_mechanism_controllers" type="posture.py"
-        args="r_cart elbowupr" />
-  <node name="l_posture"
-        pkg="robot_mechanism_controllers" type="posture.py"
-        args="l_cart elbowupl" />
+   <node name="load_cart"
+        pkg="pr2_controller_manager" type="pr2_controller_manager"
+        args="load l_cart r_cart" />
 
 </launch>
