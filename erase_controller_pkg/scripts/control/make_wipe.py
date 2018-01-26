@@ -27,7 +27,7 @@ for i in range(numsteps):
         uc.command_joint_pose('r',start_joint_angles, time=3, blocking=True)
         rospy.sleep(1)
     pt = Point()
-    pt.y = 0.33 #*(-1)**i don't really need the alternating anymore?
+    pt.y = 0.6 #*(-1)**i don't really need the alternating anymore?
     wipe_pub.publish(pt)
     rospy.sleep(wipe_time)
     if CONSISTENT_STATE:

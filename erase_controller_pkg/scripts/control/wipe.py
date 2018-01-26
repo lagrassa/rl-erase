@@ -2,6 +2,7 @@
 import rospy 
 rospy.init_node("wipe")
 import roslib
+from grip import Gripper
 from erase_control_globals import wipe_time
 PR2 = True
 SIMPLE = True
@@ -65,6 +66,8 @@ class EraserController:
         self.discount_factor = 0.1
         self.return_val = 0
         self.n = 0
+        #grip the eraser
+        self.gripper = Gripper()
         #self.state is comprised of forces, then joint efforts, then joint states in that order
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
@@ -143,10 +146,11 @@ class EraserController:
         
 
     def wipe(self, pt):
+        self.gripper.grip()
 	#it's a move in x space
 	#go_to_start()
 	z_press = self.policy(self.state)
-        z_press = -0.2
+        z_press = -0.8
         print("Wiping with zpress", z_press)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:

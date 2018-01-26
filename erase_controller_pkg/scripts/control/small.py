@@ -29,11 +29,12 @@ def command_delta(x,y,z):
     pos[2] += z
     #cmd = stamp_pose( (pos,quat))
     #pub.publish(cmd) 
-    uc.cmd_ik_interpolated(arm, (pos, quat), 1, frame, blocking = True, use_cart=True, num_steps = 20)
+    uc.cmd_ik_interpolated(arm, (pos, quat), 5, frame, blocking = True, use_cart=True, num_steps = 15)
+    rospy.sleep(2)
 
 
 #print("joint angles",uc.get_joint_positions('r'))
-command_delta(0,0.1,-0.01)
+command_delta(0,-0.2,-0.1)
 #pdb.set_trace()
 
 #uc.command_joint_pose('r',away_joint_angles, time=1, blocking=True)

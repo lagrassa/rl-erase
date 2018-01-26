@@ -1,1 +1,1 @@
-wipe_time = 5
+wipe_time = 6.5
