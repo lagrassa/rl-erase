@@ -6,7 +6,7 @@ from grip import Gripper
 from erase_control_globals import wipe_time
 PR2 = True
 SIMPLE = True
-ACTUALLY_MOVE = False
+ACTUALLY_MOVE = True
 import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
@@ -57,7 +57,7 @@ class EraserController:
         self.params[:,-1] = 1
         self.reward_prev = None
         self.epsilon = 0.0001
-        self.alpha = 0.00005 #max gradient is realistically 3200 ish
+        self.alpha = 0.005 #max gradient is realistically 3200 ish
         #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
         self.discount_factor = 0.00001
         self.return_val = None

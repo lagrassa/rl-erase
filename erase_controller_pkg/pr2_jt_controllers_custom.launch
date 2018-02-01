@@ -30,7 +30,7 @@
       r_wrist_flex_joint: 5.568
       r_wrist_roll_joint: 5.568
 
-    vel_saturation_trans: 2.0
+    vel_saturation_trans: 1.0
     vel_saturation_rot: 4.0
   </rosparam>
   
