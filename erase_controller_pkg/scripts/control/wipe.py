@@ -6,7 +6,7 @@ import roslib
 from grip import Gripper
 from erase_control_globals import wipe_time
 PR2 = True
-SIMPLE = True
+SIMPLE = False
 ACTUALLY_MOVE = True
 import pdb
 from geometry_msgs.msg import *
@@ -49,19 +49,20 @@ def command_delta(x,y,z, numsteps=1):
 class EraserController:
     def __init__(self):
         #initialize the state
-        num_params = 3#+(2*45)
+        num_params = 2#+(2*45)
         self.simple_state = 0
         self.simple_param = 0.07
         self.state = np.matrix(np.zeros(num_params)).T
-        self.params = np.matrix(np.zeros(num_params+1))
+        self.params = np.matrix([0.07,-0.08])#pray
+        #self.params = np.matrix(np.zeros(num_params+1))#uncomment when you also want to train sigma
         self.numsteps = 6
-        
-        self.params[:,-1] = 1
+        #self.params[:,-1] = 1
         self.reward_prev = None
-        self.epsilon = 0.0001
-        self.alpha = 0.005 #max gradient is realistically 3200 ish
+        self.epsilon = 0.01
+        self.alpha = 0.0005 #max gradient is realistically 3200 ish
         #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
         self.discount_factor = 0.00001
+        self.alg = "SGD"
         self.return_val = None
         self.n = 0
         #grip the eraser
@@ -112,18 +113,26 @@ class EraserController:
         self.return_val = reward.data #essentially discount 0
         #self.return_val += self.discount_factor*self.return_val + reward.data #so this is kind of weird, but I want to make the more recent rewards more important
 
-    def policy_gradient_descent(self, data, alg='PGD'):
-        self.return_val = data.data
-        #from the previous step, the function was nudged by epsilon in some dimension
-        #update that and then
+    def compute_gradient(self):
         if self.reward_prev == None:
             gradient = 0
         else:
-            try:
-                gradient = (self.return_val - self.reward_prev) / (self.epsilon) 
-            except: 
-                print("return val ",self.return_val)
-                print("reward prev val ",self.reward_prev)
+            delta_j = self.return_val - self.reward_prev
+            if SIMPLE:
+                gradient = delta_j / (self.epsilon) 
+            else:
+                ata = self.delta_theta.T*self.delta_theta
+                try:
+                    gradient = np.linalg.inv(ata)*self.delta_theta.T*(delta_j)
+                except:
+                    print(ata)
+        return gradient
+
+    def policy_gradient_descent(self, data):
+        self.return_val = data.data
+        #from the previous step, the function was nudged by epsilon in some dimension
+        #update that and then
+        gradient = self.compute_gradient()
         print("#######UPDATE######")
         self.gradient_pub.publish(Float32(gradient))
 
@@ -135,20 +144,25 @@ class EraserController:
         print("params after: ", self.simple_param)
 
         print("#######END UPDATE######")
+        self.perturb()
+        
+    def perturb(self):
         if self.n > len(self.params):
             self.n = 0 
         #nudge epsilon again
-        if alg == "SGD":
+        if self.alg == "SGD":
             mu = np.zeros(self.params.shape)
-            add_vector = np.random.normal(loc = mu, scale = epsilon)
+            add_vector = np.random.normal(loc = mu, scale = self.epsilon)
+            add_eps = np.random.normal(loc=0, scale = self.epsilon)
 
         else:
             add_vector = np.zeros(self.params.shape)
             add_vector[self.n] = self.epsilon
-
+            add_eps = self.epsilon
+ 
+        self.delta_theta =  add_vector
         self.params = self.params + add_vector
-        self.simple_param = self.simple_param + self.epsilon
-        
+        self.simple_param = self.simple_param + add_eps
 
     def wipe(self, pt):
         self.gripper.grip()
