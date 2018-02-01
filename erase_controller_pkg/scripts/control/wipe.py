@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import rospy 
 rospy.init_node("wipe")
 import roslib
@@ -35,14 +36,14 @@ def stamp_pose( (pos,quat)):
 	        Quaternion(*quat)))
     return ps
 
-def command_delta(x,y,z):
+def command_delta(x,y,z, numsteps=1):
     pos, quat = get_pose()
-    pos[0] += x
-    pos[1] += y
-    pos[2] += z
+    pos[0] += x/numsteps
+    pos[1] += y/numsteps
+    pos[2] += z/numsteps
     cmd = stamp_pose( (pos,quat))
     if ACTUALLY_MOVE:
-        uc.cmd_ik_interpolated(arm, (pos, quat), wipe_time, frame, blocking = True, use_cart=True, num_steps = 30)
+        uc.cmd_ik_interpolated(arm, (pos, quat), wipe_time/numsteps, frame, blocking = True, use_cart=True, num_steps = 30)
 
 
 class EraserController:
@@ -53,6 +54,7 @@ class EraserController:
         self.simple_param = 0.07
         self.state = np.matrix(np.zeros(num_params)).T
         self.params = np.matrix(np.zeros(num_params+1))
+        self.numsteps = 6
         
         self.params[:,-1] = 1
         self.reward_prev = None
@@ -152,11 +154,12 @@ class EraserController:
         self.gripper.grip()
 	#it's a move in x space
 	#go_to_start()
-	z_press = self.policy(self.state)
-        print("Wiping with zpress", z_press)
-        self.gradient_pub.publish(Float32(z_press))
-        if PR2:
-	    command_delta(0,pt.y,z_press)
+        for i in range(self.numsteps):
+            if PR2:
+                z_press = self.policy(self.state)
+                print("Wiping with zpress", z_press)
+                self.gradient_pub.publish(Float32(z_press))
+	        command_delta(0,pt.y,z_press, numsteps = self.numsteps)
 
 ec = EraserController()        
 rospy.spin()
