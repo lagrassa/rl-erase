@@ -10,7 +10,7 @@ from erase_globals import board_height,board_width
 from percent_erase import rectify, threshold_img
 from masking import p_erased_fast
 
-PRESET_CORNERS = False
+PRESET_CORNERS = True
 DISPLAY = True
 
 class BoardUpdate: 
@@ -19,27 +19,28 @@ class BoardUpdate:
         self.belief = 0.5*np.ones((board_height, board_width))
         #self.lower_marker = np.array([108,50,160])
         #self.upper_marker = np.array([130,240,200])
-        self.lower_marker = np.array([100,90,120])
+        self.lower_marker = np.array([100,50,120])
         self.upper_marker = np.array([160,255,255])
 
-        self.lower_white = np.array([0,0,200])
-        self.upper_white = np.array([255,30,255])
+        self.lower_white = np.array([0,0,170])
+        self.upper_white = np.array([255,40,255])
         point_topic = "/output"
         self.corners = self.get_corners(point_topic)
         self.bridge = CvBridge()
         self.sub = rospy.Subscriber("/head_mount_kinect/rgb/image_rect_color", Image, self.update_belief)
+        self.sub_rew = rospy.Subscriber("/rl_erase/update_reward", Point, self.publish_reward)
         self.pub = rospy.Publisher("/rl_erase/reward", Float32,queue_size=10) 
         self.marker_threshold_pub = rospy.Publisher("/rl_erase/marker_threshold", Image,queue_size=10) 
         self.white_threshold_pub = rospy.Publisher("/rl_erase/white_threshold", Image,queue_size=10) 
 
     def get_corners(self, topic):
         if PRESET_CORNERS:
-            return np.array([[ 336.,   29.],
-       [ 537.,   59.],
-       [ 506.,  281.],
-       [ 299.,  242.]])
+            return np.array([[ 224.,   27.],
+       [ 412.,   14.],
+       [ 430.,  216.],
+       [ 242.,  233.]])
         print("Waiting for clicks") 
-        upper_left = rospy.wait_for_message(topic, Point, timeout =60)
+        upper_left = rospy.wait_for_message(topic, Point, timeout =120)
         print("recieved first") 
         upper_right = rospy.wait_for_message(topic, Point, timeout =60)
         lower_right = rospy.wait_for_message(topic, Point, timeout =60)
@@ -48,6 +49,8 @@ class BoardUpdate:
         pts =  np.array([point_to_array(pt) for pt in input_points])
         print ("Corners: ",pts)
         return pts
+    def publish_reward(self, data):
+        self.update_reward()
     
 
     def update_belief(self, img):
@@ -66,7 +69,6 @@ class BoardUpdate:
         #    for j in range(board_width):
         #        self.belief[i,j] = p_erased(marker_img[i,j],marker_img[i,j],white_img[i,j])
         self.belief = p_erased_fast(self.belief, marker_mask, white_mask)
-        self.update_reward()
         
     def update_reward(self):
         cmd = Float32()

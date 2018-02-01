@@ -6,6 +6,7 @@ from grip import Gripper
 from erase_control_globals import wipe_time
 PR2 = True
 SIMPLE = True
+ACTUALLY_MOVE = False
 import pdb
 from geometry_msgs.msg import *
 from std_msgs.msg import Header, Float32
@@ -40,7 +41,8 @@ def command_delta(x,y,z):
     pos[1] += y
     pos[2] += z
     cmd = stamp_pose( (pos,quat))
-    uc.cmd_ik_interpolated(arm, (pos, quat), wipe_time, frame, blocking = True, use_cart=True, num_steps = 30)
+    if ACTUALLY_MOVE:
+        uc.cmd_ik_interpolated(arm, (pos, quat), wipe_time, frame, blocking = True, use_cart=True, num_steps = 30)
 
 
 class EraserController:
@@ -48,17 +50,17 @@ class EraserController:
         #initialize the state
         num_params = 3#+(2*45)
         self.simple_state = 0
-        self.simple_param = -1
+        self.simple_param = 0.07
         self.state = np.matrix(np.zeros(num_params)).T
         self.params = np.matrix(np.zeros(num_params+1))
         
         self.params[:,-1] = 1
         self.reward_prev = None
-        self.epsilon = 0.001
-        self.alpha = 5 #max gradient is realistically 0.014 ish
+        self.epsilon = 0.0001
+        self.alpha = 0.00005 #max gradient is realistically 3200 ish
         #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
-        self.discount_factor = 0.1
-        self.return_val = 0
+        self.discount_factor = 0.00001
+        self.return_val = None
         self.n = 0
         #grip the eraser
         self.gripper = Gripper()
@@ -66,8 +68,8 @@ class EraserController:
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
         #self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
-        self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.update_reward)
-        self.update_sub = rospy.Subscriber('/rl_erase/update', Point, self.policy_gradient_descent)
+        #self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.update_reward)
+        self.update_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
         self.gradient_pub = rospy.Publisher("/rl_erase/gradient", Float32, queue_size=1)
         self.action_pub = rospy.Publisher("/rl_erase/action", Float32, queue_size=1)
         
@@ -89,41 +91,48 @@ class EraserController:
 	    z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         else:
             z_press = self.simple_state*self.simple_param
-        #z_press = 0.4 
-        #print("Policy of s is", z_press)
-        (safe_z_press, was_safe) = self.safe_policy(z_press)
-        if not was_safe:
-            self.reward_prev = -1
-        return safe_z_press
+            print("state",self.simple_state)
+        #(safe_z_press, was_safe) = self.safe_policy(z_press)
+        return z_press
 
     #takes policy and makes it slow enough that robot won't destroy itself
     def safe_policy(self, action):
         #definition of safe: in same direction, but no more than -5
-        if abs(action) > 0.05:
+        max_amt = 0.4
+        if abs(action) > max_amt:
             if action < 0:
-                return -0.05, False
-            return 0.05, False
+                return -max_amt, False
+            return max_amt, False
         return action, True
 
     def update_reward(self, reward):
-        self.return_val += self.discount_factor*self.return_val + reward.data #so this is kind of weird, but I want to make the more recent rewards more important
+        print("updating return val to ",reward)
+        self.return_val = reward.data #essentially discount 0
+        #self.return_val += self.discount_factor*self.return_val + reward.data #so this is kind of weird, but I want to make the more recent rewards more important
 
     def policy_gradient_descent(self, data, alg='PGD'):
+        self.return_val = data.data
         #from the previous step, the function was nudged by epsilon in some dimension
         #update that and then
         if self.reward_prev == None:
             gradient = 0
         else:
-            gradient = (self.return_val - self.reward_prev) / (self.epsilon) 
-        print("Return value", self.return_val)
+            try:
+                gradient = (self.return_val - self.reward_prev) / (self.epsilon) 
+            except: 
+                print("return val ",self.return_val)
+                print("reward prev val ",self.reward_prev)
+        print("#######UPDATE######")
         self.gradient_pub.publish(Float32(gradient))
 
         self.reward_prev = self.return_val
-        #print("params before", self.params)
-        #nprint("Gradient",gradient)
+        print("params before: ", self.simple_param)
+        print("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
         self.simple_param = self.simple_param + self.alpha*gradient
+        print("params after: ", self.simple_param)
 
+        print("#######END UPDATE######")
         if self.n > len(self.params):
             self.n = 0 
         #nudge epsilon again
@@ -144,7 +153,6 @@ class EraserController:
 	#it's a move in x space
 	#go_to_start()
 	z_press = self.policy(self.state)
-        z_press = -0.5
         print("Wiping with zpress", z_press)
         self.gradient_pub.publish(Float32(z_press))
         if PR2:

@@ -8,7 +8,7 @@ CONSISTENT_STATE = True
 
 rospy.init_node("make_wipe")
 wipe_pub= rospy.Publisher('/rl_erase/wipe',Point,queue_size=10)
-update_pub= rospy.Publisher('/rl_erase/update',Point,queue_size=10)
+update_rew_pub= rospy.Publisher('/rl_erase/update_reward',Point,queue_size=10)
 numsteps = 200
 
 uc = UberController()
@@ -34,7 +34,7 @@ for i in range(numsteps):
         uc.start_joint('r')
         uc.command_joint_pose('r',away_joint_angles, time=3, blocking=True)
         rospy.sleep(2)
-    update_pub.publish(pt)
+    update_rew_pub.publish(pt)
     
 
 
