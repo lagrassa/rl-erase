@@ -53,7 +53,7 @@ class EraserController:
         self.simple_state = 0
         self.simple_param = 0.07
         self.state = np.matrix(np.zeros(num_params)).T
-        self.params = np.matrix([0.07,-0.08])#pray
+        self.params = np.matrix([0.07,-0.08, 0.05])#pray
         #self.params = np.matrix(np.zeros(num_params+1))#uncomment when you also want to train sigma
         self.numsteps = 6
         #self.params[:,-1] = 1
@@ -78,7 +78,7 @@ class EraserController:
         
 
     def update_ft(self, data):
-        self.state[0:3] = np.matrix([data.wrench.force.x,data.wrench.force.y,data.wrench.force.z]).T
+        self.state[0:2] = np.matrix([data.wrench.force.x,data.wrench.force.y]).T
         self.simple_state = data.wrench.force.z
 
     def update_joint_state(self, data):
@@ -88,7 +88,12 @@ class EraserController:
     def policy(self, state):
         if not SIMPLE:
 	    #sample from gaussian
-	    mu_of_s = (self.params[:,:-1]*state).item()
+            print(self.params, "self.params")
+            try:
+	        mu_of_s = (self.params[:,:-1]*state).item()
+            except:
+                print self.params[:,:-1]
+                print state
 	    #print("Mu of s",mu_of_s)
 	    sigma = abs(self.params[:,-1].item())
 	    z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
@@ -122,10 +127,15 @@ class EraserController:
                 gradient = delta_j / (self.epsilon) 
             else:
                 ata = self.delta_theta.T*self.delta_theta
+                if np.linalg.det(ata) == 0:
+                    print("Found a zero determinant")
+                    return 0
                 try:
                     gradient = np.linalg.inv(ata)*self.delta_theta.T*(delta_j)
                 except:
-                    print(ata)
+                    
+                    print("A^TA",ata)
+                    print("determinant",np.linalg.det(ata))
         return gradient
 
     def policy_gradient_descent(self, data):
