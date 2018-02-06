@@ -15,7 +15,7 @@ class Gripper():
     def grip_constantly(self):
         while not rospy.is_shutdown():
             self.grip()
-            rospy.sleep(0.5)
+            rospy.sleep(0.6)
 
 
 

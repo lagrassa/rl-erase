@@ -7,7 +7,7 @@ rospy.init_node("safety")
 
 max_downward_force = 19
 
-scaling_factor = 25
+scaling_factor = 0.05
 
 #sends an increasingly worse reward depending on the magnitude of the force, probably negative 
 def alert_if_needed(data):

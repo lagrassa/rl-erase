@@ -49,17 +49,17 @@ def command_delta(x,y,z, numsteps=1):
 class EraserController:
     def __init__(self):
         #initialize the state
-        num_params = 2#+(2*45)
+        num_params = 3#+(2*45)
         self.simple_state = 0
         self.simple_param = 0.07
         self.state = np.matrix(np.zeros(num_params)).T
-        self.params = np.matrix([0.07,-0.08, 0.05])#pray
+        self.params = np.matrix([0.001,0.06,-0.03, 0.05])#pray
         #self.params = np.matrix(np.zeros(num_params+1))#uncomment when you also want to train sigma
         self.numsteps = 6
         #self.params[:,-1] = 1
         self.reward_prev = None
-        self.epsilon = 0.01
-        self.alpha = 0.0005 #max gradient is realistically 3200 ish
+        self.epsilon = 0.001
+        self.alpha = 0.00005 #max gradient is realistically 3200 ish
         #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
         self.discount_factor = 0.00001
         self.alg = "SGD"
@@ -78,7 +78,7 @@ class EraserController:
         
 
     def update_ft(self, data):
-        self.state[0:2] = np.matrix([data.wrench.force.x,data.wrench.force.y]).T
+        self.state[0:3] = np.matrix([data.wrench.force.x,data.wrench.force.y, data.wrench.force.z]).T
         self.simple_state = data.wrench.force.z
 
     def update_joint_state(self, data):
@@ -95,6 +95,8 @@ class EraserController:
                 print self.params[:,:-1]
                 print state
 	    #print("Mu of s",mu_of_s)
+            print("sigma val", self.params[:,-1])
+            print("self.params", self.params)
 	    sigma = abs(self.params[:,-1].item())
 	    z_press = np.random.normal(loc = mu_of_s, scale = sigma) 
         else:
@@ -132,8 +134,12 @@ class EraserController:
                     return 0
                 try:
                     gradient = np.linalg.inv(ata)*self.delta_theta.T*(delta_j)
+                    print("ata",ata)
+                    print("invata", np.linalg.inv(ata))
+                    print("dtheta", self.delta_theta.T)
+                    print("deltaj",delta_j)
+                    print("computed gradient to be",gradient)
                 except:
-                    
                     print("A^TA",ata)
                     print("determinant",np.linalg.det(ata))
         return gradient
@@ -147,11 +153,11 @@ class EraserController:
         self.gradient_pub.publish(Float32(gradient))
 
         self.reward_prev = self.return_val
-        print("params before: ", self.simple_param)
+        print("params before: ", self.params)
         print("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
         self.simple_param = self.simple_param + self.alpha*gradient
-        print("params after: ", self.simple_param)
+        print("params after: ", self.params)
 
         print("#######END UPDATE######")
         self.perturb()
@@ -170,7 +176,7 @@ class EraserController:
             add_vector[self.n] = self.epsilon
             add_eps = self.epsilon
  
-        self.delta_theta =  add_vector
+        self.delta_theta =  np.matrix(add_vector.T)
         self.params = self.params + add_vector
         self.simple_param = self.simple_param + add_eps
 
