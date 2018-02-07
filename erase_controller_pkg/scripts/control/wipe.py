@@ -52,15 +52,16 @@ class EraserController:
         num_params = 3#+(2*45)
         self.simple_state = 0
         self.simple_param = 0.07
+        self.pose = get_pose()
         self.state = np.matrix(np.zeros(num_params)).T
         self.params = np.matrix([0.001,0.06,-0.03, 0.05])#pray
         #self.params = np.matrix(np.zeros(num_params+1))#uncomment when you also want to train sigma
         self.numsteps = 6
         #self.params[:,-1] = 1
         self.reward_prev = None
+        self.traj_cost = 0
         self.epsilon = 0.001
         self.alpha = 0.00005 #max gradient is realistically 3200 ish
-        #you would want a change of about 10ish, so being conservative, how about 5? On the other hand, safety penalties are -1. Hmmm Maybe safety penalties should be scaled to be around 0.90. They are massively discounted so we'll see if we need to worry about them
         self.discount_factor = 0.00001
         self.alg = "SGD"
         self.return_val = None
@@ -70,8 +71,6 @@ class EraserController:
         #self.state is comprised of forces, then joint efforts, then joint states in that order
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
-        #self.joint_state_sub = rospy.Subscriber('/joint_states/', JointState, self.update_joint_state)
-        #self.reward_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.update_reward)
         self.update_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
         self.gradient_pub = rospy.Publisher("/rl_erase/gradient", Float32, queue_size=1)
         self.action_pub = rospy.Publisher("/rl_erase/action", Float32, queue_size=1)
@@ -145,7 +144,7 @@ class EraserController:
         return gradient
 
     def policy_gradient_descent(self, data):
-        self.return_val = data.data
+        self.return_val = data.data-self.traj_cost
         #from the previous step, the function was nudged by epsilon in some dimension
         #update that and then
         gradient = self.compute_gradient()
@@ -180,6 +179,13 @@ class EraserController:
         self.params = self.params + add_vector
         self.simple_param = self.simple_param + add_eps
 
+    def update_cost_and_pos(self):
+        #update position then add to pos
+        new_pos, new_quat = get_pose()
+        #only care about movement in z right now
+        diff_pose = self.prev_pose[0][2]-new_pose[2]
+        self.traj_cost += diff_pose
+
     def wipe(self, pt):
         self.gripper.grip()
 	#it's a move in x space
@@ -188,8 +194,8 @@ class EraserController:
             if PR2:
                 z_press = self.policy(self.state)
                 print("Wiping with zpress", z_press)
-                self.gradient_pub.publish(Float32(z_press))
 	        command_delta(0,pt.y,z_press, numsteps = self.numsteps)
+                self.update_cost_and_pos()
 
 ec = EraserController()        
 rospy.spin()
