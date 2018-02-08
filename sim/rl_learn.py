@@ -34,11 +34,11 @@ class EmptyProcessor(Processor):
 class Learner():
     def __init__(self, input_shape, window_length, nb_actions):
         self.build_model(input_shape, window_length, nb_actions)
-        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100000)
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100)
 	memory = SequentialMemory(limit=1000000, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
-        dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50000, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1.)
-        dqn.compile(Adam(lr=.00025), metrics=['mae'])
+        dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=1000,train_interval=4, delta_clip=1.)
+        dqn.compile(Adam(lr=.01), metrics=['mae'])
 
     #entirely taken from the Atari example form Mnih et al's paper
     def build_model(self, input_shape_input, window_length, nb_actions):
@@ -52,14 +52,14 @@ class Learner():
 	    self.model.add(Permute((1, 2, 3), input_shape=input_shape))
 	else:
 	    raise RuntimeError('Unknown image_dim_ordering.')
-	self.model.add(Convolution2D(32, 8, 8, subsample=(4, 4)))
+	self.model.add(Convolution2D(6, 2, 2, subsample=(1, 1)))
 	self.model.add(Activation('relu'))
-	self.model.add(Convolution2D(64, 4, 4, subsample=(2, 2)))
+	self.model.add(Convolution2D(6, 2, 2, subsample=(1, 1)))
 	self.model.add(Activation('relu'))
-	self.model.add(Convolution2D(64, 3, 3, subsample=(1, 1)))
+	self.model.add(Convolution2D(6, 2, 2, subsample=(1, 1)))
 	self.model.add(Activation('relu'))
 	self.model.add(Flatten())
-	self.model.add(Dense(512))
+	self.model.add(Dense(6))
 	self.model.add(Activation('relu'))
 	self.model.add(Dense(nb_actions))
 	self.model.add(Activation('linear'))
@@ -69,4 +69,4 @@ class Learner():
 		
 if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
-     l = Learner((84,84),3,4)
+     l = Learner((5,5),3,4)
