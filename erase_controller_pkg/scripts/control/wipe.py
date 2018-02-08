@@ -52,7 +52,7 @@ class EraserController:
         num_params = 3#+(2*45)
         self.simple_state = 0
         self.simple_param = 0.07
-        self.pose = get_pose()
+        self.prev_pose = get_pose()
         self.state = np.matrix(np.zeros(num_params)).T
         self.params = np.matrix([0.001,0.06,-0.03, 0.05])#pray
         #self.params = np.matrix(np.zeros(num_params+1))#uncomment when you also want to train sigma
@@ -71,7 +71,8 @@ class EraserController:
         #self.state is comprised of forces, then joint efforts, then joint states in that order
         self.ft_sub = rospy.Subscriber('/ft/r_gripper_motor/', WrenchStamped, self.update_ft)
         self.wipe_sub = rospy.Subscriber('/rl_erase/wipe', Point, self.wipe)
-        self.update_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.policy_gradient_descent)
+        self.update_sub = rospy.Subscriber('/rl_erase/reward', Float32, self.complete_trajectory)
+
         self.gradient_pub = rospy.Publisher("/rl_erase/gradient", Float32, queue_size=1)
         self.action_pub = rospy.Publisher("/rl_erase/action", Float32, queue_size=1)
         
@@ -143,15 +144,25 @@ class EraserController:
                     print("determinant",np.linalg.det(ata))
         return gradient
 
-    def policy_gradient_descent(self, data):
+
+    def complete_trajectory(self, data):
         self.return_val = data.data-self.traj_cost
+        #Done using the traj cost, so bring back to 0
+        self.traj_cost = 0
+        #and update the pose
+        self.prev_pose = get_pose()
+        self.policy_gradient_descent(self.return_val)
+        self.perturb()
+        
+        
+    def policy_gradient_descent(self, return_val):
         #from the previous step, the function was nudged by epsilon in some dimension
         #update that and then
         gradient = self.compute_gradient()
         print("#######UPDATE######")
         self.gradient_pub.publish(Float32(gradient))
 
-        self.reward_prev = self.return_val
+        self.reward_prev = return_val
         print("params before: ", self.params)
         print("Gradient",gradient)
         self.params = self.params + self.alpha*gradient
@@ -159,7 +170,6 @@ class EraserController:
         print("params after: ", self.params)
 
         print("#######END UPDATE######")
-        self.perturb()
         
     def perturb(self):
         if self.n > len(self.params):
@@ -181,10 +191,11 @@ class EraserController:
 
     def update_cost_and_pos(self):
         #update position then add to pos
-        new_pos, new_quat = get_pose()
+        new_pose, new_quat = get_pose()
         #only care about movement in z right now
-        diff_pose = self.prev_pose[0][2]-new_pose[2]
+        diff_pose = abs(self.prev_pose[0][2]-new_pose[2])
         self.traj_cost += diff_pose
+        print("The current cost is: ", self.traj_cost)
 
     def wipe(self, pt):
         self.gripper.grip()
