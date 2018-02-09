@@ -1,5 +1,6 @@
 from world import World
 from robot import Robot
+from rl_learn import Learner
 
 world = World()
 robot = Robot(world)

@@ -3,6 +3,7 @@
 from __future__ import division
 
 import numpy as np
+from board_env import BoardEnv
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute
@@ -16,8 +17,8 @@ from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
-INPUT_SHAPE = (84, 84)
-WINDOW_LENGTH = 4
+WINDOW_LENGTH = 3
+ENV_NAME = "toy"
 
 #Currently implements the methods by returning what was given
 class EmptyProcessor(Processor):
@@ -37,8 +38,8 @@ class Learner():
         policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100)
 	memory = SequentialMemory(limit=1000000, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
-        dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=1000,train_interval=4, delta_clip=1.)
-        dqn.compile(Adam(lr=.01), metrics=['mae'])
+        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=1000,train_interval=4, delta_clip=1.)
+        self.dqn.compile(Adam(lr=.01), metrics=['mae'])
 
     #entirely taken from the Atari example form Mnih et al's paper
     def build_model(self, input_shape_input, window_length, nb_actions):
@@ -64,9 +65,21 @@ class Learner():
 	self.model.add(Dense(nb_actions))
 	self.model.add(Activation('linear'))
 	print(self.model.summary())
+    def train(self, env):
+        weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
+	checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
+        log_filename = 'dqn_{}_log.json'.format(ENV_NAME)
+        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250)]
+        callbacks += [FileLogger(log_filename, interval=100)]
+        self.dqn.fit(env, callbacks=callbacks, nb_steps=1750, log_interval=10)
 
-		
+	    # After training is done, we save the final weights one more time.
+        self.dqn.save_weights(weights_filename, overwrite=True)
+
+# Finally, evaluate our algorithm for 10 episodes.
 		
 if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
      l = Learner((5,5),3,4)
+     env = BoardEnv()
+     l.train(env)
