@@ -1,4 +1,5 @@
 import numpy as np
+import pygame
 import pdb
 class World:
     # an nxn board will randomly filled in values. 4x4 for now
@@ -8,22 +9,36 @@ class World:
         self.board[0,1] = 1
         self.board[1,0] = 1
         self.board[1,1] = 1
+        self.board[2,3] = 1
+        self.board[3,3] = 1
 
         self.threshold = 0
 
-    def draw(self,robot):
+    def draw(self,robot, screen, size, n):
         #Board with bot is the drawn board
-        board_with_bot = self.board.copy()
-        for i in range(len(board_with_bot)):
-            for j in range(len(board_with_bot[0])):
-                 if board_with_bot[i,j]:
-                     board_with_bot[i,j] = '#'
-                 else:
-                     board_with_bot[i,j] = ' '
+        self.board = self.board.copy()
+        width = (size/(n**0.5))
+        black = (0,0,0)
+        white = (255,255,255)
+        red = (255,0,0)
+
         x = robot.state[0]
         y = robot.state[1]
-        board_with_bot[x,y] = "@"
-        print board_with_bot
+        for i in range(self.board.shape[0]):
+            for j in range(self.board.shape[1]):
+                 if self.board[i,j]:
+                     #draw black square
+                     color = black
+                 elif i == x and j == y:
+                     color = red
+                 else:
+                     color = white
+                     #draw white square
+                 square = pygame.Rect(i*width,j*width, width, width)
+                 pygame.draw.rect(screen, color, square)
+                 pygame.display.flip()
+ 
+                 
 
     #uses robot to erase
     def erase(self,robot):
@@ -35,7 +50,9 @@ class World:
     #size of board - number of unerased
     def reward(self):
         num_filled = self.board.sum()
-        return (len(self.board)**2)-num_filled
+        rew =  (len(self.board)**2)-num_filled
+        print(rew)
+        return rew
        
         
 

@@ -75,6 +75,11 @@ class Learner():
 
 	    # After training is done, we save the final weights one more time.
         self.dqn.save_weights(weights_filename, overwrite=True)
+    def test(self,env):
+        weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
+        self.dqn.load_weights(weights_filename)
+        self.dqn.test(env, nb_episodes=1, visualize=True)
+
 
 # Finally, evaluate our algorithm for 10 episodes.
 		
@@ -82,4 +87,4 @@ if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
      l = Learner((5,5),3,4)
      env = BoardEnv()
-     l.train(env)
+     l.test(env)

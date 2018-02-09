@@ -22,6 +22,7 @@ class Robot:
 		return
 	    else:
 		self.state[i] = potential_next
+        print("Robot now in",self.state)
         self.board.erase(self)
        
     def reward(self,board):
