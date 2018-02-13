@@ -1,8 +1,10 @@
 import numpy as np
+import math
 import pygame
 import pdb
 import os
 from scipy import misc
+import math
 
 class World:
     # an nxn board will randomly filled in values. 4x4 for now
@@ -34,14 +36,17 @@ class World:
                  if self.board[i,j]:
                      #draw black square
                      color = black
-                 elif i == x and j == y:
-                     color = red
                  else:
                      color = white
                      #draw white square
                  square = pygame.Rect(i*width,j*width, width, width)
                  pygame.draw.rect(screen, color, square)
-                 pygame.display.flip()
+        #draw the robot
+        #if it goes off canvas, we don't really care
+        #tricky, it's coordinate frame is the center
+        robot = pygame.Rect(x*width, y*width,robot.width*width, robot.width*width)
+        pygame.draw.rect(screen, red, robot)
+        pygame.display.flip()
  
                  
 
@@ -51,7 +56,21 @@ class World:
         y = robot.state[1]
         if robot.pressure > self.threshold:
             self.board[x,y] = 0
-
+            for i in range(robot.width):
+                #erase all squares width to the right
+                if self.inrange(x+i,y):
+                    self.board[x+i,y] = 0
+                #erase all squares to bottom
+                if self.inrange(x,y+i):
+                    self.board[x+i,y] = 0
+            
+            
+    def inrange(self, x, y):
+        if x < 0 or x > self.board.shape[0]:
+            return False
+        if y < 0 or y > self.board.shape[1]:
+            return False
+        return True
     #size of board - number of unerased
     def reward(self):
         num_filled = self.board.sum()

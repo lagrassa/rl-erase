@@ -9,6 +9,7 @@ class Robot:
         self.limit =3
         self.pressure = 1
         self.board = board
+        self.width = 15
         self.board.erase(self)
 
     #-1 for backward, +1 for forward
