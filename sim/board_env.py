@@ -14,9 +14,10 @@ actions = [[1,0],[0,1],[-1,0],[0,-1]]
 class BoardEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self):
+    def __init__(self, board, granularity = 10):
         print("initializing")
-        self.world = World()
+        self.world = World(board, granularity = granularity)
+        self.res = granularity
         self.robot = Robot(self.world)
         pygame.init()
         self.screen_size = 400
@@ -30,7 +31,7 @@ class BoardEnv(gym.Env):
         print("Acttion:",action)
         self.robot.move(action_num_to_action(action))
         reward = self._get_reward()
-        ob =  self.world.board
+        ob =  self.world.reduced_board()
         episode_over = False
         return ob, reward, episode_over, {}
 
@@ -39,8 +40,8 @@ class BoardEnv(gym.Env):
         return self.world.reward()
 
     def reset(self):
-        self.__init__()
-        return self.world.board
+        self.__init__(self.world.board, granularity = self.res)
+        return self.world.reduced_board()
 
     def render(self, mode='human', close=False):
         self.world.draw(self.robot, self.screen, self.screen_size, self.n)

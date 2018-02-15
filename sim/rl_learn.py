@@ -1,6 +1,7 @@
 #mostly based on the Atari RL example given on the keras-rl github at
 #https://github.com/matthiasplappert/keras-rl/blob/master/examples/dqn_atari.py
 from __future__ import division
+from scipy import misc
 
 import numpy as np
 from board_env import BoardEnv
@@ -17,7 +18,7 @@ from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
-WINDOW_LENGTH = 4
+WINDOW_LENGTH = 2
 ENV_NAME = "toy"
 
 #Currently implements the methods by returning what was given
@@ -36,7 +37,7 @@ class Learner():
     def __init__(self, input_shape, window_length, nb_actions):
         self.build_model(input_shape, window_length, nb_actions)
         policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100)
-	memory = SequentialMemory(limit=10000000, window_length=WINDOW_LENGTH)
+	memory = SequentialMemory(limit=100000000, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=2, gamma=.7, target_model_update=2,train_interval=4, delta_clip=1.)
         self.dqn.compile(Adam(lr=.01), metrics=['mae'])
@@ -79,13 +80,16 @@ class Learner():
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
         self.dqn.load_weights(weights_filename)
         pdb.set_trace()
-        self.dqn.test(env, nb_episodes=5, visualize=True)
+        self.dqn.test(env, nb_episodes=2, visualize=True)
 
 
 # Finally, evaluate our algorithm for 10 episodes.
 		
 if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
-     env = BoardEnv()
-     l = Learner((100,100),4,4)
+     boardfile = "board.bmp"
+     granularity = 10
+     board = misc.imread(boardfile, flatten=True) 
+     env = BoardEnv(board, granularity = granularity)
+     l = Learner((granularity,granularity),WINDOW_LENGTH,4)
      l.train(env)

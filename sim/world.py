@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 import math
 import pygame
@@ -8,7 +9,9 @@ import math
 
 class World:
     # an nxn board will randomly filled in values. 4x4 for now
-    def __init__(self):
+    #requires some grid of boards where 255 = white and anything else is black
+    def __init__(self, board, granularity = 10):
+        self.res = granularity
         #self.board = np.matrix(np.zeros((5,5)))
         #self.board[0,0] = 1
         #self.board[0,1] = 1
@@ -16,7 +19,7 @@ class World:
         #self.board[1,1] = 1
         #self.board[2,3] = 1
         #self.board[3,3] = 1
-        self.board = draw_board_from_file('board.bmp')
+        self.board = draw_board_from_file(board)
 
         self.threshold = 0
 
@@ -49,6 +52,26 @@ class World:
         pygame.display.flip()
  
                  
+    #partitions the board into a 10x10 grid and reports percentage erased
+    #@requires boards to be multiples of 10 to work nicely....
+    def reduced_board(self):
+	#goes row by row then down res columns to compute the percentage
+	reduced_board = np.zeros((self.res, self.res))
+        squares_per_x = int(self.board.shape[0]/self.res) 
+        squares_per_y = int(self.board.shape[1]/self.res)
+	for i in range(self.res):
+	    for j in range(self.res):
+		#add up the number of ones in the rows
+		num_filled = 0
+		for k in range(int(self.board.shape[0] / self.res)):
+		    num_filled += self.board[i*squares_per_x +k,j*squares_per_y: j*squares_per_y+squares_per_y].sum()
+		total = self.board.shape[0]/self.res * self.board.shape[1]/self.res
+		percent = num_filled / total
+		reduced_board[i,j] = percent
+        return reduced_board
+
+    
+        
 
     #uses robot to erase
     def erase(self,robot):
@@ -82,9 +105,7 @@ class World:
             
         
     
-def draw_board_from_file(filename):
-    image= misc.imread(filename, flatten = True)
-    
+def draw_board_from_file(image):
     w,h = image.shape
     board = np.matrix(np.zeros((w,h)))
     for i in range(w):
