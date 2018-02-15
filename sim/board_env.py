@@ -40,7 +40,7 @@ class BoardEnv(gym.Env):
         return self.world.reward()
 
     def reset(self):
-        self.__init__(self.world.board, granularity = self.res)
+        self.__init__(self.world.board_image, granularity = self.res)
         return self.world.reduced_board()
 
     def render(self, mode='human', close=False):

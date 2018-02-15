@@ -10,7 +10,7 @@ import math
 class World:
     # an nxn board will randomly filled in values. 4x4 for now
     #requires some grid of boards where 255 = white and anything else is black
-    def __init__(self, board, granularity = 10):
+    def __init__(self, board_image, granularity = 10):
         self.res = granularity
         #self.board = np.matrix(np.zeros((5,5)))
         #self.board[0,0] = 1
@@ -19,7 +19,8 @@ class World:
         #self.board[1,1] = 1
         #self.board[2,3] = 1
         #self.board[3,3] = 1
-        self.board = draw_board_from_file(board)
+        self.board = draw_board_from_file(board_image)
+        self.board_image = board_image
 
         self.threshold = 0
 
@@ -49,7 +50,7 @@ class World:
         #tricky, it's coordinate frame is the center
         robot = pygame.Rect(x*width, y*width,robot.width*width, robot.width*width)
         pygame.draw.rect(screen, red, robot)
-        pygame.display.flip()
+        pygame.display.update()
  
                  
     #partitions the board into a 10x10 grid and reports percentage erased
@@ -81,11 +82,10 @@ class World:
             self.board[x,y] = 0
             for i in range(robot.width):
                 #erase all squares width to the right
-                if self.inrange(x+i,y):
-                    self.board[x+i,y] = 0
-                #erase all squares to bottom
-                if self.inrange(x,y+i):
-                    self.board[x+i,y] = 0
+                for j in range(robot.width):
+                    if self.inrange(x+i,y+j) and self.board[x+i, y+j] != 0:
+                        self.board[x+i,y+j] = 0
+                        print("erased something!!")
             
             
     def inrange(self, x, y):
@@ -97,7 +97,7 @@ class World:
     #size of board - number of unerased
     def reward(self):
         num_filled = self.board.sum()
-        rew =  (len(self.board)**2)-num_filled
+        rew =  num_filled/(self.board.shape[1]**2)
         return rew
        
         
