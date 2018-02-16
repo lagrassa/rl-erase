@@ -6,7 +6,8 @@ import pdb
 class Robot:
     def __init__(self, board):
         self.state = [0,0]
-        self.limit =3
+        self.xlimit = board.board.shape[0]
+        self.ylimit = board.board.shape[1]
         self.pressure = 1
         self.board = board
         self.width = 15
@@ -19,7 +20,9 @@ class Robot:
 	    potential_next = self.state[i] + direction[i]
 	    if potential_next < 0:
 		return
-	    if potential_next > self.limit:
+	    if i == 0 and potential_next > self.xlimit:
+		return
+	    if i == 1 and potential_next > self.ylimit:
 		return
 	    else:
 		self.state[i] = potential_next
