@@ -85,7 +85,6 @@ class World:
                 for j in range(robot.width):
                     if self.inrange(x+i,y+j) and self.board[x+i, y+j] != 0:
                         self.board[x+i,y+j] = 0
-                        print("erased something!!")
             
             
     def inrange(self, x, y):

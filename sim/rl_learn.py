@@ -79,7 +79,6 @@ class Learner():
     def test(self,env):
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
         self.dqn.load_weights(weights_filename)
-        pdb.set_trace()
         self.dqn.test(env, nb_episodes=2, visualize=True)
 
 
