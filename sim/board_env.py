@@ -5,6 +5,7 @@ from gym import utils
 from gym.utils import seeding
 from world import World
 from robot import Robot
+import numpy as np
 
 import logging
 import pygame
@@ -15,7 +16,7 @@ class BoardEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, board, granularity = 10):
-        print("initializing")
+        self.done_percentage =  9 #chosen to be about most of the board
         self.world = World(board, granularity = granularity)
         self.res = granularity
         self.robot = Robot(self.world)
@@ -27,12 +28,21 @@ class BoardEnv(gym.Env):
         self.screen.fill([255,255,255])
         self.render()
 
+    def create_state(self):
+        ob = np.zeros((self.res*2, self.res))
+        ob[0:self.res,:] = self.world.reduced_board()
+        ob[self.res:,] = self.world.robot_one_hot(self.robot)
+        return ob
+
+
     def step(self, action):
-        print("Acttion:",action)
         self.robot.move(action_num_to_action(action))
         reward = self._get_reward()
-        ob =  self.world.reduced_board()
-        episode_over = False
+ 
+        #state: 10x10 grid 
+        #+ 10x10 one hot of where the robot is
+        ob = self.create_state()
+        episode_over = ob.sum() < self.done_percentage
         return ob, reward, episode_over, {}
 
 
@@ -41,7 +51,7 @@ class BoardEnv(gym.Env):
 
     def reset(self):
         self.__init__(self.world.board_image, granularity = self.res)
-        return self.world.reduced_board()
+        return self.create_state()
 
     def render(self, mode='human', close=False):
         self.world.draw(self.robot, self.screen, self.screen_size, self.n)

@@ -71,11 +71,27 @@ class World:
 		reduced_board[i,j] = percent
         return reduced_board
 
-    
+    def checkrep(self):
+        if (abs(self.board.shape[0]/self.res) < 0.00001):
+            raise Exception("Granularity does not divide integer into board");
+        if (self.board.shape[0] != self.board.shape[1]):
+            raise Exception("Breaks square board assumption: may break other things in code")
+
+
+    def robot_one_hot(self, robot):
+        self.checkrep()
+        x = robot.state[0]
+        y = robot.state[1]
+        one_hot = np.zeros((self.res, self.res))
+        x_transformed = int(round(x*self.res/self.board.shape[0])) 
+        y_transformed = int(round(y*self.res/self.board.shape[1])) 
+        one_hot[x_transformed, y_transformed] = 1
+        return one_hot
         
 
     #uses robot to erase
     def erase(self,robot):
+        self.checkrep()
         x = robot.state[0]
         y = robot.state[1]
         if robot.pressure > self.threshold:

@@ -20,9 +20,9 @@ class Robot:
 	    potential_next = self.state[i] + direction[i]
 	    if potential_next < 0:
 		return
-	    if i == 0 and potential_next > self.xlimit:
+	    if i == 0 and potential_next + self.width > self.xlimit:
 		return
-	    if i == 1 and potential_next > self.ylimit:
+	    if i == 1 and potential_next + self.width > self.ylimit:
 		return
 	    else:
 		self.state[i] = potential_next

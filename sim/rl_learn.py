@@ -37,7 +37,8 @@ class Learner():
     def __init__(self, input_shape, window_length, nb_actions):
         self.build_model(input_shape, window_length, nb_actions)
         policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100)
-	memory = SequentialMemory(limit=100000000, window_length=WINDOW_LENGTH)
+        amount_memory = 10000000
+	memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=2, gamma=.7, target_model_update=2,train_interval=4, delta_clip=1.)
         self.dqn.compile(Adam(lr=.01), metrics=['mae'])
@@ -90,5 +91,5 @@ if __name__=="__main__":
      granularity = 10
      board = misc.imread(boardfile, flatten=True) 
      env = BoardEnv(board, granularity = granularity)
-     l = Learner((granularity,granularity),WINDOW_LENGTH,4)
+     l = Learner((2*granularity,granularity),WINDOW_LENGTH,4)
      l.train(env)
