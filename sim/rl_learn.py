@@ -40,7 +40,7 @@ class Learner():
         amount_memory = 10000000
 	memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
-        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=2, gamma=.7, target_model_update=2,train_interval=4, delta_clip=1.)
+        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=20, gamma=.7, target_model_update=2,train_interval=4, delta_clip=1.)
         self.dqn.compile(Adam(lr=.01), metrics=['mae'])
 
     #entirely taken from the Atari example form Mnih et al's paper
@@ -71,16 +71,16 @@ class Learner():
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
 	checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
         log_filename = 'dqn_{}_log.json'.format(ENV_NAME)
-        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250)]
-        callbacks += [FileLogger(log_filename, interval=100)]
-        self.dqn.fit(env, callbacks=callbacks, nb_steps=10750, log_interval=10, visualize=True)
+        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=1000)]
+        callbacks += [FileLogger(log_filename, interval=1000)]
+        self.dqn.fit(env, callbacks=callbacks, nb_steps=10750, log_interval=1000, visualize=True)
 
 	    # After training is done, we save the final weights one more time.
         self.dqn.save_weights(weights_filename, overwrite=True)
     def test(self,env):
-        weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
+        weights_filename = 'dqn_{}_weights_9750.h5f'.format(ENV_NAME)
         self.dqn.load_weights(weights_filename)
-        self.dqn.test(env, nb_episodes=2, visualize=True)
+        self.dqn.test(env, nb_episodes=15, visualize=True)
 
 
 # Finally, evaluate our algorithm for 10 episodes.
@@ -92,4 +92,4 @@ if __name__=="__main__":
      board = misc.imread(boardfile, flatten=True) 
      env = BoardEnv(board, granularity = granularity)
      l = Learner((2*granularity,granularity),WINDOW_LENGTH,4)
-     l.train(env)
+     l.test(env)
