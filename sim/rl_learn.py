@@ -4,6 +4,7 @@ from __future__ import division
 from scipy import misc
 
 import numpy as np
+import pdb
 from board_env import BoardEnv
 
 from keras.models import Sequential
@@ -18,8 +19,8 @@ from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
-WINDOW_LENGTH = 2
-ENV_NAME = "toy"
+WINDOW_LENGTH = 3
+ENV_NAME = "board"
 
 #Currently implements the methods by returning what was given
 class EmptyProcessor(Processor):
@@ -36,12 +37,12 @@ class EmptyProcessor(Processor):
 class Learner():
     def __init__(self, input_shape, window_length, nb_actions):
         self.build_model(input_shape, window_length, nb_actions)
-        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=100)
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=1000000)
         amount_memory = 10000000
 	memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
 	processor = EmptyProcessor()
-        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=20, gamma=.7, target_model_update=2,train_interval=4, delta_clip=1.)
-        self.dqn.compile(Adam(lr=.01), metrics=['mae'])
+        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50000, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1.)
+        self.dqn.compile(Adam(lr=.00001), metrics=['mae'])
 
     #entirely taken from the Atari example form Mnih et al's paper
     def build_model(self, input_shape_input, window_length, nb_actions):
@@ -71,14 +72,15 @@ class Learner():
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
 	checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
         log_filename = 'dqn_{}_log.json'.format(ENV_NAME)
-        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=1000)]
-        callbacks += [FileLogger(log_filename, interval=1000)]
-        self.dqn.fit(env, callbacks=callbacks, nb_steps=10750, log_interval=1000, visualize=True)
+        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
+        callbacks += [FileLogger(log_filename, interval=100)]
+        self.dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000, visualize=False)
 
 	    # After training is done, we save the final weights one more time.
         self.dqn.save_weights(weights_filename, overwrite=True)
     def test(self,env):
-        weights_filename = 'dqn_{}_weights_9750.h5f'.format(ENV_NAME)
+        weights_filename = 'dqn_{}_weights_8000.h5f'.format(ENV_NAME)
+        pdb.set_trace()
         self.dqn.load_weights(weights_filename)
         self.dqn.test(env, nb_episodes=15, visualize=True)
 
@@ -92,4 +94,4 @@ if __name__=="__main__":
      board = misc.imread(boardfile, flatten=True) 
      env = BoardEnv(board, granularity = granularity)
      l = Learner((2*granularity,granularity),WINDOW_LENGTH,4)
-     l.test(env)
+     l.train(env)
