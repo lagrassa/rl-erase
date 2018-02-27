@@ -113,7 +113,7 @@ class World:
     def reward(self):
         num_filled = self.board.sum()
         rew =  num_filled/(self.board.shape[1]**2)
-        return rew
+        return 1-rew
        
         
 
