@@ -17,16 +17,15 @@ class Robot:
     #direction is a tuple (-1,-1) for example
     def move(self,direction):
         for i in [1,0]:
-	    potential_next = self.state[i] + direction[i]
-	    if potential_next < 0:
-		return
-	    if i == 0 and potential_next + self.width > self.xlimit:
-		return
-	    if i == 1 and potential_next + self.width > self.ylimit:
-		return
-	    else:
-		self.state[i] = potential_next
-        print("Robot now in",self.state)
+            potential_next = self.state[i] + direction[i]
+            if potential_next < 0:
+                return
+            if i == 0 and potential_next + self.width > self.xlimit:
+                return
+            if i == 1 and potential_next + self.width > self.ylimit:
+                return
+            else:
+                self.state[i] = potential_next
         self.board.erase(self)
        
     def reward(self,board):

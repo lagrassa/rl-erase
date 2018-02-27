@@ -11,6 +11,7 @@ import logging
 import pygame
 logger = logging.getLogger(__name__)
 actions = [[1,0],[0,1],[-1,0],[0,-1]]
+RENDER = False
 
 class BoardEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -23,10 +24,11 @@ class BoardEnv(gym.Env):
         pygame.init()
         self.screen_size = 400
         self.n = self.world.board.shape[1]*self.world.board.shape[0]
-        self.screen = pygame.display.set_mode((self.screen_size, self.screen_size)) 
-   
-        self.screen.fill([255,255,255])
-        self.render()
+        self.counter = 0;
+        if RENDER:
+            self.screen = pygame.display.set_mode((self.screen_size, self.screen_size)) 
+            self.screen.fill([255,255,255])
+            self.render()
 
     def create_state(self):
         ob = np.zeros((self.res*2, self.res))
@@ -47,13 +49,18 @@ class BoardEnv(gym.Env):
 
 
     def _get_reward(self):
-        return self.world.reward()
+        rew =  self.world.reward()
+        if (self.counter % 1000 == 0):
+            print(rew)
+        self.counter +=1
+        return rew
 
     def reset(self):
         self.__init__(self.world.board_image, granularity = self.res)
         return self.create_state()
 
     def render(self, mode='human', close=False):
+        return 
         self.world.draw(self.robot, self.screen, self.screen_size, self.n)
         pygame.display.flip()
 

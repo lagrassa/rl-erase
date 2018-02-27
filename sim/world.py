@@ -56,19 +56,19 @@ class World:
     #partitions the board into a 10x10 grid and reports percentage erased
     #@requires boards to be multiples of 10 to work nicely....
     def reduced_board(self):
-	#goes row by row then down res columns to compute the percentage
-	reduced_board = np.zeros((self.res, self.res))
+        #goes row by row then down res columns to compute the percentage
+        reduced_board = np.zeros((self.res, self.res))
         squares_per_x = int(self.board.shape[0]/self.res) 
         squares_per_y = int(self.board.shape[1]/self.res)
-	for i in range(self.res):
-	    for j in range(self.res):
-		#add up the number of ones in the rows
-		num_filled = 0
-		for k in range(int(self.board.shape[0] / self.res)):
-		    num_filled += self.board[i*squares_per_x +k,j*squares_per_y: j*squares_per_y+squares_per_y].sum()
-		total = self.board.shape[0]/self.res * self.board.shape[1]/self.res
-		percent = num_filled / total
-		reduced_board[i,j] = percent
+        for i in range(self.res):
+            for j in range(self.res):
+                #add up the number of ones in the rows
+                num_filled = 0
+                for k in range(int(self.board.shape[0] / self.res)):
+                    num_filled += self.board[i*squares_per_x +k,j*squares_per_y: j*squares_per_y+squares_per_y].sum()
+                total = self.board.shape[0]/self.res * self.board.shape[1]/self.res
+                percent = num_filled / total
+                reduced_board[i,j] = percent
         return reduced_board
 
     def checkrep(self):
