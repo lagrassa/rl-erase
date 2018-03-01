@@ -11,7 +11,7 @@ import logging
 import pygame
 logger = logging.getLogger(__name__)
 actions = [[1,0],[0,1],[-1,0],[0,-1]]
-RENDER = False
+RENDER = True
 
 class BoardEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -60,7 +60,6 @@ class BoardEnv(gym.Env):
         return self.create_state()
 
     def render(self, mode='human', close=False):
-        return 
         self.world.draw(self.robot, self.screen, self.screen_size, self.n)
         pygame.display.flip()
 

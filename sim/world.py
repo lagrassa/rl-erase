@@ -85,7 +85,7 @@ class World:
         one_hot = np.zeros((self.res, self.res))
         x_transformed = int(round(x*self.res/self.board.shape[0])) 
         y_transformed = int(round(y*self.res/self.board.shape[1])) 
-        one_hot[x_transformed, y_transformed] = 1
+        one_hot[x_transformed, y_transformed] = 9 #just chose a larger number, for no good reason
         return one_hot
         
 
