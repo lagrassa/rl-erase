@@ -19,7 +19,7 @@ from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
-WINDOW_LENGTH = 3
+WINDOW_LENGTH = 2
 ENV_NAME = "board"
 
 #Currently implements the methods by returning what was given
@@ -79,8 +79,7 @@ class Learner():
            # After training is done, we save the final weights one more time.
         self.dqn.save_weights(weights_filename, overwrite=True)
     def test(self,env):
-        weights_filename = 'dqn_{}_weights_8000.h5f'.format(ENV_NAME)
-        pdb.set_trace()
+        weights_filename = 'dqn_toy_weights_9000.h5f'
         self.dqn.load_weights(weights_filename)
         self.dqn.test(env, nb_episodes=15, visualize=True)
 
