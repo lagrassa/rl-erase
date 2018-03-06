@@ -9,14 +9,14 @@ import board_env
 #At every step, pickle the image list and pick the action. 
 #Also render
 
-numsteps = 40
+numsteps = 200
 states = []
 actions = []
 action_space = [[1,0],[0,1],[-1,0],[0,-1]]
 
 
 def main():
-    boardfile = "simple_board.bmp"
+    boardfile = "board.bmp"
     board = misc.imread(boardfile, flatten=True)
     env = board_env.BoardEnv(board, granularity=10)
     obs = env.reset()

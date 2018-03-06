@@ -31,9 +31,9 @@ class BoardEnv(gym.Env):
             self.render()
 
     def create_state(self):
-        ob = np.zeros((self.res*2, self.res))
-        ob[0:self.res,:] = self.world.reduced_board()
-        ob[self.res:,] = self.world.robot_one_hot(self.robot)
+        ob = np.zeros((self.res, self.res,2))
+        ob[:,:,0] = self.world.reduced_board()
+        ob[:,:,1] = self.world.robot_one_hot(self.robot)
         return ob
 
 
