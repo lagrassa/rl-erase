@@ -7,7 +7,7 @@ import pickle
 from board_env import BoardEnv
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D
+from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D
 from keras.optimizers import Adam
 import keras.backend as K
 
@@ -44,27 +44,19 @@ class Learner():
     #entirely taken from the Atari example form Mnih et al's paper
     def build_model(self, picture_tensor,  input_shape, window_length, nb_actions):
 
-        #now all the convolution stuff on the pic (prob not much)
-        #grid = Conv2D(32,(2,2), activation='relu', padding='same')(picture_tensor)
-        #grid = MaxPooling2D((2,2),strides=(1,1),padding='same')(grid)
-        #grid = Flatten(dtype='float32')(grid)
-        #action_tensor = Dense(nb_actions, activation = 'sigmoid', dtype='float32', name="action_tensor")(grid)
-        #self.model = Model(inputs=[picture_tensor], outputs=action_tensor)
-         
         self.model = Sequential()
-        net_input_shape = (window_length,) + input_shape
-        #if K.image_dim_ordering() == 'tf':
-        #    # (width, height, channels)
-        #    #self.model.add(Permute((2, 3, 1), input_shape= net_input_shape))
-        #    self.model.add(Permute((2,3, 1), input_shape= net_input_shape))
-        #elif K.image_dim_ordering() == 'th':
-        #    # (channels, width, height)
-        #    self.model.add(Permute((1, 2, 3), input_shape=net_input_shape))
-        #else:
-        #    raise RuntimeError('Unknown image_dim_ordering.')
+        net_input_shape =  (window_length,) + input_shape
         print("net input shape", net_input_shape) 
-        self.model.add(Convolution2D(3, 2, 2, subsample=(2, 2,), batch_input_shape = net_input_shape))
-        pdb.set_trace()
+        
+        if K.image_dim_ordering() == 'tf':
+            # (width, height, channels)
+            self.model.add(Permute((4,2,3, 1), input_shape= net_input_shape))
+        elif K.image_dim_ordering() == 'th':
+            # (channels, width, height)
+            self.model.add(Permute((1, 2, 3,4), input_shape=net_input_shape))
+        else:
+            raise RuntimeError('Unknown image_dim_ordering.')
+        self.model.add(Convolution3D(6, 2, 2,2, subsample=(1, 1,1), batch_input_shape =net_input_shape))
         self.model.add(Activation('relu'))
         #self.model.add(Convolution2D(6, 2, 2, subsample=(1, 1)))
         #self.model.add(Activation('relu'))
@@ -83,7 +75,7 @@ class Learner():
         memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
         processor = EmptyProcessor()
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1.)
-        self.dqn.compile(Adam(lr=.1), metrics=['mae'])
+        self.dqn.compile(Adam(lr=1), metrics=['mae'])
 
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
         checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
