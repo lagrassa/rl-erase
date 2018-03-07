@@ -13,9 +13,14 @@ class Robot:
         self.width = 35
         self.board.erase(self)
 
+    def copy(self):
+        r = Robot(self.board.copy())
+        r.state = self.state[:]
+        return r
+
     #-1 for backward, +1 for forward
     #direction is a tuple (-1,-1) for example
-    def move(self,direction):
+    def move(self,direction, board):
         for i in [1,0]:
             potential_next = self.state[i] + direction[i]
             if potential_next < 0:
@@ -26,10 +31,10 @@ class Robot:
                 return
             else:
                 self.state[i] = potential_next
-        self.board.erase(self)
+        board.erase(self)
        
     def reward(self,board):
-        return self.board.reward()
+        return board.reward()
         
 
 

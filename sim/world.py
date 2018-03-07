@@ -24,6 +24,10 @@ class World:
 
         self.threshold = 0
 
+    def copy(self):
+        new_world = World(self.board_image, granularity=self.res)
+        new_world.board = self.board.copy()
+        return new_world
 
     def draw(self,robot, screen, size, n):
         #Board with bot is the drawn board

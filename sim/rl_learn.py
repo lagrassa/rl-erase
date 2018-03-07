@@ -74,7 +74,7 @@ class Learner():
         amount_memory = 10000000
         memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
         processor = EmptyProcessor()
-        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1.)
+        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1., enable_double_dqn=False)
         self.dqn.compile(Adam(lr=1), metrics=['mae'])
 
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
