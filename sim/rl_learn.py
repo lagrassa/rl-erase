@@ -19,7 +19,7 @@ from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
 WINDOW_LENGTH = 1
-ENV_NAME = "shallow_learning_big_window"
+ENV_NAME = "shallow_learning_complex_board"
 
 #Currently implements the methods by returning what was given
 class EmptyProcessor(Processor):
@@ -141,7 +141,7 @@ def load_supervised_data(actionfile=None, statefile=None):
 if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
      nb_actions = len(actions)
-     boardfile = "simple_board.bmp"
+     boardfile = "board.bmp"
      granularity = 10
      board = misc.imread(boardfile, flatten=True) 
      env = BoardEnv(board, granularity = granularity)

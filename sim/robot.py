@@ -10,7 +10,7 @@ class Robot:
         self.ylimit = board.board.shape[1]
         self.pressure = 1
         self.board = board
-        self.width = 35
+        self.width = 20
         self.board.erase(self)
 
     def copy(self):
