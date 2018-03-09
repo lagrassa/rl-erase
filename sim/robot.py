@@ -10,7 +10,8 @@ class Robot:
         self.ylimit = board.board.shape[1]
         self.pressure = 1
         self.board = board
-        self.width = 20
+        self.width = 6
+        self.wipe_length = 8
         self.board.erase(self)
 
     def copy(self):
@@ -18,6 +19,11 @@ class Robot:
         r.state = self.state[:]
         return r
 
+    #does move, but in a smooth wiping motion, as a robot would
+    def wipe(self, direction, board):
+        for i in range(self.wipe_length):
+            self.move(direction, board)
+        
     #-1 for backward, +1 for forward
     #direction is a tuple (-1,-1) for example
     def move(self,direction, board):

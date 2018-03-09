@@ -7,7 +7,7 @@ import pickle
 from board_env import BoardEnv
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D
+from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D, LSTM
 from keras.optimizers import Adam
 import keras.backend as K
 
@@ -41,29 +41,31 @@ class Learner():
         self.build_model(self.picture_tensor, input_shape, window_length, nb_actions)
           
 
-    #entirely taken from the Atari example form Mnih et al's paper
     def build_model(self, picture_tensor,  input_shape, window_length, nb_actions):
 
         self.model = Sequential()
-        net_input_shape =  (window_length,) + input_shape
+        net_input_shape =  input_shape
         print("net input shape", net_input_shape) 
         
         if K.image_dim_ordering() == 'tf':
             # (width, height, channels)
-            self.model.add(Permute((4,2,3, 1), input_shape= net_input_shape))
+            #self.model.add(Permute((2,3, 1), input_shape= net_input_shape))
+            pass
         elif K.image_dim_ordering() == 'th':
             # (channels, width, height)
-            self.model.add(Permute((1, 2, 3,4), input_shape=net_input_shape))
+            self.model.add(Permute((1, 2, 3), input_shape=net_input_shape))
         else:
             raise RuntimeError('Unknown image_dim_ordering.')
-        self.model.add(Convolution3D(6, 2, 2,2, subsample=(1, 1,1), batch_input_shape =net_input_shape))
+        #self.model.add(LSTM(32, stateful=True, input_shape = net_input_shape))
+        self.model.add(Conv2D(10, (2, 2), subsample=(1, 1), name="Firstconvlayer", input_shape = net_input_shape) )
+        self.model.add(Conv2D(10, (2,2), subsample=(2, 2), batch_input_shape =net_input_shape))
         self.model.add(Activation('relu'))
         #self.model.add(Convolution2D(6, 2, 2, subsample=(1, 1)))
         #self.model.add(Activation('relu'))
         #self.model.add(Convolution2D(4, 2, 2, subsample=(3, 3)))
         #self.model.add(Activation('relu'))
         self.model.add(Flatten())
-        self.model.add(Dense(8))
+        self.model.add(Dense(100))
         self.model.add(Activation('relu'))
         self.model.add(Dense(4)) #nb_actions))
         self.model.add(Activation('linear'))
@@ -75,7 +77,7 @@ class Learner():
         memory = SequentialMemory(limit=amount_memory, window_length=WINDOW_LENGTH)
         processor = EmptyProcessor()
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1., enable_double_dqn=False)
-        self.dqn.compile(Adam(lr=1), metrics=['mae'])
+        self.dqn.compile(Adam(lr=0.01), metrics=['mae'])
 
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
         checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
@@ -108,9 +110,15 @@ class Learner():
         self.model.save_weights(ENV_NAME+'weights.h5f')
 
     def test(self,env):
-        weights_filename = 'dqn_shallow_learning_weights_425000.h5f'.format(ENV_NAME)
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=1000)
+        amount_memory = 10000000
+        memory = SequentialMemory(limit=amount_memory)
+        processor = EmptyProcessor()
+        self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, policy=policy, memory=memory, processor=processor, nb_steps_warmup=50, gamma=.99, target_model_update=10000,train_interval=4, delta_clip=1., enable_double_dqn=False)
+        self.dqn.compile(Adam(lr=1), metrics=['mae'])
+        weights_filename = 'dqn_shallow_learning_complex_board_weights_25000.h5f'.format(ENV_NAME)
         self.dqn.load_weights(weights_filename)
-        self.dqn.test(env, nb_episodes=15, visualize=False)
+        self.dqn.test(env, nb_episodes=15, visualize=True)
 
     def test_supervised(self,env):
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
@@ -142,7 +150,7 @@ if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
      nb_actions = len(actions)
      boardfile = "board.bmp"
-     granularity = 10
+     granularity = 50
      board = misc.imread(boardfile, flatten=True) 
      env = BoardEnv(board, granularity = granularity)
      l = Learner((granularity,granularity,2),WINDOW_LENGTH,nb_actions)

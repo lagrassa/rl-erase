@@ -23,7 +23,7 @@ class BoardEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, board, granularity = 10):
-        self.done_percentage =  9 #chosen to be about most of the board
+        self.done_percentage =  0.9 #chosen to be about most of the board
         self.world = World(board, granularity = granularity)
         self.res = granularity
         self.robot = Robot(self.world)
@@ -56,7 +56,7 @@ class BoardEnv(gym.Env):
     #moves robot if not in replay
     def move_if_appropriate(self, action):
         if self.replay_counter == 0: #we're in normal mode, so actually move the robot
-            self.robot.move(action_num_to_action(action), self.world)
+            self.robot.wipe(action_num_to_action(action), self.world)
             self.saved_world_state.append(self.world.copy())
             self.saved_robot_state.append(self.robot.copy())
         else:
@@ -88,7 +88,7 @@ class BoardEnv(gym.Env):
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = ob.sum() < self.done_percentage
+            episode_over = reward > self.done_percentage
             episode_over = self.stop_if_necessary()
 
         self.should_replay_and_setup()
@@ -119,7 +119,7 @@ class BoardEnv(gym.Env):
 
     def _get_reward(self):
         rew =  self.world.reward()
-        if (self.counter % 1000 == 0):
+        if (self.counter % 20 == 0):
             print(rew)
         self.counter +=1
         return rew

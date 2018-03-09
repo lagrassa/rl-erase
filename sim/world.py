@@ -10,7 +10,7 @@ import math
 class World:
     # an nxn board will randomly filled in values. 4x4 for now
     #requires some grid of boards where 255 = white and anything else is black
-    def __init__(self, board_image, granularity = 10):
+    def __init__(self, board_image, granularity = 20):
         self.res = granularity
         #self.board = np.matrix(np.zeros((5,5)))
         #self.board[0,0] = 1
@@ -89,7 +89,10 @@ class World:
         one_hot = np.zeros((self.res, self.res))
         x_transformed = int(round(x*self.res/self.board.shape[0])) 
         y_transformed = int(round(y*self.res/self.board.shape[1])) 
-        one_hot[x_transformed, y_transformed] = 9 #just chose a larger number, for no good reason
+        try:
+            one_hot[x_transformed, y_transformed] = 9 #just chose a larger number, for no good reason
+        except:
+            pdb.set_trace()
         return one_hot
         
 
