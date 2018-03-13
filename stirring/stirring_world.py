@@ -35,16 +35,24 @@ def adjusted_vertex(v,origin, scale=1):
 
 class Stirrer(object):
     def __init__(self, world, origin):
-        self.l = 0.07;
-        self.w = 0.02;
-        self.pose = origin
+        self.l = 0.01;
+        self.w = 0.1;
         box = b2PolygonShape(vertices = ((0,0),(0,self.w),(self.l,0),(self.l,self.w)))
-        stirrer = world.CreateStaticBody(
+        self.origin = origin
+        self.world = world
+        self.stirrer = world.CreateDynamicBody(
                 shapes=[box],
                 position=origin
             )
     def render(self):
-        pygame.draw.rect(screen, (0,0,0), (self.pose[0],self.pose[1],self.w,self.l), 1)
+        v = self.stirrer.position*ppm
+        pygame.draw.rect(screen, (0,0,0), (v[0],v[1],ppm*self.w,ppm*self.l), 6)
+    def policy(self):
+        return (0,0.1)
+
+    def stir(self):
+        force = self.policy()
+        self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
     
 
 class Box(object):
@@ -101,21 +109,37 @@ def dist(x, y):
 
 class World(object):
     def __init__(self):
-	self.world = b2World()
+	self.world = b2World(gravity=(0,0))
 	box_pos = (0.9,0.9)
 	box_length = 0.4
 	bead_radius = 0.01
-	stirrer_pos = box_pos
+	stirrer_pos =( box_pos[0] + 0.2, box_pos[1]+0.1)
 	self.bowl = Box(self.world, box_length = box_length, center = box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
 	bead_poses, bead_colors = random_bead_poses_and_colors(box_length, box_pos, 300, bead_radius)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
     def render(self):
+        screen.fill((255,255,255))
 	self.bowl.render()
 	self.beads.render()
 	self.stirrer.render()
         pygame.display.flip()
+
+    def step(self, timeStep, vel_iters, pos_iters):
+        self.world.Step(timeStep, vel_iters, pos_iters)
+        self.world.ClearForces()
+        self.stirrer.stir()
+ 
         
 
 world = World()
-world.render()
+timeStep = 1/90.0
+vel_iters, pos_iters = 6, 2
+for i in range(1000):
+    # Instruct the world to perform a single step of simulation. It is
+    # generally best to keep the time step and iterations fixed.
+    world.step(timeStep, vel_iters, pos_iters)
+
+    # Clear applied body forces. We didn't apply any forces, but you
+    # should know about this function.
+    world.render()
