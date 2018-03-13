@@ -18,7 +18,7 @@ ppm = 500 #pixels_per_meter
 def vec_to_pygame_pos(vec):
     return tuple(int(ppm*x) for x in vec)
 
-def create_box(origin, l):
+def create_box(origin, l, world):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
     top = b2EdgeShape(vertices=[(0,0),(0,l)])
     bottom = b2EdgeShape(vertices=[(0,l),(l,l)])
@@ -33,13 +33,26 @@ def create_box(origin, l):
 def adjusted_vertex(v,origin, scale=1):
     return (scale*(v[0]+origin[0]), scale*(v[1]+origin[1]))
 
+class Stirrer(object):
+    def __init__(self, world, origin):
+        self.l = 0.07;
+        self.w = 0.02;
+        self.pose = origin
+        box = b2PolygonShape(vertices = ((0,0),(0,self.w),(self.l,0),(self.l,self.w)))
+        stirrer = world.CreateStaticBody(
+                shapes=[box],
+                position=origin
+            )
+    def render(self):
+        pygame.draw.rect(screen, (0,0,0), (self.pose[0],self.pose[1],self.w,self.l), 1)
+    
 
 class Box(object):
     def __init__(self, world, box_length = 0.5, center = (0.5,0.5)):
         self.color = (50,50,50)
         self.box_length = box_length
         self.center = center
-        self.walls = create_box(center,box_length)
+        self.walls = create_box(center,box_length, world)
 
     def render(self):
         for f in self.walls.fixtures:
@@ -48,7 +61,6 @@ class Box(object):
                 pygame_pose = adjusted_vertex(v, self.center, scale = ppm)
                 edge.append(pygame_pose)
             pygame.draw.lines(screen, self.color, True, edge,4)
-        pygame.display.flip()
 
 
 class Beads(object):
@@ -68,7 +80,6 @@ class Beads(object):
             bead = self.beads[i]
             color = self.colors[i]
             self.render_bead(bead,color)
-        pygame.display.flip()
 
     def render_bead(self, bead, color):
         pygame.draw.circle(screen, color, vec_to_pygame_pos(bead.position), int(ppm*self.radius))
@@ -88,16 +99,23 @@ def random_bead_poses_and_colors(length, origin, numbeads, bead_radius):
 def dist(x, y):
     return sqrt(sum((xi - yi)**2 for (xi, yi) in zip(x, y)))
 
-#initialize beads in random positions within the bowl radius
-#pick random
-world = b2World()
-box_pos = (0.9,0.9)
-box_length = 0.4
-bead_radius = 0.01
-bowl = Box(world, box_length = box_length, center = box_pos)
-bead_poses, bead_colors = random_bead_poses_and_colors(box_length, box_pos, 300, bead_radius)
-beads = Beads(world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
-bowl.render()
-beads.render()
-time.sleep(5)
+class World(object):
+    def __init__(self):
+	self.world = b2World()
+	box_pos = (0.9,0.9)
+	box_length = 0.4
+	bead_radius = 0.01
+	stirrer_pos = box_pos
+	self.bowl = Box(self.world, box_length = box_length, center = box_pos)
+	self.stirrer = Stirrer(self.world, stirrer_pos)
+	bead_poses, bead_colors = random_bead_poses_and_colors(box_length, box_pos, 300, bead_radius)
+	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
+    def render(self):
+	self.bowl.render()
+	self.beads.render()
+	self.stirrer.render()
+        pygame.display.flip()
+        
 
+world = World()
+world.render()
