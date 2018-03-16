@@ -3,6 +3,7 @@ from Box2D import (b2CircleShape, b2EdgeShape, b2FixtureDef, b2PolygonShape, b2W
 import time
 from math import sqrt
 import numpy as np
+import pickle
 import pdb
 import random 
 import pygame
@@ -21,12 +22,15 @@ def vec_to_pygame_pos(vec):
 def create_box(origin, l, world):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
     top = b2EdgeShape(vertices=[(0,0),(0,l)])
+    top = b2PolygonShape(vertices = ((0,0),(0,l),(0.01,0.01),(0.01,0.01+l)))
     bottom = b2EdgeShape(vertices=[(0,l),(l,l)])
     left = b2EdgeShape(vertices=[(0,0),(l,0)])
     right = b2EdgeShape(vertices=[(l,0),(l,l)])
+    right = b2PolygonShape(vertices = ((l,0),(l,l),(l+0.01,0.01),(l+0.01,0.01+l)))
+    center = origin
     wall = world.CreateStaticBody(
                 shapes=[top, bottom, left, right],
-                position=origin
+                position=center
             )
     return wall
 
@@ -35,20 +39,27 @@ def adjusted_vertex(v,origin, scale=1):
 
 class Stirrer(object):
     def __init__(self, world, origin):
-        self.l = 0.01;
-        self.w = 0.1;
-        box = b2PolygonShape(vertices = ((0,0),(0,self.w),(self.l,0),(self.l,self.w)))
+        self.l = 0.08;
+        self.w = 0.03;
+        box = b2PolygonShape(box=(self.w/2.0, self.l/2.0))
         self.origin = origin
         self.world = world
+        #center = (origin[0]-(self.w/2),origin[1](self.l/2))
+        center = origin
         self.stirrer = world.CreateDynamicBody(
                 shapes=[box],
-                position=origin
+                position=center
             )
     def render(self):
-        v = self.stirrer.position*ppm
+        pos = self.stirrer.position
+        v = (ppm*(pos[0]-self.w/2), ppm*(pos[1]-self.l/2))
         pygame.draw.rect(screen, (0,0,0), (v[0],v[1],ppm*self.w,ppm*self.l), 6)
+    #pick a aandom direction: go in it
     def policy(self):
-        return (0,0.1)
+        l = 2
+        random_thing =  ((-1)**random.randint(0,1)*l*random.random(),(-1)**random.randint(0,1)*l*random.random())
+        print(random_thing)
+        return random_thing
 
     def stir(self):
         force = self.policy()
@@ -80,7 +91,7 @@ class Beads(object):
         position=pos,
         fixtures=b2FixtureDef(
             shape=b2CircleShape(radius=self.radius),
-            density=2,
+            density=0.03,
         )
         ) for pos in poses]
     def render(self):
@@ -92,16 +103,33 @@ class Beads(object):
     def render_bead(self, bead, color):
         pygame.draw.circle(screen, color, vec_to_pygame_pos(bead.position), int(ppm*self.radius))
 
-def random_bead_poses_and_colors(length, origin, numbeads, bead_radius):
-    beads = []
-    bead_colors = []
-    color_choices = [(255,0,0), (0,0,255)]
-    adj_l = length-bead_radius;
-    for i in range(numbeads):
-	pos = (bead_radius + adj_l*random.random()+origin[0], bead_radius + adj_l*random.random()+origin[1])
-        beads.append(pos)
-        random_color = color_choices[random.randint(0,1)]
-        bead_colors.append(random_color)
+def random_bead_poses_and_colors(length, origin, numbeads, bead_radius, new= False):
+    
+    if not new:
+        beads  = pickle.load(open("beads.pkl"))
+        bead_colors  = pickle.load(open("colors.pkl"))
+        print("Loaded beads from file")
+    if new:
+	beads = []
+	bead_colors = []
+	color_choices = [(255,0,0), (0,0,255)]
+	adj_l = length-bead_radius;
+	#color depends on x coord
+	for i in range(numbeads):
+	    pos = (bead_radius + adj_l*random.random()+origin[0], bead_radius + adj_l*random.random()+origin[1])
+	    beads.append(pos)
+	    #random_color = color_choices[random.randint(0,1)]
+	    if pos[0] < origin[0]+length/2.0:
+		color = color_choices[0]
+	    else:
+		color = color_choices[1]
+      
+	    bead_colors.append(color)
+	    with open('beads.pkl', 'wb') as fp:
+		pickle.dump(beads, fp)
+	    with open('colors.pkl', 'wb') as fp:
+		pickle.dump(bead_colors, fp)
+
     return beads, bead_colors
     
 def dist(x, y):
@@ -110,13 +138,13 @@ def dist(x, y):
 class World(object):
     def __init__(self):
 	self.world = b2World(gravity=(0,0))
-	box_pos = (0.9,0.9)
-	box_length = 0.4
-	bead_radius = 0.01
-	stirrer_pos =( box_pos[0] + 0.2, box_pos[1]+0.1)
-	self.bowl = Box(self.world, box_length = box_length, center = box_pos)
+	self.box_pos = (0.9,0.9)
+	self.box_length = 0.4
+	bead_radius = 0.006
+	stirrer_pos =( self.box_pos[0] + 0.2, self.box_pos[1]+0.1)
+	self.bowl = Box(self.world, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
-	bead_poses, bead_colors = random_bead_poses_and_colors(box_length, box_pos, 300, bead_radius)
+	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 1500, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
     def render(self):
         screen.fill((255,255,255))
@@ -129,13 +157,28 @@ class World(object):
         self.world.Step(timeStep, vel_iters, pos_iters)
         self.world.ClearForces()
         self.stirrer.stir()
+
+    def reward(self):
+        #checks how well mixed board is based on pygame screen
+        #the portion of beads in each section should be roughly 50/50
+        #penalize based on deviation from this and add
+        #section board into 36 pieces
+        n = 6
+        m = 6
+        total_meters = self.box_length
+        #for i in range(n):
+        #    for j in range(m):
+        #    #sample 
+        
+        
+             
  
         
 
 world = World()
-timeStep = 1/90.0
+timeStep = 1/30.0
 vel_iters, pos_iters = 6, 2
-for i in range(1000):
+for i in range(10000):
     # Instruct the world to perform a single step of simulation. It is
     # generally best to keep the time step and iterations fixed.
     world.step(timeStep, vel_iters, pos_iters)
