@@ -28,6 +28,10 @@ def get_mixedness(img):
             start_i = i_chunk_size*i
             start_j = j_chunk_size*j
             section = img[start_i:start_i+i_chunk_size, start_j:start_j+j_chunk_size,:]
+            #don't bother computing if it's just white
+            if section.min() == 255:
+                continue;
+ 
             sum_mixed += mixedness_region(section)
     return sum_mixed
 
@@ -40,10 +44,8 @@ def mixedness_region(img):
                 num_red +=1
             elif img[i,j,1] != 255:
                 num_blue +=1
-    if num_red + num_blue == 0:
-        return 0.5
     ratio = num_red/(num_red+num_blue+0.0)
-    return abs(0.5-ratio)
+    return 1-abs(0.5-ratio)
             
             
 

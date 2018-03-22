@@ -10,7 +10,7 @@ from stirring_world import world
 import logging
 import pygame
 logger = logging.getLogger(__name__)
-actions = [[1,0],[0,1],[-1,0],[0,-1]]
+actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = True
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
@@ -21,14 +21,12 @@ REPLAY_LENGTH = LENGTH_REPLAY
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, granularity = 10):
-        self.done_percentage =  0.9 #chosen to be about most of the board
+    def __init__(self):
+        self.done_percentage =  178 #pretty well mixed in original example
         self.world = world
         self.world_state = world.world_state() 
-        self.res = granularity
         #self.robot_state = self.world.stirrer_state()
         pygame.init()
-        self.screen_size = 400
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
         self.counter = 0;
         self.replay_counter = 0;
@@ -83,8 +81,10 @@ class StirEnv(gym.Env):
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = reward > self.done_percentage
-            episode_over = self.stop_if_necessary()
+            episode_over = reward > self.done_percentage and self.counter > 10
+            episode_over = episode_over or self.stop_if_necessary()
+            if episode_over:
+                print("EPISODE OVER", reward) 
 
         self.should_replay_and_setup()
 
@@ -123,6 +123,7 @@ class StirEnv(gym.Env):
 
     def reset(self):
         self.__init__()
+        self.world.reset()
         return self.world.world_state()
         
 
@@ -135,9 +136,8 @@ def action_num_to_action(action_num):
 if __name__=="__main__":
     be = StirEnv()
     be.render()
-    for i in range(80):
-        be.step(1)
-        print(be._get_reward())
+    for i in range(200):
+        be.step(2)
         be.render()
  
 

@@ -50,6 +50,9 @@ class Floor(object):
 		    position=origin)
         self.floor.CreateFixture(fixture_list) 
         self.color = (90,90,90)
+
+    def destroy(self):
+        pass
     def render(self):
         for f in self.floor.fixtures:
             edge = []
@@ -76,6 +79,8 @@ class Stirrer(object):
 		shapes=[box],
 		position=center
 	    )
+    def destroy(self):
+        pass
     def render(self):
         pos = self.stirrer.position
         v = (ppm*(pos[0]-self.w/2.0), ppm*(pos[1]-self.l/2.0))
@@ -84,10 +89,10 @@ class Stirrer(object):
     def policy(self):
         l = 2
         random_thing =  ((-1)**random.randint(0,1)*l*random.random(),(-1)**random.randint(0,1)*l*random.random())
-        return [0.1*i for i in random_thing]
+        return [3*i for i in random_thing]
 
     def stir(self, force=(0,0)):
-        force = self.policy()
+        #force = self.policy()
         self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
     
 
@@ -98,6 +103,8 @@ class Box(object):
         self.center = center
         self.walls = create_box(center,box_length, world)
 
+    def destroy(self):
+        pass
     def render(self):
         for f in self.walls.fixtures:
             edge = []
@@ -113,6 +120,7 @@ class Beads(object):
         self.radius = radius
         self.colors = colors
         tolerance = 0.001
+        self.world = world
         self.beads = [world.CreateDynamicBody(
         position=pos,
         fixtures=b2FixtureDef(
@@ -125,6 +133,10 @@ class Beads(object):
             bead = self.beads[i]
             color = self.colors[i]
             self.render_bead(bead,color)
+
+    def destroy(self):
+        for bead in self.beads:
+            self.world.DestroyBody(bead) 
 
     def render_bead(self, bead, color):
         pygame.draw.circle(screen, color, vec_to_pygame_pos(bead.position), int(round(ppm*self.radius)))
@@ -163,7 +175,7 @@ def dist(x, y):
 
 class World(object):
     def __init__(self):
-	self.world = b2World(gravity=(0,0.2))
+	self.world = b2World(gravity=(0,9.8))
 	self.box_pos = (0.1,0.02)
 	self.box_length = 0.4
         floor_pos = (self.box_pos[0]-0.1,self.box_pos[1]+(self.box_length/1.0)+eps)
@@ -172,10 +184,18 @@ class World(object):
 	self.bowl = Box(self.world, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 0.6, self.world)
-	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 100, bead_radius, new =True)
+	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 200, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.floor, self.bowl, self.stirrer, self.beads]
             
+    def reset(self):
+        print("RESET")
+        for obj in self.objects:
+            obj.destroy()
+        self.__init__()
+    def destroy(self):
+        pass
+
     def render(self):
         screen.fill((255,255,255))
         [obj.render() for obj in self.objects]
