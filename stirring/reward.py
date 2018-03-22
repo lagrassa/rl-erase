@@ -1,5 +1,6 @@
 #helper function: takes in a img and calculates the current reward
 #reward is based on the intended number of beads and the amount mixed
+import pdb
 
 def reward_func(img):
     #calculate number of beads outside of cup
@@ -13,15 +14,21 @@ def reward_func(img):
 def get_out(img):
     return 0
     
+#@precondition:img.shape[0] and shape[1] on being multiples of 10
 def get_mixedness(img):
     #sum up how far ratios are from 0.5
     res = 10.0;
     sum_mixed = 0
+    assert(img.shape[0] % res == 0) 
+    assert(img.shape[1] % res == 0) 
+    i_chunk_size = int(round(img.shape[0]/res))
+    j_chunk_size = int(round(img.shape[1]/res))
     for i in range(int(res)):
-        i_chunk_size = int(round(img.shape[0]/res))
         for j in range(int(res)):
-            j_chunk_size = int(round(img.shape[1]/res))
-            mixedness_region(img[i:i+i_chunk_size, j:j+j_chunk_size])
+            start_i = i_chunk_size*i
+            start_j = j_chunk_size*j
+            section = img[start_i:start_i+i_chunk_size, start_j:start_j+j_chunk_size,:]
+            sum_mixed += mixedness_region(section)
     return sum_mixed
 
 def mixedness_region(img):
@@ -29,8 +36,13 @@ def mixedness_region(img):
     num_blue = 0.0
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
-            pass
-    ratio = num_red/(num_red+num_blue+1.0)
+            if img[i,j,0] != 255:
+                num_red +=1
+            elif img[i,j,1] != 255:
+                num_blue +=1
+    if num_red + num_blue == 0:
+        return 0.5
+    ratio = num_red/(num_red+num_blue+0.0)
     return abs(0.5-ratio)
             
             

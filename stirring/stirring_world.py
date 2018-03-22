@@ -187,7 +187,14 @@ class World(object):
         self.stirrer.stir()
 
     def world_state(self):
-        return pygame.surfarray.array2d(screen)
+        num_colors = 2
+        state = np.zeros((screen.get_width(), screen.get_height(), num_colors))
+        red = pygame.surfarray.pixels_red(screen)
+        blue = pygame.surfarray.pixels_blue(screen)
+        state[:,:,0] = red
+        state[:,:,1] =blue 
+    
+        return state
 
     def stirrer_state(self):
         raise Exception

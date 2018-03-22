@@ -51,8 +51,9 @@ class StirEnv(gym.Env):
             timeStep = 1/30.0
             self.world.stirrer.stir(force=action_num_to_action(action))
             self.world.step(timeStep, vel_iters, pos_iters)
+            self.world_state = self.world.world_state()
 
-            self.saved_world_state.append(self.world.world_state())
+            self.saved_world_state.append(self.world_state)
             #self.saved_robot_state.append(self.world.stirrer_state())
         else:
             self.world_state = self.replay_world_states[self.replay_counter]
@@ -136,6 +137,7 @@ if __name__=="__main__":
     be.render()
     for i in range(80):
         be.step(1)
+        print(be._get_reward())
         be.render()
  
 
