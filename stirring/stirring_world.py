@@ -18,13 +18,14 @@ eps = 0.0001
 #2) make beads
 
 def vec_to_pygame_pos(vec):
-    return tuple(int(ppm*x) for x in vec)
+    return tuple(int(round(ppm*x)) for x in vec)
 
 def create_box(origin, l, world):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
     top = b2EdgeShape(vertices=[(0,0),(0,l)])
     top = b2PolygonShape(vertices = ((0,0),(0,l),(eps,eps),(eps,eps+l)))
     bottom = b2EdgeShape(vertices=[(0,l),(l,l)])
+    bottom = b2PolygonShape(vertices=[(0,l),(l,l), (l+eps,l+eps),(0+eps,l+eps)])
     left = b2EdgeShape(vertices=[(0,0),(l,0)])
     right = b2EdgeShape(vertices=[(l,0),(l,l)])
     right = b2PolygonShape(vertices = ((l,0),(l,l),(l+eps,eps),(l+eps,eps+l)))
@@ -84,10 +85,9 @@ class Stirrer(object):
     def policy(self):
         l = 2
         random_thing =  ((-1)**random.randint(0,1)*l*random.random(),(-1)**random.randint(0,1)*l*random.random())
-        #return [0.01*i for i in random_thing]
-        return  (-0.09,0)
+        return [0.4*i for i in random_thing]
 
-    def stir(self):
+    def stir(self, force=(0,0)):
         force = self.policy()
         self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
     
@@ -105,7 +105,7 @@ class Box(object):
             for v in f.shape.vertices:
                 pygame_pose = adjusted_vertex(v, self.walls.position, scale = ppm)
                 edge.append(pygame_pose)
-            pygame.draw.lines(screen, self.color, True, edge,4)
+            pygame.draw.lines(screen, self.color, True, edge,2)
 
 
 class Beads(object):
@@ -113,11 +113,12 @@ class Beads(object):
         assert(poses is not None and radius is not None and colors is not None)
         self.radius = radius
         self.colors = colors
+        tolerance = 0.001
         self.beads = [world.CreateDynamicBody(
         position=pos,
         fixtures=b2FixtureDef(
-            shape=b2CircleShape(radius=self.radius),
-            density=0.8,
+            shape=b2CircleShape(radius=self.radius+tolerance),
+            density=0.2,
         )
         ) for pos in poses]
     def render(self):
@@ -127,7 +128,7 @@ class Beads(object):
             self.render_bead(bead,color)
 
     def render_bead(self, bead, color):
-        pygame.draw.circle(screen, color, vec_to_pygame_pos(bead.position), int(ppm*self.radius))
+        pygame.draw.circle(screen, color, vec_to_pygame_pos(bead.position), int(round(ppm*self.radius)))
 
 def random_bead_poses_and_colors(length, origin, numbeads, bead_radius, new= True):
     
@@ -145,7 +146,7 @@ def random_bead_poses_and_colors(length, origin, numbeads, bead_radius, new= Tru
 	    pos = (bead_radius + adj_l*random.random()+origin[0], bead_radius + adj_l*random.random()+origin[1])
 	    beads.append(pos)
 	    #random_color = color_choices[random.randint(0,1)]
-	    if pos[0] < origin[0]+length/2.0:
+	    if pos[1] < origin[1]+length/2.0:
 		color = color_choices[0]
 	    else:
 		color = color_choices[1]
@@ -167,14 +168,15 @@ class World(object):
 	self.box_pos = (0.9,0.9)
 	self.box_length = 0.4
         floor_pos = (self.box_pos[0]-0.7,self.box_pos[1]+(self.box_length/1.0)+eps)
-	bead_radius = 0.01
+	bead_radius = 0.012
 	stirrer_pos =( self.box_pos[0] + 0.2, self.box_pos[1]+0.1)
 	self.bowl = Box(self.world, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 1.3, self.world)
-	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 200, bead_radius, new =True)
+	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 100, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.floor, self.bowl, self.stirrer, self.beads]
+            
     def render(self):
         screen.fill((255,255,255))
         [obj.render() for obj in self.objects]
@@ -184,6 +186,11 @@ class World(object):
         self.world.Step(timeStep, vel_iters, pos_iters)
         self.world.ClearForces()
         self.stirrer.stir()
+    def world_state(self):
+        raise Exception;
+        h
+    def stirrer_state(self):
+        raise Exception
 
     def reward(self):
         #checks how well mixed board is based on pygame screen
@@ -197,12 +204,8 @@ class World(object):
         #    for j in range(m):
         #    #sample 
         
-        
-             
- 
-        
-
 world = World()
+"""
 timeStep = 1/30.0
 vel_iters, pos_iters = 6, 2
 for i in range(10000):
@@ -213,3 +216,4 @@ for i in range(10000):
     # Clear applied body forces. We didn't apply any forces, but you
     # should know about this function.
     world.render()
+"""
