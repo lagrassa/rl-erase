@@ -8,8 +8,7 @@ import pdb
 import random 
 import pygame
 pygame.init()
-screen_size = 800
-screen = pygame.display.set_mode((screen_size, screen_size))
+screen = pygame.display.set_mode((280, 230))
 screen.fill([255,255,255])
 ppm = 500 #pixels_per_meter
 eps = 0.0001
@@ -32,8 +31,8 @@ def create_box(origin, l, world):
     center = origin
 
     walls = [bottom, right, top]
-    fixture_list = [b2FixtureDef(shape=shape, density = 12, friction = 0.99) for shape in walls]
-    wall = world.CreateDynamicBody(
+    fixture_list = [b2FixtureDef(shape=shape, density = 100, friction = 0.1) for shape in walls]
+    wall = world.CreateStaticBody(
                 fixtures=fixture_list,
                 position=center,
             )
@@ -46,7 +45,7 @@ class Floor(object):
 	bottom = b2EdgeShape(vertices=[(0,floor_length),(floor_length,floor_length)])
 
         bottom = b2PolygonShape(vertices = ((0,0),(l,0),(l+eps,eps),(eps,eps)))
-        fixture_list = b2FixtureDef(shape=bottom, density = 12, friction = 0.9)
+        fixture_list = b2FixtureDef(shape=bottom, density = 12, friction = 0.1)
 	self.floor = world.CreateStaticBody(
 		    position=origin)
         self.floor.CreateFixture(fixture_list) 
@@ -85,7 +84,7 @@ class Stirrer(object):
     def policy(self):
         l = 2
         random_thing =  ((-1)**random.randint(0,1)*l*random.random(),(-1)**random.randint(0,1)*l*random.random())
-        return [0.4*i for i in random_thing]
+        return [0.1*i for i in random_thing]
 
     def stir(self, force=(0,0)):
         force = self.policy()
@@ -165,14 +164,14 @@ def dist(x, y):
 class World(object):
     def __init__(self):
 	self.world = b2World(gravity=(0,0.2))
-	self.box_pos = (0.9,0.9)
+	self.box_pos = (0.1,0.02)
 	self.box_length = 0.4
-        floor_pos = (self.box_pos[0]-0.7,self.box_pos[1]+(self.box_length/1.0)+eps)
+        floor_pos = (self.box_pos[0]-0.1,self.box_pos[1]+(self.box_length/1.0)+eps)
 	bead_radius = 0.012
 	stirrer_pos =( self.box_pos[0] + 0.2, self.box_pos[1]+0.1)
 	self.bowl = Box(self.world, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
-        self.floor = Floor(floor_pos, 1.3, self.world)
+        self.floor = Floor(floor_pos, 0.6, self.world)
 	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 100, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.floor, self.bowl, self.stirrer, self.beads]
@@ -186,9 +185,10 @@ class World(object):
         self.world.Step(timeStep, vel_iters, pos_iters)
         self.world.ClearForces()
         self.stirrer.stir()
+
     def world_state(self):
-        raise Exception;
-        h
+        return pygame.surfarray.array2d(screen)
+
     def stirrer_state(self):
         raise Exception
 
