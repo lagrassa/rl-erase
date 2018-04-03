@@ -23,16 +23,17 @@ class StirEnv(gym.Env):
 
     def __init__(self):
         self.done_percentage =  201 #pretty well mixed in original example HACK
+        self.baseline =  60 #just the grey
         self.world = world
         self.world_state = world.world_state() 
-        #self.robot_state = self.world.stirrer_state()
+        self.robot_state = self.world.stirrer_state()
         pygame.init()
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
         self.counter = 0;
         self.replay_counter = 0;
         self.num_steps_same = 0;
         self.prev_reward = 0; 
-        #self.saved_robot_state = []
+        self.saved_robot_state = []
         self.saved_world_state = []
 
     """
@@ -52,10 +53,10 @@ class StirEnv(gym.Env):
             self.world_state = self.world.world_state()
 
             self.saved_world_state.append(self.world_state)
-            #self.saved_robot_state.append(self.world.stirrer_state())
+            self.saved_robot_state.append(self.world.stirrer_state())
         else:
             self.world_state = self.replay_world_states[self.replay_counter]
-            #self.robot_state = self.replay_robot_states[self.replay_counter]
+            self.robot_state = self.replay_robot_states[self.replay_counter]
             self.replay_counter +=1
 
     #returns the reward and checks if it's been the same for a while
@@ -66,6 +67,7 @@ class StirEnv(gym.Env):
         else:
             self.num_steps_same = 0
         self.prev_reward = reward; 
+        print(reward)
         return reward 
 
     def stop_if_necessary(self):
@@ -76,17 +78,20 @@ class StirEnv(gym.Env):
         return False
 
     def create_state(self):
-        robot_state = np.array([17.0,18]) #self.robot_state
+        robot_state = self.robot_state
+        HACK = True
         #this is horrible: make a matrix of zeros and set the top left to be what you want
-        robot_state = np.zeros(self.world_state.shape[0:2])
-        state_shape = list(self.world_state.shape)
-        state_shape[2] +=1
-        state = np.zeros(state_shape)
-        robot_state[0] = 17
-        robot_state[1] = 19
-        pdb.set_trace()
-        state[:,:,0:2] = self.world_state
-        state[:,:,2] = robot_state
+        if HACK:
+	    robot_state = np.zeros(self.world_state.shape[0:2])
+	    state_shape = list(self.world_state.shape)
+	    state_shape[2] +=1
+	    state = np.zeros(state_shape)
+	    robot_state[0] = 17
+	    robot_state[1] = 19
+	    state[:,:,0:3] = self.world_state
+	    state[:,:,3] = robot_state
+        else:
+            state = self.world_state
         return state
         
     def step(self, action):
@@ -95,7 +100,7 @@ class StirEnv(gym.Env):
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = reward > self.done_percentage and self.counter > 10
+            episode_over = (reward > self.done_percentage or reward < self.baseline) and self.counter > 10
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
@@ -113,8 +118,7 @@ class StirEnv(gym.Env):
         #start a replay counter 
         if len(self.saved_world_state) > LENGTH_REPLAY and self.replay_counter == 0 and random.random() < P_REPLAY:
             self.replay_counter =1
-            #self.replay_world_states, self.replay_robot_states = self.random_state_batch(LENGTH_REPLAY)
-            self.replay_world_states = self.random_state_batch(LENGTH_REPLAY)
+            self.replay_world_states, self.replay_robot_states = self.random_state_batch(LENGTH_REPLAY)
             print("Started replay")
             return True
         if self.replay_counter >= LENGTH_REPLAY:
@@ -124,8 +128,8 @@ class StirEnv(gym.Env):
     def random_state_batch(self, batch_size):
         #pick a random interval between 0 and len(self.saved_world_state)
         start_index = random.randint(0,len(self.saved_world_state)-REPLAY_LENGTH)
-        #return self.saved_world_state[start_index:start_index+REPLAY_LENGTH][:], self.saved_robot_state[start_index:start_index+REPLAY_LENGTH][:]
-        return self.saved_world_state[start_index:start_index+REPLAY_LENGTH][:]
+        return self.saved_world_state[start_index:start_index+REPLAY_LENGTH][:], self.saved_robot_state[start_index:start_index+REPLAY_LENGTH][:]
+        #return self.saved_world_state[start_index:start_index+REPLAY_LENGTH][:]
        
 
     def _get_reward(self):

@@ -2,6 +2,7 @@
 #reward is based on the intended number of beads and the amount mixed
 import pdb
 
+small_reward = False 
 def reward_func(img):
     #calculate number of beads outside of cup
     #calculate mixedness
@@ -9,7 +10,8 @@ def reward_func(img):
     out_k = 20
     num_mixed = get_mixedness(img)
     num_out = get_out(img)
-    return mixed_k*num_mixed + out_k+num_out
+    rew =  mixed_k*num_mixed + out_k+num_out
+    return rew
 
 def get_out(img):
     return 0
@@ -31,9 +33,10 @@ def get_mixedness(img):
             #don't bother computing if it's just white
             if section.min() == 255:
                 continue;
- 
+             
             sum_mixed += mixedness_region(section)
     return sum_mixed
+
 
 def mixedness_region(img):
     num_red = 0.0
