@@ -184,7 +184,7 @@ class World(object):
 	self.bowl = Box(self.world, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 0.6, self.world)
-	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 200, bead_radius, new =True)
+	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_pos, 400, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.floor, self.bowl, self.stirrer, self.beads]
             

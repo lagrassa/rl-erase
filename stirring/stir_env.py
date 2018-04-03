@@ -22,7 +22,7 @@ class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
-        self.done_percentage =  178 #pretty well mixed in original example
+        self.done_percentage =  201 #pretty well mixed in original example HACK
         self.world = world
         self.world_state = world.world_state() 
         #self.robot_state = self.world.stirrer_state()
@@ -74,10 +74,14 @@ class StirEnv(gym.Env):
             self.num_steps_same = 0
             return True
         return False
+
+    def create_state(self):
+        robot_state = np.array([17.0,18]) #self.robot_state
+        return (self.world_state,robot_state)
         
     def step(self, action):
         self.move_if_appropriate(action)
-        ob = self.world_state
+        ob = self.create_state() #self.world_state
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
@@ -124,7 +128,7 @@ class StirEnv(gym.Env):
     def reset(self):
         self.__init__()
         self.world.reset()
-        return self.world.world_state()
+        return self.create_state()
         
 
     def render(self, mode='human', close=False):
