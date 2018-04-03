@@ -35,15 +35,13 @@ class EmptyProcessor(Processor):
 
 class Learner():
     def __init__(self, input_shape, window_length, nb_actions):
-        
         picture_tensor = Input(shape=input_shape, dtype='float32', name="pictureTensor")
         dims = 2
-        robot_tensor = Input(shape=(dims,) , dtype='float32', name="robotTensor")
-        self.build_model(picture_tensor,robot_tensor, input_shape, window_length, nb_actions)
+        self.build_model(picture_tensor, input_shape, window_length, nb_actions)
 
-    def build_model(self, picture_tensor,robot_tensor, input_shape, window_length, nb_actions):
+    def build_model(self, picture_tensor, input_shape, window_length, nb_actions):
         #here's where it's a bit weird. We have one part of the tuple,        #the input shape, but then the second part is the robot position 
-        net_input_shape =  (None, window_length,)+input_shape
+        net_input_shape =  (window_length,)+input_shape
         print("net input shape", net_input_shape) 
         """ 
         if K.image_dim_ordering() == 'tf':
@@ -56,17 +54,20 @@ class Learner():
         else:
             raise RuntimeError('Unknown image_dim_ordering.')
         """
-        #grid =  Lambda(lambda x: x[:,:,0],  net_input_shape , dtype='float32')(picture_tensor)
-        #robot =  Lambda(lambda x: x[:,:,1],  robot_shape , dtype='float32')(picture_tensor)
+        #the robot will be a vector in the 3rd channel of the image....
+        grid =  Lambda(lambda x: x[:,:,0:2],  net_input_shape , dtype='float32')(picture_tensor)
+        dims = 2
+        robot =  Lambda(lambda x: x[:,:,2][0,0:2],  (2,) , dtype='float32')(picture_tensor) #horrible hack: the top left corner
         #Convolution stuff
         grid = Conv2D(4,(2,2), activation='relu', padding='same')(picture_tensor)
 
-        grid = MaxPooling2D((3,3),strides=(1,1),padding='same')(grid)
+        #grid = MaxPooling2D((3,3),strides=(1,1),padding='same')(grid)
         grid = Flatten(dtype='float32')(grid)
-        #robot_flat = Flatten(dtype='float32')(robot_tensor)      
-        fc1 = concatenate([robot_tensor, grid]) 
+        #robot = Flatten(dtype='float32')(robot)
+        fc1 = concatenate([robot, grid]) 
         action_tensor = Dense(nb_actions, activation = 'sigmoid', dtype='float32')(fc1)
-        self.model = Model(inputs=[picture_tensor, robot_tensor], outputs=action_tensor)
+        self.model = Model(inputs=[picture_tensor], outputs=action_tensor)
+
         print(self.model.summary())
 
     def train(self, env):
@@ -148,6 +149,7 @@ if __name__=="__main__":
      actions = [[1,0],[0,1],[-1,0],[0,-1]]
      nb_actions = len(actions)
      env = StirEnv()
-     world_shape = env.world_state.shape
-     l = Learner((world_shape),WINDOW_LENGTH,nb_actions)
+     state_shape = list(env.world_state.shape)
+     state_shape[-1] +=1 
+     l = Learner((tuple(state_shape)),WINDOW_LENGTH,nb_actions)
      l.train(env)

@@ -77,7 +77,17 @@ class StirEnv(gym.Env):
 
     def create_state(self):
         robot_state = np.array([17.0,18]) #self.robot_state
-        return (self.world_state,robot_state)
+        #this is horrible: make a matrix of zeros and set the top left to be what you want
+        robot_state = np.zeros(self.world_state.shape[0:2])
+        state_shape = list(self.world_state.shape)
+        state_shape[2] +=1
+        state = np.zeros(state_shape)
+        robot_state[0] = 17
+        robot_state[1] = 19
+        pdb.set_trace()
+        state[:,:,0:2] = self.world_state
+        state[:,:,2] = robot_state
+        return state
         
     def step(self, action):
         self.move_if_appropriate(action)
