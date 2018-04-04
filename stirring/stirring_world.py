@@ -1,3 +1,4 @@
+from __future__ import division
 from Box2D import (b2CircleShape, b2EdgeShape, b2FixtureDef, b2PolygonShape, b2World,
                    b2_pi)
 import time
@@ -11,7 +12,7 @@ pygame.init()
 screen = pygame.display.set_mode((280, 230))
 screen.fill([255,255,255])
 ppm = 500 #pixels_per_meter
-eps = 0.001
+eps = 0.0001
 
 #1) make a bowl (circle)
 #2) make beads
@@ -21,16 +22,15 @@ def vec_to_pygame_pos(vec):
 
 def create_box(origin, l,w, world):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
-    left = b2EdgeShape(vertices=[(0,0),(0,l)])
-    left = b2PolygonShape(vertices = ((0,0),(0,l),(eps,eps),(eps,eps+l)))
-    bottom = b2EdgeShape(vertices=[(0,l),(w,l)])
+    left = b2PolygonShape(vertices = ((0,0),(0,l),(eps,eps+l),(eps,eps)))
     bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w+eps,l+eps),(0+eps,l+eps)])
-    right = b2EdgeShape(vertices=[(w,0),(l,l)])
-    right = b2PolygonShape(vertices = ((w,0),(w,l),(w+eps,eps),(w+eps,eps+l)))
+    right = b2PolygonShape(vertices = ((w,0),(w,l),(w+eps,eps+l),(w+eps,eps)))
     center = origin
+    left_corner = b2CircleShape(pos=(0, l), radius=0.01)
+    right_corner = b2CircleShape(pos=(w, l), radius=0.01)
 
-    walls = [ left, bottom,right]
-    fixture_list = [b2FixtureDef(shape=shape, density = 100, friction = 0.1) for shape in walls]
+    walls = [ left, bottom,right, left_corner, right_corner]
+    fixture_list = [b2FixtureDef(shape=shape, density = 100, friction = 0.9) for shape in walls]
     STATIC = False
     if STATIC:
 	wall = world.CreateStaticBody(
@@ -70,11 +70,11 @@ class Floor(object):
 	
 
 def adjusted_vertex(v,origin, scale=1):
-    return (scale*(v[0]+origin[0]), scale*(v[1]+origin[1]))
+    return (int(round(scale*(v[0]+origin[0]))), int(round(scale*(v[1]+origin[1]))))
 
 class Stirrer(object):
     def __init__(self, world, origin):
-	self.l = 0.1;
+	self.l = 0.15;
 	self.w = 0.015;
 	box = b2PolygonShape(box=(self.w/2.0, self.l/2.0))
 	self.origin = origin
@@ -104,7 +104,6 @@ class Stirrer(object):
 
     def stir(self, force=(0,0)):
         #force = self.policy()
-        force = (0,-6)
         self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
     
 
@@ -120,11 +119,15 @@ class Box(object):
         pass
     def render(self):
         for f in self.walls.fixtures:
-            edge = []
-            for v in f.shape.vertices:
-                pygame_pose = adjusted_vertex(v, self.walls.position, scale = ppm)
-                edge.append(pygame_pose)
-            pygame.draw.lines(screen, self.color, True, edge,4)
+            if isinstance(f.shape, b2CircleShape):
+		pygame_pose = adjusted_vertex(f.shape.pos, self.walls.position, scale = ppm)
+                pygame.draw.circle(screen, self.color, pygame_pose, int(f.shape.radius*ppm))
+            else:
+		edge = []
+		for v in f.shape.vertices:
+		    pygame_pose = adjusted_vertex(v, self.walls.position, scale = ppm)
+		    edge.append(pygame_pose)
+		pygame.draw.lines(screen, self.color, True, edge,8)
 
 
 class Beads(object):
@@ -164,8 +167,8 @@ def random_bead_poses_and_colors(length,width, origin, numbeads, bead_radius, ne
 	beads = []
 	bead_colors = []
 	color_choices = [(255,0,0), (0,0,255)]
-	adj_l = length-bead_radius;
-	adj_w = width-bead_radius;
+	adj_l = length-bead_radius-eps;
+	adj_w = width-bead_radius-eps;
 	#color depends on x coord
 	for i in range(numbeads):
 	    pos = (bead_radius + adj_w*random.random()+origin[0], bead_radius + adj_l*random.random()+origin[1])
@@ -199,7 +202,7 @@ class World(object):
 	self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 0.6, self.world)
-        numbeads = 140
+        numbeads = 300
 	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]
