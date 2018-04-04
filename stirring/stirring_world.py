@@ -9,9 +9,9 @@ import pdb
 import random 
 import pygame
 pygame.init()
-screen = pygame.display.set_mode((280, 230))
+screen = pygame.display.set_mode((280, 280))
 screen.fill([255,255,255])
-ppm = 500 #pixels_per_meter
+ppm = 50 #pixels_per_meter
 eps = 0.0001
 
 #1) make a bowl (circle)
@@ -26,8 +26,8 @@ def create_box(origin, l,w, world):
     bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w+eps,l+eps),(0+eps,l+eps)])
     right = b2PolygonShape(vertices = ((w,0),(w,l),(w+eps,eps+l),(w+eps,eps)))
     center = origin
-    left_corner = b2CircleShape(pos=(0, l), radius=0.01)
-    right_corner = b2CircleShape(pos=(w, l), radius=0.01)
+    left_corner = b2CircleShape(pos=(0, l), radius=0.1)
+    right_corner = b2CircleShape(pos=(w, l), radius=0.1)
 
     walls = [ left, bottom,right, left_corner, right_corner]
     fixture_list = [b2FixtureDef(shape=shape, density = 100, friction = 0.9) for shape in walls]
@@ -74,8 +74,8 @@ def adjusted_vertex(v,origin, scale=1):
 
 class Stirrer(object):
     def __init__(self, world, origin):
-	self.l = 0.15;
-	self.w = 0.015;
+	self.l = 2.5;
+	self.w = 0.15;
 	box = b2PolygonShape(box=(self.w/2.0, self.l/2.0))
 	self.origin = origin
 	self.world = world
@@ -193,16 +193,16 @@ def dist(x, y):
 class World(object):
     def __init__(self):
 	self.world = b2World(gravity=(0,9.8))
-	self.box_pos = (0.1,0.02)
-	self.box_length = 0.4
-	self.box_width = 0.2
+	self.box_pos = (2,0.4)
+	self.box_length = 5
+	self.box_width = 2
         floor_pos = (self.box_pos[0]-0.1,self.box_pos[1]+(self.box_length/1.0)+eps+0.02)
-	bead_radius = 0.009
+	bead_radius = 0.1
 	stirrer_pos =( self.box_pos[0] + self.box_width/2.0, self.box_pos[1]+self.box_length/2.0)
 	self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos)
 	self.stirrer = Stirrer(self.world, stirrer_pos)
-        self.floor = Floor(floor_pos, 0.6, self.world)
-        numbeads = 300
+        self.floor = Floor(floor_pos, 60, self.world)
+        numbeads = 150
 	bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True)
 	self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]

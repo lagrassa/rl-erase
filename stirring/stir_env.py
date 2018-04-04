@@ -67,7 +67,6 @@ class StirEnv(gym.Env):
         else:
             self.num_steps_same = 0
         self.prev_reward = reward; 
-        print(reward)
         return reward 
 
     def stop_if_necessary(self):
