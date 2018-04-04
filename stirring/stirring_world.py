@@ -103,7 +103,7 @@ class Stirrer(object):
         return [3*i for i in random_thing]
 
     def stir(self, force=(0,0)):
-        #force = self.policy()
+        force = (float(force[0]), float(force[1]))
         self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
     
 

@@ -148,7 +148,7 @@ class StirEnv(gym.Env):
         self.world.render()
 
 def action_num_to_action(action_num):
-    return actions[action_num]
+    return tuple(action_num) #no overhead needed
 
 if __name__=="__main__":
     be = StirEnv()
