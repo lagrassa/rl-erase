@@ -47,7 +47,7 @@ class StirEnv(gym.Env):
     def move_if_appropriate(self, action):
         if self.replay_counter == 0: #we're in normal mode, so actually move the robot
             vel_iters, pos_iters = 6, 2
-            timeStep = 1/30.0
+            timeStep = 1/15.0
             self.world.stirrer.stir(force=action_num_to_action(action))
             self.world.step(timeStep, vel_iters, pos_iters)
             self.world_state = self.world.world_state()
@@ -81,25 +81,28 @@ class StirEnv(gym.Env):
         HACK = True
         #this is horrible: make a matrix of zeros and set the top left to be what you want
         if HACK:
-	    robot_state = np.zeros(self.world_state.shape[0:2])
-	    state_shape = list(self.world_state.shape)
-	    state_shape[2] +=1
-	    state = np.zeros(state_shape)
-	    robot_state[0] = 17
-	    robot_state[1] = 19
-	    state[:,:,0:3] = self.world_state
-	    state[:,:,3] = robot_state
+            robot_state = np.zeros(self.world_state.shape[0:2])
+            state_shape = list(self.world_state.shape)
+            state_shape[2] +=1
+            state = np.zeros(state_shape)
+            robot_state[0] = 17
+            robot_state[1] = 19
+            state[:,:,0:3] = self.world_state
+            state[:,:,3] = robot_state
         else:
             state = self.world_state
         return state
         
     def step(self, action):
+        if np.isnan(action).all():
+            action = [0,0]
+            print("doing nothing because action is NaN")
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = (reward > self.done_percentage or reward < self.baseline) and self.counter > 10
+            episode_over = (reward > self.done_percentage or reward < self.baseline or not self.world.stirrer_close()) and self.counter > 10
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
