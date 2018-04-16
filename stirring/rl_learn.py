@@ -1,6 +1,6 @@
 from __future__ import division
 from scipy import misc
-import naf_models
+import ddpg_models
 
 import numpy as np
 import pdb
@@ -23,7 +23,8 @@ WINDOW_LENGTH = 1
 ENV_NAME = "mix_cup"
 class Learner:
     def __init__(self, env, nb_actions, input_shape):
-        self.dqn = naf_models.construct_agent(env, nb_actions, input_shape)
+        env_shape = env.create_state().shape
+        self.dqn = ddpg_models.construct_agent(env_shape, nb_actions, input_shape)
 
     def train(self, env, nb_actions):
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
