@@ -29,7 +29,6 @@ class EmptyProcessor(Processor):
 
 def construct_agent(env_shape, nb_actions, input_shape):
     # Next, we build a very simple model.
-    pdb.set_trace()
     actor = Sequential()
     actor.add(Flatten(input_shape=(1,) + env_shape))
     actor.add(Dense(16))

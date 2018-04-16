@@ -32,7 +32,7 @@ class Learner:
         log_filename = 'dqn_{}_log.json'.format(ENV_NAME)
         callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=2500)]
         callbacks += [FileLogger(log_filename, interval=100)]
-        self.dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000, visualize=True, verbose=2)
+        self.dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000, visualize=True, verbose=3)
            # After training is done, we save the final weights one more time.
         self.dqn.save_weights(weights_filename, overwrite=True)
 
@@ -52,7 +52,7 @@ class Learner:
         self.model.save_weights(ENV_NAME+'weights.h5f')
 
     def test(self,env):
-        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=1000)
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(eps=.4), attr='eps', value_max=1., value_min=.1, value_test=.05,nb_steps=10000)
         amount_memory = 5000000
         memory = SequentialMemory(limit=amount_memory)
         processor = EmptyProcessor()

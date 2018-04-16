@@ -8,7 +8,7 @@ import pickle
 import pdb
 import random 
 import pygame
-pygame.init()
+pygame.display.init()
 screen = pygame.display.set_mode((280, 280))
 screen.fill([255,255,255])
 ppm = 50 #pixels_per_meter
@@ -22,16 +22,16 @@ def vec_to_pygame_pos(vec):
 
 def create_box(origin, l,w, world):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
-    left = b2PolygonShape(vertices = ((0,0),(0,l),(eps,eps+l),(eps,eps)))
-    bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w+eps,l+eps),(0+eps,l+eps)])
-    right = b2PolygonShape(vertices = ((w,0),(w,l),(w+eps,eps+l),(w+eps,eps)))
+    left = b2PolygonShape(vertices = ((0,0),(0,l),(eps,l),(eps,0)))
+    bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w,l+eps),(0,l+eps)])
+    right = b2PolygonShape(vertices = ((w-eps,0),(w-eps,l),(w,l),(w,0)))
     center = origin
     left_corner = b2CircleShape(pos=(0, l), radius=0.1)
     right_corner = b2CircleShape(pos=(w, l), radius=0.1)
 
     walls = [ left, bottom,right, left_corner, right_corner]
     fixture_list = [b2FixtureDef(shape=shape, density = 10, friction = 0.9) for shape in walls]
-    STATIC = True
+    STATIC = False 
     if STATIC:
         wall = world.CreateStaticBody(
                     fixtures=fixture_list,
@@ -51,7 +51,7 @@ class Floor(object):
         bottom = b2EdgeShape(vertices=[(0,floor_length),(floor_length,floor_length)])
 
         bottom = b2PolygonShape(vertices = ((0,0),(l,0),(l+eps,eps),(eps,eps)))
-        fixture_list = b2FixtureDef(shape=bottom, density = 8, friction = 0.1)
+        fixture_list = b2FixtureDef(shape=bottom, density = 8, friction = 0.9)
         self.floor = world.CreateStaticBody(
                     position=origin)
         self.floor.CreateFixture(fixture_list) 
@@ -94,12 +94,8 @@ class Stirrer(object):
         pass
     def render(self):
         pos = self.stirrer.position
-        print("stirrer pos", pos)
         v = (ppm*(pos[0]-self.w/2.0), ppm*(pos[1]-self.l/2.0))
-        try:
-            pygame.draw.rect(screen, (0,255,0), (v[0],v[1],ppm*self.w,ppm*self.l), 0)
-        except:
-            print(pos)
+        pygame.draw.rect(screen, (0,255,0), (v[0],v[1],ppm*self.w,ppm*self.l), 0)
     #pick a aandom direction: go in it
     def policy(self):
         l = 2
@@ -107,9 +103,14 @@ class Stirrer(object):
         return [3*i for i in random_thing]
 
     def stir(self, force=(0,0)):
-        force = (float(force[0]), float(force[1]))
-        self.stirrer.ApplyForce(force=force, point=self.stirrer.position,wake = True)
+        force = np.array((float(force[0]), float(force[1])))
+        input_max = 150;
+        reasonable_force = input_max*sigmoid(force)
+        self.stirrer.ApplyForce(force=reasonable_force, point=self.stirrer.position,wake = True)
     
+def sigmoid(z):
+    s = 1.0 / (1.0 + np.exp(-1.0 * z))
+    return s
 
 class Box(object):
     def __init__(self, world, box_length = 0.5,box_width=0.25, center = (0.5,0.5)):
@@ -145,7 +146,7 @@ class Beads(object):
         position=pos,
         fixtures=b2FixtureDef(
             shape=b2CircleShape(radius=self.radius+tolerance),
-            density=1.2,
+            density=0.3,
         )
         ) for pos in poses]
     def render(self):
@@ -187,10 +188,10 @@ def random_bead_poses_and_colors(length,width, origin, numbeads, bead_radius, ne
                 color = color_choices[1]
       
             bead_colors.append(color)
-            with open('beads.pkl', 'wb') as fp:
-                pickle.dump(beads, fp)
-            with open('colors.pkl', 'wb') as fp:
-                pickle.dump(bead_colors, fp)
+	with open('beads.pkl', 'wb') as fp:
+	    pickle.dump(beads, fp)
+	with open('colors.pkl', 'wb') as fp:
+	    pickle.dump(bead_colors, fp)
 
     return beads, bead_colors
     
@@ -201,7 +202,7 @@ class World(object):
     def __init__(self):
         self.world = b2World(gravity=(0,9.8))
         self.box_pos = (2,0.4)
-        self.box_length = 5
+        self.box_length = 4
         self.box_width = 2
         floor_pos = (self.box_pos[0]-0.1,self.box_pos[1]+(self.box_length/1.0)+eps+0.02)
         bead_radius = 0.1
@@ -209,13 +210,13 @@ class World(object):
         self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos)
         self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 60, self.world)
-        numbeads = 150
+        numbeads = 120
         bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True)
         self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]
             
     def stirrer_close(self):
-        far = 10
+        far = 6
         if abs(self.stirrer.stirrer.position[0]) > far or abs(self.stirrer.stirrer.position[1]) > far:
             print("Stirrer is far")
             return False

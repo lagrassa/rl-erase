@@ -10,24 +10,24 @@ from stirring_world import world
 import logging
 import pygame
 logger = logging.getLogger(__name__)
+pygame.display.init()
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = True
 MAX_AIMLESS_WANDERING = 100
-P_REPLAY = 0.002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
+P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
-LENGTH_REPLAY = 30
+LENGTH_REPLAY = 15
 REPLAY_LENGTH = LENGTH_REPLAY
 
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
-        self.done_percentage =  201 #pretty well mixed in original example HACK
+        self.done_percentage =  300 #pretty well mixed in original example HACK
         self.baseline =  60 #just the grey
         self.world = world
         self.world_state = world.world_state() 
         self.robot_state = self.world.stirrer_state()
-        pygame.init()
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
         self.counter = 0;
         self.replay_counter = 0;
@@ -35,6 +35,19 @@ class StirEnv(gym.Env):
         self.prev_reward = 0; 
         self.saved_robot_state = []
         self.saved_world_state = []
+        self.let_beads_settle()
+
+    def let_beads_settle(self):
+        steps_to_settle = 80
+        [self.progress_state() for i in range(steps_to_settle)]
+        print "Settling period done"
+        
+
+    def progress_state(self, action=(0,0)):
+	vel_iters, pos_iters = 12,8#6, 2
+	timeStep = 1/100.0
+	self.world.stirrer.stir(force=action_num_to_action(action))
+	self.world.step(timeStep, vel_iters, pos_iters)
 
     """
     does an annoying amount of functionality
@@ -46,10 +59,7 @@ class StirEnv(gym.Env):
     #moves robot if not in replay
     def move_if_appropriate(self, action):
         if self.replay_counter == 0: #we're in normal mode, so actually move the robot
-            vel_iters, pos_iters = 6, 2
-            timeStep = 1/15.0
-            self.world.stirrer.stir(force=action_num_to_action(action))
-            self.world.step(timeStep, vel_iters, pos_iters)
+            self.progress_state(action=action)
             self.world_state = self.world.world_state()
 
             self.saved_world_state.append(self.world_state)
@@ -102,7 +112,7 @@ class StirEnv(gym.Env):
         episode_over = False
         reward = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = (reward > self.done_percentage or reward < self.baseline or not self.world.stirrer_close()) and self.counter > 10
+            episode_over = (reward > self.done_percentage or reward < self.baseline or not self.world.stirrer_close()) and self.counter > 3
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
