@@ -105,7 +105,7 @@ class Stirrer(object):
     def stir(self, force=(0,0)):
         force = np.array((float(force[0]), float(force[1])))
         input_max = 150;
-        reasonable_force = input_max*sigmoid(force)
+        reasonable_force = input_max*np.tanh(force)
         self.stirrer.ApplyForce(force=reasonable_force, point=self.stirrer.position,wake = True)
     
 def sigmoid(z):
@@ -210,7 +210,7 @@ class World(object):
         self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos)
         self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 60, self.world)
-        numbeads = 120
+        numbeads = 10
         bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True)
         self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]
