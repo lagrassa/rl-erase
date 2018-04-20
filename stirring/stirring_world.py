@@ -11,8 +11,8 @@ import pygame
 pygame.display.init()
 screen = pygame.display.set_mode((280, 280))
 screen.fill([255,255,255])
-ppm = 50 #pixels_per_meter
-eps = 0.0001
+ppm = 7 #pixels_per_meter
+eps = 0.1
 
 #1) make a bowl (circle)
 #2) make beads
@@ -20,17 +20,18 @@ eps = 0.0001
 def vec_to_pygame_pos(vec):
     return tuple(int(round(ppm*x)) for x in vec)
 
-def create_box(origin, l,w, world):
+def create_box(origin, l,w, world, wall_width):
     #wallShapes = b2EdgeShape(vertices=[(0,0),(0,l),(l,0),(l,l)]),
-    left = b2PolygonShape(vertices = ((0,0),(0,l),(eps,l),(eps,0)))
-    bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w,l+eps),(0,l+eps)])
-    right = b2PolygonShape(vertices = ((w-eps,0),(w-eps,l),(w,l),(w,0)))
+    wall_width = 0.5
+    left = b2PolygonShape(vertices = ((0,0),(0,l),(wall_width,l),(wall_width,0)))
+    bottom = b2PolygonShape(vertices=[(0,l),(w,l), (w,l+wall_width),(0,l+wall_width)])
+    right = b2PolygonShape(vertices = ((w-wall_width,0),(w-wall_width,l),(w,l),(w,0)))
     center = origin
     left_corner = b2CircleShape(pos=(0, l), radius=0.1)
     right_corner = b2CircleShape(pos=(w, l), radius=0.1)
 
     walls = [ left, bottom,right, left_corner, right_corner]
-    fixture_list = [b2FixtureDef(shape=shape, density = 10, friction = 0.9) for shape in walls]
+    fixture_list = [b2FixtureDef(shape=shape, density = 10, friction = 0.4) for shape in walls]
     STATIC = False 
     if STATIC:
         wall = world.CreateStaticBody(
@@ -51,7 +52,7 @@ class Floor(object):
         bottom = b2EdgeShape(vertices=[(0,floor_length),(floor_length,floor_length)])
 
         bottom = b2PolygonShape(vertices = ((0,0),(l,0),(l+eps,eps),(eps,eps)))
-        fixture_list = b2FixtureDef(shape=bottom, density = 8, friction = 0.9)
+        fixture_list = b2FixtureDef(shape=bottom, density = 8, friction = 0.4)
         self.floor = world.CreateStaticBody(
                     position=origin)
         self.floor.CreateFixture(fixture_list) 
@@ -74,8 +75,8 @@ def adjusted_vertex(v,origin, scale=1):
 
 class Stirrer(object):
     def __init__(self, world, origin):
-        self.l = 2.5;
-        self.w = 0.15;
+        self.l = 14;
+        self.w = 2;
         box = b2PolygonShape(box=(self.w/2.0, self.l/2.0))
         self.origin = origin
         self.world = world
@@ -113,12 +114,12 @@ def sigmoid(z):
     return s
 
 class Box(object):
-    def __init__(self, world, box_length = 0.5,box_width=0.25, center = (0.5,0.5)):
+    def __init__(self, world, box_length = 0.5,box_width=0.25, center = (0.5,0.5), wall_width = 0.5):
         self.color = (50,50,50)
         self.box_length = box_length
         self.box_width = box_width
         self.center = center
-        self.walls = create_box(center,box_length, box_width, world)
+        self.walls = create_box(center,box_length, box_width, world, wall_width)
 
     def destroy(self):
         pass
@@ -165,7 +166,7 @@ class Beads(object):
         else:
             print("skipped drawing a bead because it's position was unknown")
 
-def random_bead_poses_and_colors(length,width, origin, numbeads, bead_radius, new= True):
+def random_bead_poses_and_colors(length,width, origin, numbeads, bead_radius, new= True, wall_width = 0.5):
     
     if not new:
         beads  = pickle.load(open("beads.pkl"))
@@ -175,11 +176,12 @@ def random_bead_poses_and_colors(length,width, origin, numbeads, bead_radius, ne
         beads = []
         bead_colors = []
         color_choices = [(255,0,0), (0,0,255)]
-        adj_l = length-bead_radius-eps;
-        adj_w = width-bead_radius-eps;
+        adj_l = length-bead_radius-wall_width;
+        adj_w = width-bead_radius-2*wall_width;
         #color depends on x coord
         for i in range(numbeads):
-            pos = (bead_radius + adj_w*random.random()+origin[0], bead_radius + adj_l*random.random()+origin[1])
+            #add wall_width to start at the corner where the walls of the cups start
+            pos = (bead_radius + adj_w*random.random()+origin[0]+wall_width, bead_radius + adj_l*random.random()+origin[1])
             beads.append(pos)
             #random_color = color_choices[random.randint(0,1)]
             if pos[1] < origin[1]+length/2.0:
@@ -201,17 +203,18 @@ def dist(x, y):
 class World(object):
     def __init__(self):
         self.world = b2World(gravity=(0,9.8))
-        self.box_pos = (2,0.4)
-        self.box_length = 4
-        self.box_width = 2
-        floor_pos = (self.box_pos[0]-0.1,self.box_pos[1]+(self.box_length/1.0)+eps+0.02)
-        bead_radius = 0.1
+        self.box_pos = (5,0.4)
+        self.box_length = 30
+        self.box_width = 12
+        wall_width = 0.5
+        floor_pos = (0,self.box_pos[1]+(self.box_length/1.0)+wall_width+0.02)
+        bead_radius = 0.6
         stirrer_pos =( self.box_pos[0] + self.box_width/2.0, self.box_pos[1]+self.box_length/2.0)
-        self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos)
+        self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos, wall_width = wall_width)
         self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 60, self.world)
-        numbeads = 10
-        bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True)
+        numbeads = 150
+        bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True, wall_width = wall_width)
         self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]
             
