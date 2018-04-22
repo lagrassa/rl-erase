@@ -17,7 +17,11 @@ MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
+EXP_NAME = "DDPG"
 REPLAY_LENGTH = LENGTH_REPLAY
+action_file = open("actions"+EXP_NAME+".py", "a") 
+reward_file = open("rewards"+EXP_NAME+".py", "a")
+LOG_INTERVAL = 20
 
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -104,9 +108,8 @@ class StirEnv(gym.Env):
         return state
         
     def step(self, action):
-        if np.isnan(action).all():
-            action = [0,0]
-            print("doing nothing because action is NaN")
+        if (self.counter % LOG_INTERVAL == 0):
+            action_file.write(str(action)+",")
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
@@ -146,8 +149,9 @@ class StirEnv(gym.Env):
 
     def _get_reward(self):
         rew =  reward_func(self.world_state)
-        if (self.counter % 20 == 0):
+        if (self.counter % LOG_INTERVAL == 0):
             print(rew)
+            reward_file.write(str(rew)+",")
         self.counter +=1
         return rew
 

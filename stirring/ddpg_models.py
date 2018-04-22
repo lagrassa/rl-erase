@@ -9,7 +9,7 @@ import gym
 
 
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Input, Concatenate, BatchNormalization
+from keras.layers import Dense, Activation, Flatten, Input, Concatenate, BatchNormalization,  Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D 
 from keras.optimizers import Adam
 
 from rl.agents import DDPGAgent 
@@ -27,8 +27,30 @@ class EmptyProcessor(Processor):
         return reward
 
 
-def construct_agent(env_shape, nb_actions, input_shape):
+def construct_agent(env, env_shape, nb_actions, input_shape):
+    dims = env.robot_state.shape[0]
     # Next, we build a very simple model.
+    picture_tensor = Input(shape=(1,) + input_shape, dtype='float32', name="pictureTensor")
+    #so the idea here is that we never have more than one in the window length
+    #and that's just a way to work around keras-rl, so we're just going to take    #one window's length and convolve that....
+    grid =  Lambda(lambda x: x[:,0,:,:,0:3],   dtype='float32')(picture_tensor)
+    #horrible hack: the top left corner
+    robot =  Lambda(lambda x: x[:,0,:,:,3][:,0][:,0:dims],  (dims,) , dtype='float32')(picture_tensor)
+    #Convolution stuff
+    grid = Conv2D(10,(2,2), activation='relu', padding='same')(grid)
+
+    grid = MaxPooling2D((3,3),strides=(1,1),padding='same')(grid)
+    grid = Flatten(dtype='float32')(grid)
+    #robot = Flatten(dtype='float32')(robot)
+    fc1 = concatenate([robot, grid]) 
+    actor = Dense(16, activation='relu')(fc1)
+    actor = Dense(16, activation='relu')(actor)
+
+    actor = Dense(nb_actions, activation = 'sigmoid', dtype='float32')(actor) 
+    actor = Model(inputs=picture_tensor, outputs=actor)
+ 
+    
+    """
     actor = Sequential()
     actor.add(Flatten(input_shape=(1,) + env_shape))
     actor.add(Dense(16))
@@ -39,11 +61,13 @@ def construct_agent(env_shape, nb_actions, input_shape):
     actor.add(Activation('relu'))
     actor.add(Dense(nb_actions))
     actor.add(Activation('linear'))
+    """
     print(actor.summary())
 
     action_input = Input(shape=(nb_actions,), name='action_input')
-    observation_input = Input(shape=(1,) + env_shape, name='observation_input')
-    flattened_observation = Flatten()(observation_input)
+    #observation_input = Input(shape=(1,) + env_shape, name='observation_input')
+    #observation_input = picture_tensor
+    flattened_observation = fc1
     x = Concatenate()([action_input, flattened_observation])
     x = Dense(32)(x)
     x = Activation('relu')(x)
@@ -53,7 +77,7 @@ def construct_agent(env_shape, nb_actions, input_shape):
     x = Activation('relu')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
-    critic = Model(inputs=[action_input, observation_input], outputs=x)
+    critic = Model(inputs=[action_input, picture_tensor], outputs=x)
     print(critic.summary())
 
 
