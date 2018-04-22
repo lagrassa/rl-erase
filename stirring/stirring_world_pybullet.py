@@ -1,8 +1,10 @@
 import pybullet as p
+import pdb
 import numpy as np
 import utils
 import time
 import pybullet_data
+k = 5 #scaling factor
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, \
     enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, \
     set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat
@@ -11,15 +13,16 @@ p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
 g = 9.8
 p.setGravity(0,0,-g)
 planeId = p.loadURDF("plane.urdf")
-pr2StartPos = [0,0,1]
+pr2StartPos = [0,2,1]
+pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
 cupStartPos = [0,0,0]
 cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
-pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, cubeStartOrientation)
-cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation)
+pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
+cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
 
 def create_beads(color = (0,0,1,1)):
-   num_droplets = 15
-   radius = 0.0045
+   num_droplets = 100
+   radius = 0.01
    droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
    cup_thickness = 0.001
 
@@ -42,9 +45,13 @@ def create_beads(color = (0,0,1,1)):
 
 def drop_beads_in_cup():
     time_to_fall = 2
-    create_beads()
-    simulate_for_duration(time_to_fall, dt= 0.01)
-    create_beads(color = (1,0,0,1))
+    colors = [(0,0,1,1),(1,0,0,1)]
+    for color in colors:
+	create_beads(color = color)
+	simulate_for_duration(time_to_fall, dt= 0.001)
+
+    simulate_for_duration(time_to_fall, dt= 0.001)
+    set_point(pr2ID, Point(0, 0, 0.8))
 
 drop_beads_in_cup()
 for i in range (10000):
