@@ -38,14 +38,14 @@ class StirEnv(gym.Env):
         self.let_beads_settle()
 
     def let_beads_settle(self):
-        steps_to_settle = 80
+        steps_to_settle = 130
         [self.progress_state() for i in range(steps_to_settle)]
         print "Settling period done"
         
 
     def progress_state(self, action=(0,0)):
-	vel_iters, pos_iters = 12,8#6, 2
-	timeStep = 1/100.0
+	vel_iters, pos_iters = 6, 2
+	timeStep = 1/50.0
 	self.world.stirrer.stir(force=action_num_to_action(action))
 	self.world.step(timeStep, vel_iters, pos_iters)
 

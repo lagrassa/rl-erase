@@ -9,7 +9,7 @@ import pdb
 import random 
 import pygame
 pygame.display.init()
-screen = pygame.display.set_mode((280, 280))
+screen = pygame.display.set_mode((220, 220))
 screen.fill([255,255,255])
 ppm = 7 #pixels_per_meter
 eps = 0.1
@@ -31,7 +31,7 @@ def create_box(origin, l,w, world, wall_width):
     right_corner = b2CircleShape(pos=(w, l), radius=0.1)
 
     walls = [ left, bottom,right, left_corner, right_corner]
-    fixture_list = [b2FixtureDef(shape=shape, density = 10, friction = 0.4) for shape in walls]
+    fixture_list = [b2FixtureDef(shape=shape, density = 3, friction = 0.4) for shape in walls]
     STATIC = False 
     if STATIC:
         wall = world.CreateStaticBody(
@@ -105,7 +105,7 @@ class Stirrer(object):
 
     def stir(self, force=(0,0)):
         force = np.array((float(force[0]), float(force[1])))
-        input_max = 150;
+        input_max = 850;
         reasonable_force = input_max*np.tanh(force)
         self.stirrer.ApplyForce(force=reasonable_force, point=self.stirrer.position,wake = True)
     
@@ -147,7 +147,7 @@ class Beads(object):
         position=pos,
         fixtures=b2FixtureDef(
             shape=b2CircleShape(radius=self.radius+tolerance),
-            density=0.3,
+            density=0.25,
         )
         ) for pos in poses]
     def render(self):
@@ -208,18 +208,18 @@ class World(object):
         self.box_width = 12
         wall_width = 0.5
         floor_pos = (0,self.box_pos[1]+(self.box_length/1.0)+wall_width+0.02)
-        bead_radius = 0.6
+        bead_radius = 0.5
         stirrer_pos =( self.box_pos[0] + self.box_width/2.0, self.box_pos[1]+self.box_length/2.0)
         self.bowl = Box(self.world, box_width=self.box_width, box_length = self.box_length, center = self.box_pos, wall_width = wall_width)
         self.stirrer = Stirrer(self.world, stirrer_pos)
         self.floor = Floor(floor_pos, 60, self.world)
-        numbeads = 150
+        numbeads = 170
         bead_poses, bead_colors = random_bead_poses_and_colors(self.box_length, self.box_width, self.box_pos, numbeads, bead_radius, new =True, wall_width = wall_width)
         self.beads = Beads(self.world, poses = bead_poses, colors = bead_colors, radius=bead_radius)
         self.objects = [self.beads,self.floor, self.bowl, self.stirrer, ]
             
     def stirrer_close(self):
-        far = 6
+        far = 40
         if abs(self.stirrer.stirrer.position[0]) > far or abs(self.stirrer.stirrer.position[1]) > far:
             print("Stirrer is far")
             return False
