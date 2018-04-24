@@ -50,7 +50,7 @@ class StirEnv(gym.Env):
     def progress_state(self, action=(0,0)):
 	vel_iters, pos_iters = 6, 2
 	timeStep = 1/50.0
-	self.world.stirrer.stir(force=action_num_to_action(action))
+	self.world.stir(force=action_num_to_action(action))
 	self.world.step(timeStep, vel_iters, pos_iters)
 
     """
