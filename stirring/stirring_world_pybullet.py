@@ -22,7 +22,7 @@ class World():
 	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
 	cupStartPos = [0,0,0]
 	cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
-	self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
+	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
 	self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
         self.setup()
     def stirrer_close(self):
@@ -34,8 +34,12 @@ class World():
         return False
     def stir(self, force):
         #a force to apply on the pr2 hand, failing that the gripper
+        p.setJointMotorControl2(
+            bodyIndex=self.spoonID,
+            jointIndex=0,
+            controlMode=p.TORQUE_CONTROL,
+            force=force)
 
-        pass
         
 
     def render(self):
@@ -96,6 +100,7 @@ class World():
 
 	simulate_for_duration(3*time_to_fall, dt= 0.001)
 	set_point(self.pr2ID, Point(0, 0, 0.8))
+     
 
     def set_grip(self, pr2ID, width):
 	right_gripper_joint_num = 2
@@ -112,15 +117,15 @@ class World():
 	closed_width = 2*spoon_radius-0.01
 	spoon_l = 0.35
 	hand_height = 0.7
-	self.set_grip(self.pr2ID, open_width)
+	#self.set_grip(self.pr2ID, open_width)
 	#spawn spoon
-	spoonID = create_cylinder(spoon_radius, spoon_l, color=(0, 0, 1, 1))
-	set_point(spoonID, Point(0, 0, hand_height-spoon_l-0.1))
+	self.spoonID = create_cylinder(spoon_radius, spoon_l, color=(0,1, 0, 1), mass=2)
+	set_point(self.spoonID, Point(0, 0, hand_height-spoon_l-0.1))
 
 	#make joints small again
-	set_point(self.pr2ID, Point(0, 0, hand_height))
-	self.set_grip(self.pr2ID, closed_width)
-	self.zoom_in_on(self.pr2ID)
+	#set_point(self.pr2ID, Point(0, 0, hand_height))
+	#self.set_grip(self.pr2ID, closed_width)
+	self.zoom_in_on(self.spoonID)
 
     def set_pos(self,objID, jointIndex, pos):
 	
@@ -132,8 +137,13 @@ class World():
 
 
     def setup(self):
-	self.drop_beads_in_cup()
-	self.place_stirrer_in_pr2_hand()
+        NEW = True
+        if NEW:
+	    #self.drop_beads_in_cup()
+	    self.place_stirrer_in_pr2_hand()
+            p.saveBullet("pybullet_world.bullet")
+        else:
+            p.restoreState(0)
 
     def zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
