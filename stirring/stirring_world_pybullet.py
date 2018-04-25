@@ -26,7 +26,7 @@ class World():
 	self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
         self.setup()
     def stirrer_close(self):
-        jointPos, jointVelocity = p.getJointState(cupId, 0)
+        jointPos, jointQuat = p.getBasePositionAndOrientation(self.spoonID)
         distance = np.linalg.norm(jointPos)
         far = 0.8
         if distance <= far:
@@ -59,14 +59,13 @@ class World():
 
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
-        pdb.set_trace()
-        jointPos, jointVelocity = p.getJointState(cupId, 0)
-        return jointPos.extend(jointVelocity)
+        jointForces = p.getJointState(self.spoonID, 0)[2]
+        pos, quat = p.getBasePositionAndOrientation(self.spoonID)
+        return  np.array([jointForces, pos, quat]).flatten()
 
-    def reset():
+    def reset(self):
         p.disconnect()
         self.__init__()
-    # private methods
 
     def create_beads(self, color = (0,0,1,1)):
        num_droplets = 90

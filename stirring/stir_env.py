@@ -6,7 +6,7 @@ from reward import reward_func
 from gym import utils
 from gym.utils import seeding
 import numpy as np
-from stirring_world import world
+from stirring_world_pybullet import World
 import logging
 import pygame
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
+world = World()
 
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -49,8 +50,7 @@ class StirEnv(gym.Env):
 
     def progress_state(self, action=(0,0)):
 	vel_iters, pos_iters = 6, 2
-	timeStep = 1/50.0
-	self.world.stir(force=action_num_to_action(action))
+	timeStep = 0.1
 	self.world.step(timeStep, vel_iters, pos_iters)
 
     """
@@ -108,8 +108,10 @@ class StirEnv(gym.Env):
         return state
         
     def step(self, action):
-        if (self.counter % LOG_INTERVAL == 0):
-            action_file.write(str(action)+",")
+        assert(action.shape == (1,))
+        action = float(action[0])
+        if self.counter % LOG_INTERVAL == 0:
+            action_file.write(str(action) + ",")
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
