@@ -1,5 +1,6 @@
 import pybullet as p
 import pdb
+from PIL import Image
 import numpy as np
 import utils
 import time
@@ -52,10 +53,24 @@ class World():
     def world_state(self):
         objPos, objQuat = p.getBasePositionAndOrientation(self.cupID)
         roll, pitch, yaw = euler_from_quat(objQuat)
-        cam_distance = 0.6
+        cam_distance = 0.25
+        im_w = 200
+        im_h = 200
+        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll, upAxisIndex=2)
+        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+        self.showImageFromDistance(0.25)
+        #crop to only relevant parts
+        l_limit = int(im_w/3.5)
+        r_limit = int(2/3.5*im_w)
+        rgbPixels_cropped = rgbPixels[:,l_limit:r_limit,0:3]
+        return rgbPixels_cropped
+
+    def showImageFromDistance(self, cam_distance):
+        objPos, objQuat = p.getBasePositionAndOrientation(self.cupID)
+        roll, pitch, yaw = euler_from_quat(objQuat)
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll, upAxisIndex=2)
         _,_,rgbPixels,_,_ = p.getCameraImage(width=200,height=200, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        return rgbPixels[:,:,0:3]
+        Image.fromarray(rgbPixels[:,:,0:3]).show()
 
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
@@ -68,7 +83,7 @@ class World():
         self.__init__()
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 90
+       num_droplets = 10
        radius = 0.015
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
@@ -138,7 +153,7 @@ class World():
     def setup(self):
         NEW = True
         if NEW:
-	    self.drop_beads_in_cup()
+	    #self.drop_beads_in_cup()
 	    self.place_stirrer_in_pr2_hand()
             p.saveBullet("pybullet_world.bullet")
         else:
@@ -147,7 +162,7 @@ class World():
     def zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(0.4, yaw, pitch, objPos)
+	p.resetDebugVisualizerCamera(0.25, yaw, pitch, objPos)
 
 if __name__ == "__main__":
     world = World()
