@@ -54,7 +54,7 @@ class World():
         roll, pitch, yaw = euler_from_quat(objQuat)
         cam_distance = 0.6
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll, upAxisIndex=2)
-        _,_,rgbPixels,_,_ = p.getCameraImage(width=200,height=200, viewMatrix=viewMatrix)
+        _,_,rgbPixels,_,_ = p.getCameraImage(width=200,height=200, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
         return rgbPixels[:,:,0:3]
 
     def stirrer_state(self):
@@ -91,14 +91,14 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = 2
+	time_to_fall = 1.5
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
 	    simulate_for_duration(time_to_fall, dt= 0.001)
 
 	simulate_for_duration(3*time_to_fall, dt= 0.001)
-	set_point(self.pr2ID, Point(0, 0, 0.8))
+	#set_point(self.pr2ID, Point(0, 0, 0.8))
      
 
     def set_grip(self, pr2ID, width):
@@ -138,7 +138,7 @@ class World():
     def setup(self):
         NEW = True
         if NEW:
-	    #self.drop_beads_in_cup()
+	    self.drop_beads_in_cup()
 	    self.place_stirrer_in_pr2_hand()
             p.saveBullet("pybullet_world.bullet")
         else:
@@ -147,7 +147,7 @@ class World():
     def zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(0.8, yaw, pitch, objPos)
+	p.resetDebugVisualizerCamera(0.4, yaw, pitch, objPos)
 
 if __name__ == "__main__":
     world = World()
