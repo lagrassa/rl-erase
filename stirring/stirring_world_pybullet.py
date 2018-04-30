@@ -41,7 +41,24 @@ class World():
             controlMode=p.TORQUE_CONTROL,
             force=force)
 
-        
+    def stir_circle(self, radius, step, depth):
+        #work on a clockwise circle around (0,0)
+        #try to move to the closest point on the circle, and then a circumference of step away from that
+        spoon_pos, _ = p.getBasePositionAndOrientation(self.spoonID)
+
+        _,phi_current = cart2pol(spoon_pos[0],spoon_pos[1])
+        #increase phi by step, and set rho to what you have
+        target_xy = pol2cart(radius, phi_current)
+        target_pos = target_xy + (float(depth),)
+        # 
+        pdb.set_trace()
+        p.setJointMotorControl2(
+            bodyIndex = self.spoonID,
+            jointIndex=0,
+            controlMode=p.POSITION_CONTROL,
+            targetPosition=target_pos,
+            force=100.0)
+
 
     def render(self):
         #but actually!!
@@ -163,6 +180,24 @@ class World():
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
 	p.resetDebugVisualizerCamera(0.25, yaw, pitch, objPos)
+
+def closest_point_circle(center, xy_pos, radius):
+    A = center
+    B = xy_pos
+    Cx = A[0]+radius*(B[0]-A[0])/np.linalg.norm(B-A)
+    Cy = A[1]+radius*(B[1]-A[1])/np.linalg.norm(B-A)
+    return np.array([Cx,Cy])
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+        
 
 if __name__ == "__main__":
     world = World()
