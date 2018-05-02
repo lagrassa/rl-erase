@@ -111,7 +111,7 @@ class World():
         self.__init__()
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 10
+       num_droplets = 65
        radius = 0.015
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
@@ -145,15 +145,12 @@ class World():
      
 
     def set_grip(self, pr2ID, width):
-	right_gripper_joint_num = 13
-	left_gripper_joint_num = 10
-	#self.set_pos(pr2ID, right_gripper_joint_num, width)
-	#self.set_pos(pr2ID, left_gripper_joint_num, -width)
-        #pdb.set_trace()
-	#self.set_pos(pr2ID, 11, 0)
-	#self.set_pos(pr2ID, 8, 3)
-	#self.set_pos(pr2ID, 13, 0.2)
+	self.set_pos(pr2ID, 8,6)
+        nice_joint_states = [0.0, 0.006508613619013667, 0.0, 0.19977108955651196]
+        for i in range(7,11):
+	    self.set_pos(pr2ID, i, nice_joint_states[i-7])
 	simulate_for_duration(1.0)
+
     def move_arm_to_point(self, pos):
         endEIndex = 6
         ikSolver = 0
@@ -196,17 +193,9 @@ class World():
 	self.zoom_in_on(self.cupID)
         print(p.getBasePositionAndOrientation(self.cupID))
 
-	#jointPos = p.getLinkState(self.spoonID, 0)[0]
-        
-        #self.move_arm_to_point(jointPos)
- 
 
-	#make joints small again
-	#set_point(self.pr2ID, Point(0, 0, hand_height))
 	#self.set_grip(self.armID, closed_width)
-	self.top_down_zoom_in_on(self.cupID)
-        p.addUserDebugLine(above_loc,above_loc,[1,0,0],9)
-        pdb.set_trace()
+	#self.top_down_zoom_in_on(self.cupID)
 
     def set_pos(self,objID, jointIndex, pos):
 	
@@ -221,8 +210,9 @@ class World():
         NEW = True
         if NEW:
 	    best_arm_pos = [-0.6,0,0]
-	    self.armID = p.loadSDF("kuka_iiwa/kuka_with_gripper.sdf")[0]
+	    self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi])))
+            
             self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
