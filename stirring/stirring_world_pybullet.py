@@ -1,4 +1,5 @@
 import pybullet as p
+import math
 import pdb
 from PIL import Image
 import numpy as np
@@ -15,16 +16,14 @@ class World():
     def __init__(self):
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+        p.setRealTimeSimulation(1)
         p.resetSimulation();
 	g = 9.8
 	p.setGravity(0,0,-g)
 	planeId = p.loadURDF("plane.urdf")
 	pr2StartPos = [0,2,1]
 	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
-	cupStartPos = [0,0,0]
-	cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
 	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
-	self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
         self.setup()
     def stirrer_close(self):
         jointPos, jointQuat = p.getBasePositionAndOrientation(self.spoonID)
@@ -44,20 +43,32 @@ class World():
     def stir_circle(self, radius, step, depth):
         #work on a clockwise circle around (0,0)
         #try to move to the closest point on the circle, and then a circumference of step away from that
-        spoon_pos, _ = p.getBasePositionAndOrientation(self.spoonID)
-
+        spoon_pos,spoon_quat = p.getBasePositionAndOrientation(self.spoonID)
+        roll, pitch, yaw = euler_from_quat(spoon_quat)
+        #print("roll", roll, "pitch", pitch, "yaw", yaw)
+        #print("spoon pos", spoon_pos)
+        r = self.spoon_l
+        elevation=np.pi/2.0-pitch
+        azimuth = yaw
+        x_top = spoon_pos[0]+r*np.sin(elevation)*np.cos(azimuth)
+        y_top = spoon_pos[1] +r*np.sin(elevation)*np.sin(azimuth)
+        z_top = spoon_pos[2]  + r*np.cos(elevation)
+        top_pos = [x_top, y_top, z_top]
+        p.addUserDebugLine(spoon_pos,top_pos,[0.8,0,0],1,5)
         _,phi_current = cart2pol(spoon_pos[0],spoon_pos[1])
         #increase phi by step, and set rho to what you have
         target_xy = pol2cart(radius, phi_current)
         target_pos = target_xy + (float(depth),)
         # 
-        pdb.set_trace()
-        p.setJointMotorControl2(
-            bodyIndex = self.spoonID,
-            jointIndex=0,
-            controlMode=p.POSITION_CONTROL,
-            targetPosition=target_pos,
-            force=100.0)
+        diff_pos = [target_xy[i]-spoon_pos[i] for i in range(len(target_xy))]
+        p.applyExternalForce(self.spoonID,0,[-17,0,0],[0,0,0],p.LINK_FRAME)
+        #p.setJointMotorControl2(
+        #    bodyIndex = self.spoonID,
+        #    jointIndex=0,
+        #    controlMode=p.POSITION_CONTROL,
+        #    targetPosition=diff_pos[0],
+        #    force=1.0)
+        #p.setJointMotorControl2(bodyIndex = self.spoonID,jointIndex=0,controlMode=p.POSITION_CONTROL,targetPosition=190,force=500)
 
 
     def render(self):
@@ -134,29 +145,65 @@ class World():
      
 
     def set_grip(self, pr2ID, width):
-	right_gripper_joint_num = 2
-	left_gripper_joint_num = 0
+	right_gripper_joint_num = 13
+	left_gripper_joint_num = 10
 	self.set_pos(pr2ID, right_gripper_joint_num, width)
-	self.set_pos(pr2ID, left_gripper_joint_num, width)
+	self.set_pos(pr2ID, left_gripper_joint_num, -width)
+	self.set_pos(pr2ID, left_gripper_joint_num, -width)
 	simulate_for_duration(1.0)
+    def move_arm_to_point(self, pos):
+        endEIndex = 6
+        ikSolver = 0
+	orn = p.getQuaternionFromEuler([0,-math.pi,0])
+        numJoints = p.getNumJoints(self.armID)
+        
+        jd=[0.1]*numJoints
+	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
+	for i in range (numJoints-3):
+	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.2,velocityGain=1, targetVelocity=0)
+	simulate_for_duration(0.1)
+	p.addUserDebugLine([0,0.3,0.31],pos,[0,0,0.3],1)
+    
 
     def place_stirrer_in_pr2_hand(self):
+        best_arm_pos = [-0.9,0,0]
+
+        self.armID = p.loadSDF("kuka_iiwa/kuka_with_gripper.sdf")[0]
+	set_point(self.armID,best_arm_pos)
+        
+        
 	maxForce = 10
 	#set joints to be slightly open
-	open_width = 0.3
+	open_width = 0.4
 	spoon_radius = 0.005
 	closed_width = 2*spoon_radius-0.01
-	spoon_l = 0.35
+	spoon_l = 0.4
+        self.spoon_l = spoon_l
 	hand_height = 0.7
-	#self.set_grip(self.pr2ID, open_width)
 	#spawn spoon
-	self.spoonID = create_cylinder(spoon_radius, spoon_l, color=(0,1, 0, 1), mass=2)
-	set_point(self.spoonID, Point(0, 0, hand_height-spoon_l-0.1))
+	#self.spoonID = create_cylinder(spoon_radius, spoon_l, color=(0,1, 0, 1), mass=2)
+        spoon_loc =   Point(0, 0, hand_height-spoon_l-0.1)
+        above_loc = Point(-0.03,-0.03,0.3)
+	self.set_grip(self.armID, open_width)
+	#set_point(self.spoonID,spoon_loc)
+        for i in range(30):
+            self.move_arm_to_point(above_loc)
+      
+	cupStartPos = [0,0,0]
+	cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
+	self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+	self.zoom_in_on(self.cupID)
+	#jointPos = p.getLinkState(self.spoonID, 0)[0]
+        
+        #self.move_arm_to_point(jointPos)
+ 
 
 	#make joints small again
 	#set_point(self.pr2ID, Point(0, 0, hand_height))
-	#self.set_grip(self.pr2ID, closed_width)
-	self.zoom_in_on(self.spoonID)
+	#self.set_grip(self.armID, closed_width)
+	self.top_down_zoom_in_on(self.cupID)
+        p.addUserDebugLine(above_loc,above_loc,[1,0,0],9)
+        pdb.set_trace()
 
     def set_pos(self,objID, jointIndex, pos):
 	
@@ -179,7 +226,15 @@ class World():
     def zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(0.25, yaw, pitch, objPos)
+	p.resetDebugVisualizerCamera(0.25, yaw, roll, objPos)
+
+	p.resetDebugVisualizerCamera(0.7, yaw, roll, objPos)
+    def top_down_zoom_in_on(self,objID):
+	objPos, objQuat = p.getBasePositionAndOrientation(objID)
+	roll, pitch, yaw = euler_from_quat(objQuat)
+	p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
+
+	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
 
 def closest_point_circle(center, xy_pos, radius):
     A = center

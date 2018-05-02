@@ -726,23 +726,28 @@ def create_box(w, l, h, mass=STATIC_MASS, color=(1, 0, 0, 1)):
                              baseVisualShapeIndex=visual_id) # basePosition | baseOrientation
     # linkCollisionShapeIndices | linkVisualShapeIndices
 
-def create_cylinder(radius, height, mass=0.5, color=(0, 0, 1, 1)):
-
+def create_cylinder(radius, height, mass=0.3, color=(0, 0, 1, 1)):
+    l_link = 0.01
     if (color is None) or not has_gui():
         visual_id = -1
     else:
         visual_id = p.createVisualShape(p.GEOM_CYLINDER, radius=radius, length=height, rgbaColor=color)
+        visual_link_x = p.createVisualShape(p.GEOM_CYLINDER, radius=radius, length=l_link, rgbaColor=(1,0,0,1))
     collision_id =  p.createCollisionShape(p.GEOM_CYLINDER, radius=radius, height=height)
-    link_Masses=[1]
-    linkCollisionShapeIndices=[collision_id]
-    linkVisualShapeIndices=[visual_id]
-    linkPositions=[[0,0,0.11]]
-    linkOrientations=[[0,0,0,1]]
+    collision_link_x =  p.createCollisionShape(p.GEOM_CYLINDER, radius=radius, height=l_link)
+    link_Masses=[0.00001]
+    linkCollisionShapeIndices=[collision_link_x]
+    linkVisualShapeIndices=[visual_link_x]
+    
+    linkPositions=[[0,0,height/2]]
+    xy_quat = quat_from_euler((0, np.pi/2.0, 0))
+    xy_quat = [0,0,0,1]
+    linkOrientations=[xy_quat]
     linkInertialFramePositions=[[0,0,0]]
-    linkInertialFrameOrientations=[[0,0,0,1]]
+    linkInertialFrameOrientations=[xy_quat]
     indices=[0]
-    jointTypes=[p.JOINT_REVOLUTE]
-    axis=[[0,0,1]]
+    jointTypes=[p.JOINT_FIXED]
+    axis=[[1,0,0]]
     return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
                              baseVisualShapeIndex=visual_id, linkMasses=link_Masses,linkCollisionShapeIndices=linkCollisionShapeIndices,linkVisualShapeIndices=linkVisualShapeIndices,linkPositions=linkPositions,linkOrientations=linkOrientations,linkInertialFramePositions=linkInertialFramePositions, linkInertialFrameOrientations=linkInertialFrameOrientations,linkParentIndices=indices,linkJointTypes=jointTypes,linkJointAxis=axis) # basePosition | baseOrientation
 
