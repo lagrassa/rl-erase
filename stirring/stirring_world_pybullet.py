@@ -16,7 +16,8 @@ class World():
     def __init__(self):
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        p.setRealTimeSimulation(0)
+        self.is_real_time = 1
+        p.setRealTimeSimulation(self.is_real_time)
         p.resetSimulation();
 	g = 9.8
 	p.setGravity(0,0,-g)
@@ -76,7 +77,10 @@ class World():
         pass
 
     def step(self, timeStep, vel_iters, pos_iters):
-        simulate_for_duration(timeStep)
+        if not self.is_real_time:
+            simulate_for_duration(timeStep, dt= 0.01)
+        time.sleep(0.0001)
+        return 
 
     def world_state(self):
         objPos, objQuat = p.getBasePositionAndOrientation(self.cupID)
@@ -111,9 +115,9 @@ class World():
         self.__init__()
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 65
-       radius = 0.015
-       droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
+       num_droplets = 75
+       radius = 0.010
+       droplets = [create_sphere(radius, mass=0.0005, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -138,9 +142,11 @@ class World():
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
-	    simulate_for_duration(time_to_fall, dt= 0.001)
+            if not self.is_real_time:
+	        simulate_for_duration(time_to_fall, dt= 0.001)
 
-	simulate_for_duration(3*time_to_fall, dt= 0.001)
+        if not self.is_real_time:
+	    simulate_for_duration(3*time_to_fall, dt= 0.001)
 	#set_point(self.pr2ID, Point(0, 0, 0.8))
      
 
@@ -149,7 +155,8 @@ class World():
         nice_joint_states = [0.0, 0.006508613619013667, 0.0, 0.19977108955651196]
         for i in range(7,11):
 	    self.set_pos(pr2ID, i, nice_joint_states[i-7])
-	simulate_for_duration(1.0)
+        if not self.is_real_time:
+	    simulate_for_duration(1.0)
 
     def move_arm_to_point(self, pos):
         endEIndex = 6
@@ -161,7 +168,8 @@ class World():
 	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
 	for i in range (numJoints-3):
 	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.2,velocityGain=1, targetVelocity=0)
-	simulate_for_duration(0.1)
+        if not self.is_real_time:
+	    simulate_for_duration(0.1)
 	p.addUserDebugLine([0,0.3,0.31],pos,[0,0,0.3],1)
     
 
@@ -185,6 +193,7 @@ class World():
 	#set_point(self.spoonID,spoon_loc)
         for i in range(30):
             self.move_arm_to_point(above_loc)
+        pdb.set_trace()
 	self.set_grip(self.armID, open_width)
         above_loc = Point(cup_r,cup_r,0.4)
         for i in range(30):
@@ -197,7 +206,7 @@ class World():
 	#self.set_grip(self.armID, closed_width)
 	#self.top_down_zoom_in_on(self.cupID)
 
-    def set_pos(self,objID, jointIndex, pos):
+    def set_pos(self,objID, jointIndex, pos, force=500):
 	
 	p.setJointMotorControl2(bodyIndex=objID, 
 	jointIndex=jointIndex, 
@@ -209,9 +218,9 @@ class World():
     def setup(self):
         NEW = True
         if NEW:
-	    best_arm_pos = [-0.6,0,0]
+	    best_arm_pos = [-0.35,0,0]
 	    self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
-	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi])))
+	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
