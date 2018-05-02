@@ -7,7 +7,7 @@ import utils
 import time
 import pybullet_data
 k = 5 #scaling factor
-from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat
+from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
 
     
 
@@ -16,7 +16,7 @@ class World():
     def __init__(self):
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        p.setRealTimeSimulation(1)
+        p.setRealTimeSimulation(0)
         p.resetSimulation();
 	g = 9.8
 	p.setGravity(0,0,-g)
@@ -147,9 +147,12 @@ class World():
     def set_grip(self, pr2ID, width):
 	right_gripper_joint_num = 13
 	left_gripper_joint_num = 10
-	self.set_pos(pr2ID, right_gripper_joint_num, width)
-	self.set_pos(pr2ID, left_gripper_joint_num, -width)
-	self.set_pos(pr2ID, left_gripper_joint_num, -width)
+	#self.set_pos(pr2ID, right_gripper_joint_num, width)
+	#self.set_pos(pr2ID, left_gripper_joint_num, -width)
+        #pdb.set_trace()
+	#self.set_pos(pr2ID, 11, 0)
+	#self.set_pos(pr2ID, 8, 3)
+	#self.set_pos(pr2ID, 13, 0.2)
 	simulate_for_duration(1.0)
     def move_arm_to_point(self, pos):
         endEIndex = 6
@@ -166,10 +169,6 @@ class World():
     
 
     def place_stirrer_in_pr2_hand(self):
-        best_arm_pos = [-0.9,0,0]
-
-        self.armID = p.loadSDF("kuka_iiwa/kuka_with_gripper.sdf")[0]
-	set_point(self.armID,best_arm_pos)
         
         
 	maxForce = 10
@@ -184,15 +183,19 @@ class World():
 	#self.spoonID = create_cylinder(spoon_radius, spoon_l, color=(0,1, 0, 1), mass=2)
         spoon_loc =   Point(0, 0, hand_height-spoon_l-0.1)
         above_loc = Point(-0.03,-0.03,0.3)
-	self.set_grip(self.armID, open_width)
+        cup_r = -0.02 
+        above_loc = Point(cup_r,cup_r,0.7)
 	#set_point(self.spoonID,spoon_loc)
         for i in range(30):
             self.move_arm_to_point(above_loc)
+	self.set_grip(self.armID, open_width)
+        above_loc = Point(cup_r,cup_r,0.4)
+        for i in range(30):
+            self.move_arm_to_point(above_loc)
       
-	cupStartPos = [0,0,0]
-	cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
-	self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
 	self.zoom_in_on(self.cupID)
+        print(p.getBasePositionAndOrientation(self.cupID))
+
 	#jointPos = p.getLinkState(self.spoonID, 0)[0]
         
         #self.move_arm_to_point(jointPos)
@@ -217,18 +220,23 @@ class World():
     def setup(self):
         NEW = True
         if NEW:
-	    #self.drop_beads_in_cup()
+	    best_arm_pos = [-0.6,0,0]
+	    self.armID = p.loadSDF("kuka_iiwa/kuka_with_gripper.sdf")[0]
+	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi])))
+            self.zoom_in_on(self.armID, 2)
+	    cupStartPos = (0,0,0)
+	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
+	    self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+	    self.drop_beads_in_cup()
 	    self.place_stirrer_in_pr2_hand()
             p.saveBullet("pybullet_world.bullet")
         else:
             p.restoreState(0)
 
-    def zoom_in_on(self,objID):
+    def zoom_in_on(self,objID, dist = 0.7):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(0.25, yaw, roll, objPos)
-
-	p.resetDebugVisualizerCamera(0.7, yaw, roll, objPos)
+	p.resetDebugVisualizerCamera(dist, yaw, roll, objPos)
     def top_down_zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
