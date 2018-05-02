@@ -16,7 +16,7 @@ class World():
     def __init__(self):
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.is_real_time = 1
+        self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
         p.resetSimulation();
 	g = 9.8
@@ -26,6 +26,10 @@ class World():
 	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
 	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
         self.setup()
+    def toggle_real_time(self):
+        self.is_real_time = 1
+        p.setRealTimeSimulation(self.is_real_time)
+       
     def stirrer_close(self):
         jointPos, jointQuat = p.getBasePositionAndOrientation(self.spoonID)
         distance = np.linalg.norm(jointPos)
@@ -193,7 +197,6 @@ class World():
 	#set_point(self.spoonID,spoon_loc)
         for i in range(30):
             self.move_arm_to_point(above_loc)
-        pdb.set_trace()
 	self.set_grip(self.armID, open_width)
         above_loc = Point(cup_r,cup_r,0.4)
         for i in range(30):
@@ -227,6 +230,7 @@ class World():
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
 	    self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
 	    self.drop_beads_in_cup()
+            self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
             p.saveBullet("pybullet_world.bullet")
         else:
