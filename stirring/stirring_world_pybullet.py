@@ -13,7 +13,7 @@ real_init = True
 
  
 class World():
-    def __init__(self):
+    def __init__(self, visualize=True):
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
@@ -259,6 +259,8 @@ class World():
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
 	p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
+    def simplify_viz(self):
+ 
 
 	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
 
