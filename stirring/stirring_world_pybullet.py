@@ -102,7 +102,11 @@ class World():
         im_w = 200
         im_h = 200
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
-        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+        if self.visualize:
+            renderer = p.ER_BULLET_HARDWARE_OPENGL
+        else:
+            renderer = p.ER_TINY_RENDERER
+        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=renderer)
         #self.showImageFromDistance(0.25)
         #crop to only relevant parts
         rgbPixels_cropped = rgbPixels[0:115,57:135,0:3] #maaaagic need to adjust if changing either resolution or distance....
