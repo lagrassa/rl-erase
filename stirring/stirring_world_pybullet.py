@@ -14,7 +14,11 @@ real_init = True
  
 class World():
     def __init__(self, visualize=True):
-	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+        self.visualize=visualize
+        if visualize:
+	    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+        else:
+	    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
@@ -60,8 +64,6 @@ class World():
         #try to move to the closest point on the circle, and then a circumference of step away from that
         spoon_pos,spoon_quat = p.getBasePositionAndOrientation(self.spoonID)
         roll, pitch, yaw = euler_from_quat(spoon_quat)
-        #print("roll", roll, "pitch", pitch, "yaw", yaw)
-        #print("spoon pos", spoon_pos)
         r = self.spoon_l
         elevation=np.pi/2.0-pitch
         azimuth = yaw
@@ -103,7 +105,11 @@ class World():
         im_w = 200
         im_h = 200
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
-        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+        if self.visualize:
+            renderer = p.ER_BULLET_HARDWARE_OPENGL
+        else:
+            renderer = p.ER_TINY_RENDERER
+        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=renderer)
         #self.showImageFromDistance(0.25)
         #crop to only relevant parts
         rgbPixels_cropped = rgbPixels[0:115,57:135,0:3] #maaaagic need to adjust if changing either resolution or distance....
@@ -133,7 +139,6 @@ class World():
        cup_thickness = 0.001
 
        lower, upper = get_lower_upper(self.cupID)
-       print(lower, upper)
        buffer = cup_thickness + radius
        lower = np.array(lower) + buffer*np.ones(len(lower))
        upper = np.array(upper) - buffer*np.ones(len(upper))
@@ -213,7 +218,6 @@ class World():
         for i in range(30):
             self.move_arm_to_point(in_loc)
 	self.zoom_in_on(self.cupID, 0.2)
-        print(p.getBasePositionAndOrientation(self.cupID))
 
 
 	#self.set_grip(self.armID, closed_width)
@@ -233,13 +237,22 @@ class World():
         NEW = True #unfortunately
         if NEW:
 	    best_arm_pos = [-0.4,0,0]
-	    self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
+            if self.visualize:
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
+            else: 
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/invisible_kuka_with_gripper.sdf")[0]
+                blacken(self.armID, end_index=8)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
-	    self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+            if self.visualize:
+	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+	    else:
+                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+                blacken(self.cupID)
+
 	    self.drop_beads_in_cup()
             self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
@@ -259,10 +272,22 @@ class World():
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
 	p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
-    def simplify_viz(self):
  
 
 	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
+    def simplify_viz(self):
+        features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_VR_PICKING, p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]
+        for feature in features_to_disable:
+            p.configureDebugVisualizer(feature, 0) 
+#blackens all links in object
+def blacken(objID, end_index =None):
+    p.changeVisualShape(objID, -1, rgbaColor=(0,1,0,0))
+    if end_index is None:
+        end_index =  p.getNumJoints(objID)
+    for link in range(end_index):
+        p.changeVisualShape(objID, link, rgbaColor=(0,1,0,0))
+    
+    
 
 def closest_point_circle(center, xy_pos, radius):
     A = center

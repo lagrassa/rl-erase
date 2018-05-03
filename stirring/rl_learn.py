@@ -88,7 +88,9 @@ def load_supervised_data(actionfile=None, statefile=None):
               
 if __name__=="__main__":
      nb_actions = 1; #in our current model, we control radius and speed of circle 
-     env = StirEnv()
+     visualize=False
+     
+     env = StirEnv(visualize=visualize)
      state_shape = list(env.world_state.shape)
      robot_dims = env.robot_state.shape[0]
      state_shape[-1] +=1 
