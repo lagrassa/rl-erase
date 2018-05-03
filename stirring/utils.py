@@ -118,6 +118,7 @@ def wait_for_input(s=''):
 
 
 def connect(use_gui=True, shadows=True):
+    pdb.set_trace()
     sim_id = p.connect(p.GUI) if use_gui else p.connect(p.DIRECT)
     if use_gui:
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)

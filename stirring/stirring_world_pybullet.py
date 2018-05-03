@@ -16,8 +16,11 @@ class World():
     def __init__(self, visualize=True):
         self.visualize=visualize
         if visualize:
+            print("Using GUI server")
+            pdb.set_trace()
 	    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
         else:
+            print("Using Direct server")
 	    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
@@ -130,7 +133,8 @@ class World():
 
     def reset(self):
         p.disconnect()
-        self.__init__()
+        print("In visualize self.visualize=",self.visualize)
+        self.__init__(visualize=self.visualize)
 
     def create_beads(self, color = (0,0,1,1)):
        num_droplets = 90
@@ -308,7 +312,7 @@ def pol2cart(rho, phi):
         
 
 if __name__ == "__main__":
-    world = World()
+    world = World(visualize=False)
     world.reset()
 	
 

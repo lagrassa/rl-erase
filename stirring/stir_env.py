@@ -22,15 +22,16 @@ REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
-
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, visualize=True):
+        print("Visualize=",visualize)
+        self.visualize=visualize
         self.world = World(visualize=visualize)
         self.done_percentage =  300 #pretty well mixed in original example HACK
         self.baseline =  60 #just the grey
-        self.world_state = world.world_state() 
+        self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
         self.counter = 0;
@@ -158,7 +159,7 @@ class StirEnv(gym.Env):
         return rew
 
     def reset(self):
-        self.__init__()
+        self.__init__(visualize=self.visualize)
         self.world.reset()
         return self.create_state()
         
@@ -170,7 +171,7 @@ def action_num_to_action(action_num):
     return tuple(action_num) #no overhead needed
 
 if __name__=="__main__":
-    be = StirEnv()
+    be = StirEnv(visualize=False)
     be.render()
     for i in range(200):
         be.step(2)

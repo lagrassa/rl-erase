@@ -19,10 +19,8 @@ def get_out(img):
 #@precondition:img.shape[0] and shape[1] on being multiples of 10
 def get_mixedness(img):
     #sum up how far ratios are from 0.5
-    res = 10.0;
+    res = 20.0;
     sum_mixed = 0
-    assert(img.shape[0] % res == 0) 
-    assert(img.shape[1] % res == 0) 
     i_chunk_size = int(round(img.shape[0]/res))
     j_chunk_size = int(round(img.shape[1]/res))
     for i in range(int(res)):
