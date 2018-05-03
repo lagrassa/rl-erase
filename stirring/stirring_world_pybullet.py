@@ -15,9 +15,7 @@ real_init = True
 class World():
     def __init__(self, visualize=True):
         self.visualize=visualize
-	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
-        if not self.visualize:
-            self.simplify_viz()
+	physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
@@ -63,8 +61,6 @@ class World():
         #try to move to the closest point on the circle, and then a circumference of step away from that
         spoon_pos,spoon_quat = p.getBasePositionAndOrientation(self.spoonID)
         roll, pitch, yaw = euler_from_quat(spoon_quat)
-        #print("roll", roll, "pitch", pitch, "yaw", yaw)
-        #print("spoon pos", spoon_pos)
         r = self.spoon_l
         elevation=np.pi/2.0-pitch
         azimuth = yaw
@@ -136,7 +132,6 @@ class World():
        cup_thickness = 0.001
 
        lower, upper = get_lower_upper(self.cupID)
-       print(lower, upper)
        buffer = cup_thickness + radius
        lower = np.array(lower) + buffer*np.ones(len(lower))
        upper = np.array(upper) - buffer*np.ones(len(upper))
@@ -216,7 +211,6 @@ class World():
         for i in range(30):
             self.move_arm_to_point(in_loc)
 	self.zoom_in_on(self.cupID, 0.2)
-        print(p.getBasePositionAndOrientation(self.cupID))
 
 
 	#self.set_grip(self.armID, closed_width)
