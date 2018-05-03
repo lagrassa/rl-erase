@@ -13,8 +13,11 @@ real_init = True
 
  
 class World():
-    def __init__(self):
+    def __init__(self, visualize=True):
+        self.visualize=visualize
 	physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+        if not self.visualize:
+            self.simplify_viz()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
@@ -233,13 +236,22 @@ class World():
         NEW = True #unfortunately
         if NEW:
 	    best_arm_pos = [-0.4,0,0]
-	    self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
+            if self.visualize:
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
+            else: 
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/invisible_kuka_with_gripper.sdf")[0]
+                blacken(self.armID, end_index=8)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
-	    self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+            if self.visualize:
+	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+	    else:
+                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+                blacken(self.cupID)
+
 	    self.drop_beads_in_cup()
             self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
@@ -261,6 +273,19 @@ class World():
 	p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
 
 	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
+    def simplify_viz(self):
+        features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_VR_PICKING, p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]
+        for feature in features_to_disable:
+            p.configureDebugVisualizer(feature, 0) 
+#blackens all links in object
+def blacken(objID, end_index =None):
+    p.changeVisualShape(objID, -1, rgbaColor=(0,1,0,0))
+    if end_index is None:
+        end_index =  p.getNumJoints(objID)
+    for link in range(end_index):
+        p.changeVisualShape(objID, link, rgbaColor=(0,1,0,0))
+    
+    
 
 def closest_point_circle(center, xy_pos, radius):
     A = center
