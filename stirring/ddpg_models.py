@@ -37,7 +37,7 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
     #horrible hack: the top left corner
     robot =  Lambda(lambda x: x[:,0,:,:,3][:,0][:,0:dims],  (dims,) , dtype='float32')(picture_tensor)
     #Convolution stuff
-    grid = Conv2D(10,(2,2), activation='relu', padding='same')(grid)
+    grid = Conv2D(10,(5,5), activation='relu', padding='same')(grid)
 
     grid = MaxPooling2D((3,3),strides=(1,1),padding='same')(grid)
     grid = Flatten(dtype='float32')(grid)
