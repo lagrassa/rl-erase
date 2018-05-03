@@ -27,9 +27,9 @@ class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, visualize=True):
+        self.world = World(visualize=visualize)
         self.done_percentage =  300 #pretty well mixed in original example HACK
         self.baseline =  60 #just the grey
-        self.world = World(visualize=visualize)
         self.world_state = world.world_state() 
         self.robot_state = self.world.stirrer_state()
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
