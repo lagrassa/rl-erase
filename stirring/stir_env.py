@@ -48,9 +48,10 @@ class StirEnv(gym.Env):
         print "Settling period done"
         
 
-    def progress_state(self, action=(0,0)):
+    def progress_state(self, action=300):
+        self.world.stir(action)
 	vel_iters, pos_iters = 6, 2
-	timeStep = 0.1
+	timeStep = 0.01
 	self.world.step(timeStep, vel_iters, pos_iters)
 
     """

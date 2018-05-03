@@ -9,7 +9,7 @@ import pybullet_data
 k = 5 #scaling factor
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
 
-    
+real_init = True    
 
  
 class World():
@@ -31,19 +31,29 @@ class World():
         p.setRealTimeSimulation(self.is_real_time)
        
     def stirrer_close(self):
-        jointPos, jointQuat = p.getBasePositionAndOrientation(self.spoonID)
+        
+        jointPos = p.getJointState(self.armID, 8)[0]
         distance = np.linalg.norm(jointPos)
-        far = 0.8
+        far = 2
         if distance <= far:
             return True
         return False
-    def stir(self, force):
+
+    def stir(self, theta_diff):
         #a force to apply on the pr2 hand, failing that the gripper
-        p.setJointMotorControl2(
-            bodyIndex=self.spoonID,
-            jointIndex=0,
-            controlMode=p.TORQUE_CONTROL,
-            force=force)
+        num_motion = 4
+        direction = 1
+        wrist_joint_num = 8;
+        for i in range(num_motion):
+	    p.setJointMotorControl2(
+		bodyIndex=self.armID,
+		jointIndex=wrist_joint_num,
+		targetPosition = direction*theta_diff,
+		targetVelocity = 0,
+		controlMode=p.POSITION_CONTROL,
+		force=500)
+            direction *= -1
+        
 
     def stir_circle(self, radius, step, depth):
         #work on a clockwise circle around (0,0)
@@ -92,13 +102,11 @@ class World():
         cam_distance = 0.25
         im_w = 200
         im_h = 200
-        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll, upAxisIndex=2)
+        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
         _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
-        self.showImageFromDistance(0.25)
+        #self.showImageFromDistance(0.25)
         #crop to only relevant parts
-        l_limit = int(im_w/3.5)
-        r_limit = int(2/3.5*im_w)
-        rgbPixels_cropped = rgbPixels[:,l_limit:r_limit,0:3]
+        rgbPixels_cropped = rgbPixels[0:115,57:135,0:3] #maaaagic need to adjust if changing either resolution or distance....
         return rgbPixels_cropped
 
     def showImageFromDistance(self, cam_distance):
@@ -110,18 +118,18 @@ class World():
 
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
-        jointForces = p.getJointState(self.spoonID, 0)[2]
-        pos, quat = p.getBasePositionAndOrientation(self.spoonID)
-        return  np.array([jointForces, pos, quat]).flatten()
+        linkPos = p.getJointState(self.armID, 8)[0]
+        jointPos, jointVel, jointReactionForces, _ = p.getJointState(self.armID,8)
+        return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5]])
 
     def reset(self):
         p.disconnect()
         self.__init__()
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 75
-       radius = 0.010
-       droplets = [create_sphere(radius, mass=0.0005, color=color) for _ in range(num_droplets)] # kg
+       num_droplets = 90
+       radius = 0.013
+       droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -162,6 +170,7 @@ class World():
         if not self.is_real_time:
 	    simulate_for_duration(1.0)
 
+
     def move_arm_to_point(self, pos):
         endEIndex = 6
         ikSolver = 0
@@ -198,11 +207,12 @@ class World():
         for i in range(30):
             self.move_arm_to_point(above_loc)
 	self.set_grip(self.armID, open_width)
-        above_loc = Point(cup_r,cup_r,0.4)
+
+        #stirring motion
+        in_loc = Point(cup_r-0.03,cup_r,0.4)
         for i in range(30):
-            self.move_arm_to_point(above_loc)
-      
-	self.zoom_in_on(self.cupID)
+            self.move_arm_to_point(in_loc)
+	self.zoom_in_on(self.cupID, 0.2)
         print(p.getBasePositionAndOrientation(self.cupID))
 
 
@@ -219,9 +229,10 @@ class World():
 
 
     def setup(self):
-        NEW = True
+        global real_init
+        NEW = True #unfortunately
         if NEW:
-	    best_arm_pos = [-0.35,0,0]
+	    best_arm_pos = [-0.4,0,0]
 	    self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
@@ -232,9 +243,13 @@ class World():
 	    self.drop_beads_in_cup()
             self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
-            p.saveBullet("pybullet_world.bullet")
+            #p.saveBullet("pybullet_world.bullet")
+            real_init = False
+            self.bullet_id = p.saveState()
         else:
-            p.restoreState(0)
+            print("Restoring state")
+       
+            p.restoreState(self.bullet_id)
 
     def zoom_in_on(self,objID, dist = 0.7):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
@@ -267,12 +282,6 @@ def pol2cart(rho, phi):
 
 if __name__ == "__main__":
     world = World()
-    for i in range (10000):
-        world.step(0.2, None, None)
-        """
-	p.stepSimulation()
-	time.sleep(1./240.)
-	pr2Pos = p.getBasePositionAndOrientation(self.pr2ID)[0]
-        """
+    world.reset()
 	
 

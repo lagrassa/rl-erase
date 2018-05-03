@@ -1,4 +1,5 @@
 import pdb
+import time
 import stirring_world_pybullet
 from stirring_world_pybullet import World
 timeStep = 1
@@ -12,8 +13,13 @@ for i in range(100000):
     step = 0.005
     radius = 0.01
     #world.stir_circle(radius, step, depth)
-    world.step(timeStep, vel_iters, pos_iters)
+    world.stirrer_close()
+    world.stirrer_state()
+    world.world_state()
+    world.step(step, vel_iters, pos_iters)
+    world.stir(1.5)
+   
     # Clear applied body forces. We didn't apply any forces, but you
     # should know about this function.
     world.render()
-
+    time.sleep(0.01)
