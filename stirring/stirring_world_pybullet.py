@@ -53,8 +53,10 @@ class World():
             return True
         return False
 
-    def stir(self, theta_diff, num_motion=1):
+    def stir(self, action, num_motion=1):
         #a force to apply on the pr2 hand, failing that the gripper
+        theta_diff = action[0]
+        period = action[1]
         num_motion = num_motion
         direction = 1
         wrist_joint_num = 8;
@@ -66,6 +68,7 @@ class World():
 		targetVelocity = 0,
 		controlMode=p.POSITION_CONTROL,
 		force=500)
+            simulate_for_duration(period)
             if num_motion >1:
                 time.sleep(0.01)
                 direction *= -1

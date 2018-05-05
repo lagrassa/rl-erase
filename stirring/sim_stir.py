@@ -16,10 +16,9 @@ for i in range(100000):
     world.step(step, vel_iters, pos_iters)
     
     world.world_state()
-    world.stir(theta_diff*direction)
+    world.stir([theta_diff*direction, 5])
     direction *= -1
    
     # Clear applied body forces. We didn't apply any forces, but you
     # should know about this function.
     world.render()
-    time.sleep(0.01)
