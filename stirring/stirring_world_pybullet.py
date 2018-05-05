@@ -13,11 +13,11 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=True):
+    def __init__(self, visualize=True, real_init=True):
         self.visualize=visualize
+        self.real_init = real_init
         if visualize:
             print("Using GUI server")
-            pdb.set_trace()
 	    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
         else:
             print("Using Direct server")
@@ -25,10 +25,16 @@ class World():
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
-        p.resetSimulation();
+        #p.resetSimulation();
 	g = 9.8
 	p.setGravity(0,0,-g)
-	planeId = p.loadURDF("plane.urdf")
+        if self.visualize:
+	    planeId = p.loadURDF("plane.urdf")
+        else:
+	    planeId = p.loadURDF("urdf/invisible_plane.urdf")
+            blacken(planeId)
+
+ 
 	pr2StartPos = [0,2,1]
 	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
 	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
@@ -39,6 +45,7 @@ class World():
        
     def stirrer_close(self):
         
+        
         jointPos = p.getJointState(self.armID, 8)[0]
         distance = np.linalg.norm(jointPos)
         far = 2
@@ -46,9 +53,9 @@ class World():
             return True
         return False
 
-    def stir(self, theta_diff):
+    def stir(self, theta_diff, num_motion=1):
         #a force to apply on the pr2 hand, failing that the gripper
-        num_motion = 4
+        num_motion = num_motion
         direction = 1
         wrist_joint_num = 8;
         for i in range(num_motion):
@@ -59,7 +66,9 @@ class World():
 		targetVelocity = 0,
 		controlMode=p.POSITION_CONTROL,
 		force=500)
-            direction *= -1
+            if num_motion >1:
+                time.sleep(0.01)
+                direction *= -1
         
 
     def stir_circle(self, radius, step, depth):
@@ -102,27 +111,37 @@ class World():
         return 
 
     def world_state(self):
-        objPos, objQuat = p.getBasePositionAndOrientation(self.cupID)
+        #self.showImageFromDistance(0.25)
+        #crop to only relevant parts
+        rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1)
+        rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
+        return rgbPixels_cropped
+
+    def getImageFromDistance(self, objID,cam_distance, z_offset=0):
+        objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         cam_distance = 0.25
         im_w = 200
         im_h = 200
-        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
+        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
         if self.visualize:
             renderer = p.ER_BULLET_HARDWARE_OPENGL
         else:
             renderer = p.ER_TINY_RENDERER
-        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, renderer=renderer)
-        #self.showImageFromDistance(0.25)
-        #crop to only relevant parts
-        rgbPixels_cropped = rgbPixels[0:115,57:135,0:3] #maaaagic need to adjust if changing either resolution or distance....
-        return rgbPixels_cropped
-
-    def showImageFromDistance(self, cam_distance):
-        objPos, objQuat = p.getBasePositionAndOrientation(self.cupID)
-        roll, pitch, yaw = euler_from_quat(objQuat)
-        viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=objPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll, upAxisIndex=2)
-        _,_,rgbPixels,_,_ = p.getCameraImage(width=200,height=200, viewMatrix=viewMatrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+        fov = 60
+        nearPlane = 0.01
+        farPlane = 500
+        aspect = im_w/im_h
+        projectionMatrix = p.computeProjectionMatrixFOV(fov,aspect,nearPlane, farPlane)
+  
+        _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, projectionMatrix=projectionMatrix, shadow=0, lightDirection = [1,1,1],renderer=renderer)
+        #Image.fromarray(rgbPixels).show()
+        return rgbPixels
+        
+        
+    def showImageFromDistance(self, objID,cam_distance, z_offset=0):
+        rgbPixels = self.getImageFromDistance(objID, cam_distance,z_offset=z_offset)
         Image.fromarray(rgbPixels[:,:,0:3]).show()
 
     def stirrer_state(self):
@@ -134,11 +153,12 @@ class World():
     def reset(self):
         p.disconnect()
         print("In visualize self.visualize=",self.visualize)
-        self.__init__(visualize=self.visualize)
+        self.__init__(visualize=self.visualize, real_init=False)
+    
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 90
-       radius = 0.013
+       num_droplets = 80
+       radius = 0.012
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
@@ -159,7 +179,7 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = 1.5
+	time_to_fall = 2.0
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
@@ -191,7 +211,7 @@ class World():
 	for i in range (numJoints-3):
 	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.2,velocityGain=1, targetVelocity=0)
         if not self.is_real_time:
-	    simulate_for_duration(0.1)
+	    simulate_for_duration(0.001)
 	p.addUserDebugLine([0,0.3,0.31],pos,[0,0,0.3],1)
     
 
@@ -213,15 +233,15 @@ class World():
         cup_r = -0.02 
         above_loc = Point(cup_r,cup_r,0.7)
 	#set_point(self.spoonID,spoon_loc)
-        for i in range(30):
+        for i in range(12):
             self.move_arm_to_point(above_loc)
 	self.set_grip(self.armID, open_width)
 
         #stirring motion
         in_loc = Point(cup_r-0.03,cup_r,0.4)
-        for i in range(30):
+        for i in range(6):
             self.move_arm_to_point(in_loc)
-	self.zoom_in_on(self.cupID, 0.2)
+	self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
 
 
 	#self.set_grip(self.armID, closed_width)
@@ -237,8 +257,7 @@ class World():
 
 
     def setup(self):
-        global real_init
-        NEW = True #unfortunately
+        NEW = self.real_init #unfortunately
         if NEW:
 	    best_arm_pos = [-0.4,0,0]
             if self.visualize:
@@ -260,16 +279,20 @@ class World():
 	    self.drop_beads_in_cup()
             self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
-            #p.saveBullet("pybullet_world.bullet")
-            real_init = False
             self.bullet_id = p.saveState()
+            #p.saveBullet("pybullet_world.bullet")
+            self.real_init = False
         else:
-            print("Restoring state")
-       
-            p.restoreState(self.bullet_id)
+            assert(self.bullet_id is not None)
+            try:
+                p.restoreState(self.bullet_id)
+            except:
+                self.real_init = True
+                self.setup()
 
-    def zoom_in_on(self,objID, dist = 0.7):
+    def zoom_in_on(self,objID, dist = 0.7, z_offset = 0):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
 	roll, pitch, yaw = euler_from_quat(objQuat)
 	p.resetDebugVisualizerCamera(dist, yaw, roll, objPos)
     def top_down_zoom_in_on(self,objID):

@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 
 import sys
 import math
@@ -761,13 +762,19 @@ def create_capsule(radius, height, mass=STATIC_MASS, color=(0, 0, 1, 1)):
     return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
                              baseVisualShapeIndex=visual_id) # basePosition | baseOrientation
 
-def create_sphere(radius, mass=STATIC_MASS, color=(0, 0, 1, 1)):
+def create_sphere(radius, mass=0, color=(0,0,1,1)):
+    urdf_r = 0.01
+    scale_factor = radius/urdf_r 
+    if color == (1,0,0,1):
+        return p.loadURDF('urdf/sphere/red_sphere.urdf', globalScaling=scale_factor)
+    else:
+        return p.loadURDF('urdf/sphere/blue_sphere.urdf', globalScaling=scale_factor)
+
+def create_sphere_old(radius, mass=STATIC_MASS, color=(0, 0, 1, 1)):
     # mass = 0  => static
     collision_id = p.createCollisionShape(p.GEOM_SPHERE, radius=radius)
-    if (color is None) or not has_gui():
-        visual_id = -1
-    else:
-        visual_id = p.createVisualShape(p.GEOM_SPHERE, radius=radius, rgbaColor=color)
+    
+    visual_id = p.createVisualShape(p.GEOM_SPHERE, radius=radius, rgbaColor=color)
     return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
                              baseVisualShapeIndex=visual_id) # basePosition | baseOrientation
 
