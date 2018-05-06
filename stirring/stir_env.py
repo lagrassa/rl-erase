@@ -22,15 +22,17 @@ REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
+world = World(visualize=True, real_init=True)
+
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, visualize=True):
+    def __init__(self, visualize=True, real_init=True):
         print("Visualize=",visualize)
         self.visualize=visualize
-        self.world = World(visualize=visualize)
         self.done_percentage =  300 #pretty well mixed in original example HACK
         self.baseline =  60 #just the grey
+        self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
         self.n = self.world_state.shape[1]*self.world_state.shape[0]
@@ -40,12 +42,7 @@ class StirEnv(gym.Env):
         self.prev_reward = 0; 
         self.saved_robot_state = []
         self.saved_world_state = []
-        self.let_beads_settle()
 
-    def let_beads_settle(self):
-        steps_to_settle = 130
-        [self.progress_state() for i in range(steps_to_settle)]
-        print "Settling period done"
         
 
     def progress_state(self, action=300):
@@ -109,14 +106,14 @@ class StirEnv(gym.Env):
         return state
         
     def step(self, action):
-        assert(action.shape == (1,))
-        action = float(action[0])
+        print("action", action)
         if self.counter % LOG_INTERVAL == 0:
             action_file.write(str(action) + ",")
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
         reward = self.process_reward()
+        print("reward", reward)
         if self.replay_counter == 0: #never end episode during experience replay
             episode_over = (reward > self.done_percentage or reward < self.baseline or not self.world.stirrer_close()) and self.counter > 3
             episode_over = episode_over or self.stop_if_necessary()
@@ -159,7 +156,7 @@ class StirEnv(gym.Env):
         return rew
 
     def reset(self):
-        self.__init__(visualize=self.visualize)
+        self.__init__(visualize=self.visualize, real_init=False)
         self.world.reset()
         return self.create_state()
         

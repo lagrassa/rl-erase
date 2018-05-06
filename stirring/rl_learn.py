@@ -88,7 +88,7 @@ def load_supervised_data(actionfile=None, statefile=None):
               
 if __name__=="__main__":
      nb_actions = 2; #control period held and angle
-     visualize=False
+     visualize=True
      
      env = StirEnv(visualize=visualize)
      state_shape = list(env.world_state.shape)

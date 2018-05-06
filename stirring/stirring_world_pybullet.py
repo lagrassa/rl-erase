@@ -16,12 +16,15 @@ class World():
     def __init__(self, visualize=True, real_init=True):
         self.visualize=visualize
         self.real_init = real_init
-        if visualize:
-            print("Using GUI server")
-	    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+        if real_init:
+	    if visualize:
+		print("Using GUI server")
+		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+	    else:
+		print("Using Direct server")
+		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
         else:
-            print("Using Direct server")
-	    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
+            pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.is_real_time = 0
         p.setRealTimeSimulation(self.is_real_time)
@@ -39,6 +42,8 @@ class World():
 	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
 	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
         self.setup()
+        print("Done with setup")
+
     def toggle_real_time(self):
         self.is_real_time = 1
         p.setRealTimeSimulation(self.is_real_time)
@@ -154,7 +159,6 @@ class World():
         return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5]])
 
     def reset(self):
-        p.disconnect()
         print("In visualize self.visualize=",self.visualize)
         self.__init__(visualize=self.visualize, real_init=False)
     
@@ -182,7 +186,7 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = 2.0
+	time_to_fall = 2.5
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
@@ -212,10 +216,10 @@ class World():
         jd=[0.1]*numJoints
 	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
 	for i in range (numJoints-3):
-	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.2,velocityGain=1, targetVelocity=0)
+	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.3,velocityGain=1, targetVelocity=0)
         if not self.is_real_time:
-	    simulate_for_duration(0.001)
-	p.addUserDebugLine([0,0.3,0.31],pos,[0,0,0.3],1)
+	    simulate_for_duration(0.1)
+            print("simulating for idr")
     
 
     def place_stirrer_in_pr2_hand(self):
@@ -240,11 +244,12 @@ class World():
             self.move_arm_to_point(above_loc)
 	self.set_grip(self.armID, open_width)
 
+        self.toggle_real_time()
         #stirring motion
         in_loc = Point(cup_r-0.03,cup_r,0.4)
         for i in range(6):
             self.move_arm_to_point(in_loc)
-	self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
+	#self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
 
 
 	#self.set_grip(self.armID, closed_width)
@@ -270,7 +275,7 @@ class World():
                 blacken(self.armID, end_index=8)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
-            self.zoom_in_on(self.armID, 2)
+            #self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
             if self.visualize:
@@ -280,17 +285,16 @@ class World():
                 blacken(self.cupID)
 
 	    self.drop_beads_in_cup()
-            self.toggle_real_time()
 	    self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
             #p.saveBullet("pybullet_world.bullet")
             self.real_init = False
         else:
-            assert(self.bullet_id is not None)
             try:
                 p.restoreState(self.bullet_id)
             except:
                 self.real_init = True
+                p.resetSimulation()
                 self.setup()
 
     def zoom_in_on(self,objID, dist = 0.7, z_offset = 0):
