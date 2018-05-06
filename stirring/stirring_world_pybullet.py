@@ -46,25 +46,26 @@ class World():
             return True
         return False
 
-    def stir(self, action, num_motion=1):
+    def stir(self, action):
         #a force to apply on the pr2 hand, failing that the gripper
         theta_diff = action[0]
         period = action[1]
-        num_motion = num_motion
+        x_del = action[2]
+        y_del = action[3]
+        z_del = action[4]
         direction = 1
-        wrist_joint_num = 8;
-        for i in range(num_motion):
-	    p.setJointMotorControl2(
-		bodyIndex=self.armID,
-		jointIndex=wrist_joint_num,
-		targetPosition = direction*theta_diff,
-		targetVelocity = 0,
-		controlMode=p.POSITION_CONTROL,
-		force=500)
-            simulate_for_duration(period)
-            if num_motion >1:
-                time.sleep(0.01)
-                direction *= -1
+        wrist_joint_num = 8; 
+        #self.delta_control(x_del, y_del, z_del)
+        #place stirrer in correct location
+	p.setJointMotorControl2(
+	    bodyIndex=self.armID,
+	    jointIndex=wrist_joint_num,
+	    targetPosition = direction*theta_diff,
+	    targetVelocity = 0,
+	    controlMode=p.POSITION_CONTROL,
+	    force=500)
+	simulate_for_duration(period)
+        
         
 
     def stir_circle(self, radius, step, depth):
@@ -113,9 +114,9 @@ class World():
         rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
         return rgbPixels_cropped
 
-    def getImageFromDistance(self, objID,cam_distance, z_offset=0):
+    def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0):
         objPos, objQuat = p.getBasePositionAndOrientation(objID)
-        adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
+        adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         cam_distance = 0.25
         im_w = 200
@@ -136,8 +137,8 @@ class World():
         return rgbPixels
         
         
-    def showImageFromDistance(self, objID,cam_distance, z_offset=0):
-        rgbPixels = self.getImageFromDistance(objID, cam_distance,z_offset=z_offset)
+    def showImageFromDistance(self, objID,cam_distance, z_offset=0, y_offset=0, x_offset = 0):
+        rgbPixels = self.getImageFromDistance(objID, cam_distance,z_offset=z_offset, y_offset=y_offset, x_offset=x_offset)
         Image.fromarray(rgbPixels[:,:,0:3]).show()
 
     def stirrer_state(self):
@@ -190,11 +191,18 @@ class World():
         if not self.is_real_time:
 	    simulate_for_duration(1.0)
 
-
-    def move_arm_to_point(self, pos):
+    def delta_control(self, dx, dy, dz):
+        endEIndex = 6
+        jointPos = p.getLinkState(self.armID, endEIndex)[0]
+        jointOrn = p.getLinkState(self.armID, endEIndex)[1]
+        desiredPos = (jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz)
+        self.move_arm_to_point(desiredPos, orn=jointOrn)        
+    
+    def move_arm_to_point(self, pos, orn = None):
         endEIndex = 6
         ikSolver = 0
-	orn = p.getQuaternionFromEuler([0,-math.pi,0])
+        if orn is None:
+	    orn = p.getQuaternionFromEuler([0,-math.pi,0])
         numJoints = p.getNumJoints(self.armID)
         
         jd=[0.1]*numJoints
@@ -229,7 +237,7 @@ class World():
         in_loc = Point(cup_r-0.03,cup_r,0.2)
         for i in range(11):
             self.move_arm_to_point(in_loc)
-	#self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
+	self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
 
 
     def set_pos(self,objID, jointIndex, pos, force=500):
@@ -254,7 +262,7 @@ class World():
 		self.planeId = p.loadURDF("plane.urdf")
 	    else:
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
-		self.blacken(planeId)
+		blacken(self.planeId)
 
 	    best_arm_pos = [-0.6,0,0]
             if self.visualize:
@@ -280,6 +288,7 @@ class World():
         else:
             try:
                 p.restoreState(self.bullet_id)
+                print("Woo hoo! Successfully restored state!")
             except:
                 self.real_init = True
                 p.resetSimulation()

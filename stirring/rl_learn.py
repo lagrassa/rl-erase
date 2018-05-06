@@ -87,7 +87,7 @@ def load_supervised_data(actionfile=None, statefile=None):
 # Finally, evaluate our algorithm for 10 episodes.
               
 if __name__=="__main__":
-     nb_actions = 2; #control period held and angle
+     nb_actions = 5; #control period held and angle, plus 3 dx dy dz
      visualize=False
      
      env = StirEnv(visualize=visualize)
