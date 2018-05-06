@@ -155,7 +155,6 @@ class World():
     def create_beads(self, color = (0,0,1,1)):
        num_droplets = 90
        radius = 0.013
-       droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
        lower, upper = get_lower_upper(self.cupID)
