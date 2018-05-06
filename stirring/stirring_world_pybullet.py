@@ -23,8 +23,6 @@ class World():
 	    else:
 		print("Using Direct server")
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
-        else:
-            pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
 
  
@@ -154,8 +152,8 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 10
-       radius = 0.0135
+       num_droplets = 90
+       radius = 0.013
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
@@ -176,18 +174,13 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = 2.5
+	time_to_fall = 1.5
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
-            pdb.set_trace()
             if not self.is_real_time:
 	        simulate_for_duration(time_to_fall, dt= 0.001)
 
-        if not self.is_real_time:
-	    simulate_for_duration(3*time_to_fall, dt= 0.001)
-	#set_point(self.pr2ID, Point(0, 0, 0.8))
-     
 
     def set_grip(self, pr2ID, width):
 	self.set_pos(pr2ID, 8,6)
@@ -210,7 +203,6 @@ class World():
 	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.3,velocityGain=1, targetVelocity=0)
         if not self.is_real_time:
 	    simulate_for_duration(0.2)
-            print("simulating for idr")
     
 
     def place_stirrer_in_pr2_hand(self):
@@ -224,23 +216,21 @@ class World():
 	spoon_l = 0.4
         self.spoon_l = spoon_l
 	hand_height = 0.7
-        cup_r = -0.02 
+        cup_r = -0.04 
         above_loc = Point(cup_r,cup_r,0.7)
+	self.zoom_in_on(self.cupID, 1.8, z_offset=0.3)
 	#set_point(self.spoonID,spoon_loc)
         for i in range(14):
             self.move_arm_to_point(above_loc)
+        self.toggle_real_time()
 	self.set_grip(self.armID, open_width)
 
-        self.toggle_real_time()
         #stirring motion
         in_loc = Point(cup_r-0.03,cup_r,0.2)
         for i in range(11):
             self.move_arm_to_point(in_loc)
 	#self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
 
-
-	#self.set_grip(self.armID, closed_width)
-	#self.top_down_zoom_in_on(self.cupID)
 
     def set_pos(self,objID, jointIndex, pos, force=500):
 	
@@ -284,9 +274,8 @@ class World():
                 blacken(self.cupID)
 
 	    self.drop_beads_in_cup()
-	    #self.place_stirrer_in_pr2_hand()
+	    self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
-            #p.saveBullet("pybullet_world.bullet")
             self.real_init = False
         else:
             try:
@@ -294,7 +283,6 @@ class World():
             except:
                 self.real_init = True
                 p.resetSimulation()
-                pdb.set_trace()
                 self.setup()
 
     def zoom_in_on(self,objID, dist = 0.7, z_offset = 0):
