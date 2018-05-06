@@ -762,13 +762,17 @@ def create_capsule(radius, height, mass=STATIC_MASS, color=(0, 0, 1, 1)):
     return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
                              baseVisualShapeIndex=visual_id) # basePosition | baseOrientation
 
-def create_sphere(radius, mass=0, color=(0,0,1,1)):
+def create_sphere(radius, mass=0, color=(0,0,1,1), pos = None):
     urdf_r = 0.01
     scale_factor = radius/urdf_r 
     if color == (1,0,0,1):
-        return p.loadURDF('urdf/sphere/red_sphere.urdf', globalScaling=scale_factor)
+        filename = 'urdf/sphere/red_sphere.urdf'
+    else: 
+        filename = 'urdf/sphere/blue_sphere.urdf'
+    if pos is None:
+        return p.loadURDF(filename, globalScaling=scale_factor)
     else:
-        return p.loadURDF('urdf/sphere/blue_sphere.urdf', globalScaling=scale_factor)
+        return p.loadURDF(filename, globalScaling=scale_factor, basePosition = pos)
 
 def create_sphere_old(radius, mass=STATIC_MASS, color=(0, 0, 1, 1)):
     # mass = 0  => static

@@ -11,12 +11,12 @@ for i in range(100000):
     # generally best to keep the time step and iterations fixed.
     #world.stir(0.3)
     step = 0.005
-    theta_diff = 1.1
+    theta_diff = 0.9
     #world.stir_circle(radius, step, depth)
     world.step(step, vel_iters, pos_iters)
     
     world.world_state()
-    world.stir([theta_diff*direction, 5])
+    world.stir([theta_diff*direction, 0.5])
     direction *= -1
    
     # Clear applied body forces. We didn't apply any forces, but you

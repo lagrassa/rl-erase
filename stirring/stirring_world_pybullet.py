@@ -165,7 +165,7 @@ class World():
 
     def create_beads(self, color = (0,0,1,1)):
        num_droplets = 80
-       radius = 0.012
+       radius = 0.0135
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
 
@@ -218,7 +218,7 @@ class World():
 	for i in range (numJoints-3):
 	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.3,velocityGain=1, targetVelocity=0)
         if not self.is_real_time:
-	    simulate_for_duration(0.1)
+	    simulate_for_duration(0.2)
             print("simulating for idr")
     
 
@@ -233,21 +233,17 @@ class World():
 	spoon_l = 0.4
         self.spoon_l = spoon_l
 	hand_height = 0.7
-	#spawn spoon
-	#self.spoonID = create_cylinder(spoon_radius, spoon_l, color=(0,1, 0, 1), mass=2)
-        spoon_loc =   Point(0, 0, hand_height-spoon_l-0.1)
-        above_loc = Point(-0.03,-0.03,0.3)
         cup_r = -0.02 
         above_loc = Point(cup_r,cup_r,0.7)
 	#set_point(self.spoonID,spoon_loc)
-        for i in range(12):
+        for i in range(14):
             self.move_arm_to_point(above_loc)
 	self.set_grip(self.armID, open_width)
 
         self.toggle_real_time()
         #stirring motion
-        in_loc = Point(cup_r-0.03,cup_r,0.4)
-        for i in range(6):
+        in_loc = Point(cup_r-0.03,cup_r,0.2)
+        for i in range(11):
             self.move_arm_to_point(in_loc)
 	#self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
 
@@ -267,7 +263,7 @@ class World():
     def setup(self):
         NEW = self.real_init #unfortunately
         if NEW:
-	    best_arm_pos = [-0.4,0,0]
+	    best_arm_pos = [-0.6,0,0]
             if self.visualize:
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
             else: 
