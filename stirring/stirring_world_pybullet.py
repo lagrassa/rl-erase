@@ -26,16 +26,6 @@ class World():
         else:
             pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.is_real_time = 0
-        p.setRealTimeSimulation(self.is_real_time)
-        #p.resetSimulation();
-	g = 9.8
-	p.setGravity(0,0,-g)
-        if self.visualize:
-	    planeId = p.loadURDF("plane.urdf")
-        else:
-	    planeId = p.loadURDF("urdf/invisible_plane.urdf")
-            blacken(planeId)
 
  
 	pr2StartPos = [0,2,1]
@@ -164,7 +154,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 80
+       num_droplets = 10
        radius = 0.0135
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
@@ -190,6 +180,7 @@ class World():
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
+            pdb.set_trace()
             if not self.is_real_time:
 	        simulate_for_duration(time_to_fall, dt= 0.001)
 
@@ -263,6 +254,18 @@ class World():
     def setup(self):
         NEW = self.real_init #unfortunately
         if NEW:
+            #setup world
+	    self.is_real_time = 0
+	    p.setRealTimeSimulation(self.is_real_time)
+	    #p.resetSimulation();
+	    g = 9.8
+	    p.setGravity(0,0,-g)
+	    if self.visualize:
+		self.planeId = p.loadURDF("plane.urdf")
+	    else:
+		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
+		self.blacken(planeId)
+
 	    best_arm_pos = [-0.6,0,0]
             if self.visualize:
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
@@ -281,7 +284,7 @@ class World():
                 blacken(self.cupID)
 
 	    self.drop_beads_in_cup()
-	    self.place_stirrer_in_pr2_hand()
+	    #self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
             #p.saveBullet("pybullet_world.bullet")
             self.real_init = False
@@ -291,6 +294,7 @@ class World():
             except:
                 self.real_init = True
                 p.resetSimulation()
+                pdb.set_trace()
                 self.setup()
 
     def zoom_in_on(self,objID, dist = 0.7, z_offset = 0):
@@ -298,6 +302,7 @@ class World():
         adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
 	roll, pitch, yaw = euler_from_quat(objQuat)
 	p.resetDebugVisualizerCamera(dist, yaw, roll, objPos)
+
     def top_down_zoom_in_on(self,objID):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
 	roll, pitch, yaw = euler_from_quat(objQuat)
