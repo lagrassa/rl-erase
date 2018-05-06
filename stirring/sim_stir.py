@@ -5,6 +5,9 @@ from stirring_world_pybullet import World
 timeStep = 1
 vel_iters, pos_iters = 6,2
 world = World(visualize=True)
+world.reset()
+
+pdb.set_trace()
 direction = 1
 for i in range(100000):
     # Instruct the world to perform a single step of simulation. It is

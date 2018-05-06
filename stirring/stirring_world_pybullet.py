@@ -164,7 +164,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 80
+       num_droplets = 10
        radius = 0.0135
        droplets = [create_sphere(radius, mass=0.01, color=color) for _ in range(num_droplets)] # kg
        cup_thickness = 0.001
@@ -187,6 +187,7 @@ class World():
 
     def drop_beads_in_cup(self):
 	time_to_fall = 2.5
+        print("Is real time?", self.is_real_time)
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
