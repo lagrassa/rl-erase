@@ -20,7 +20,7 @@ from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
 WINDOW_LENGTH = 1
-ENV_NAME = "mix_cup"
+ENV_NAME = "mix_cup_flakey"
 class Learner:
     def __init__(self, env, nb_actions, input_shape):
         env_shape = env.create_state().shape
@@ -30,7 +30,7 @@ class Learner:
         weights_filename = 'dqn_{}_weights.h5f'.format(ENV_NAME)
         checkpoint_weights_filename = 'dqn_' + ENV_NAME + '_weights_{step}.h5f'
         log_filename = 'dqn_{}_log.json'.format(ENV_NAME)
-        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=2500)]
+        callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=10000)]
         callbacks += [FileLogger(log_filename, interval=100)]
         self.dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000, visualize=True, verbose=3)
            # After training is done, we save the final weights one more time.

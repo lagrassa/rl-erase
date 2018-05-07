@@ -30,8 +30,7 @@ class StirEnv(gym.Env):
     def __init__(self, visualize=True, real_init=True):
         print("Visualize=",visualize)
         self.visualize=visualize
-        self.done_percentage =  300 #pretty well mixed in original example HACK
-        self.baseline =  60 #just the grey
+        self.done_percentage =  80 #pretty well mixed in original example HACK
         self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
@@ -74,7 +73,7 @@ class StirEnv(gym.Env):
     #returns the reward and checks if it's been the same for a while
     def process_reward(self):
         reward = self._get_reward()
-        if abs(reward-self.prev_reward) < 0.0000000001:
+        if abs(reward-self.prev_reward) < 0.0001:
             self.num_steps_same +=1;
         else:
             self.num_steps_same = 0
@@ -106,16 +105,20 @@ class StirEnv(gym.Env):
         return state
         
     def step(self, action):
-        print("action", action)
         if self.counter % LOG_INTERVAL == 0:
             action_file.write(str(action) + ",")
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
         reward = self.process_reward()
-        print("reward", reward)
         if self.replay_counter == 0: #never end episode during experience replay
-            episode_over = (reward > self.done_percentage or reward < self.baseline or not self.world.stirrer_close()) and self.counter > 3
+            cup_knocked_over =  self.world.cup_knocked_over()
+            mostly_done = reward > self.done_percentage
+            stirrer_far = not self.world.stirrer_close()
+            
+            episode_over = reward > self.done_percentage or self.world.cup_knocked_over() or  not self.world.stirrer_close()
+            if episode_over:
+                print("EPISODE SHOULD BE OVER!!")
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
@@ -148,6 +151,8 @@ class StirEnv(gym.Env):
        
 
     def _get_reward(self):
+        if self.world.cup_knocked_over():
+            return -30
         rew =  reward_func(self.world_state)
         if (self.counter % LOG_INTERVAL == 0):
             print(rew)

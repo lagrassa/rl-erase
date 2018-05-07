@@ -6,7 +6,7 @@ import numpy as np
 import utils
 import time
 import pybullet_data
-k = 5 #scaling factor
+k = 1 #scaling factor
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
 
 real_init = True    
@@ -26,9 +26,6 @@ class World():
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
 
  
-	pr2StartPos = [0,2,1]
-	pr2StartOrientation = p.getQuaternionFromEuler([0,np.pi/2,np.pi/2])
-	#self.pr2ID = p.loadURDF("urdf/pr2/pr2_gripper.urdf",pr2StartPos, pr2StartOrientation)
         self.setup()
         print("Done with setup")
 
@@ -41,21 +38,23 @@ class World():
         
         jointPos = p.getJointState(self.armID, 8)[0]
         distance = np.linalg.norm(jointPos)
-        far = 2
+        far = k*0.8
         if distance <= far:
             return True
+        print("distance is far at", distance)
         return False
 
     def stir(self, action):
         #a force to apply on the pr2 hand, failing that the gripper
         theta_diff = action[0]
         period = action[1]
-        x_del = action[2]
-        y_del = action[3]
-        z_del = action[4]
+        max_del = k*0.01
+        x_del = max_del*np.tanh(action[2])
+        y_del = max_del*np.tanh(action[3])
+        z_del = max_del*np.tanh(action[4])
         direction = 1
         wrist_joint_num = 8; 
-        #self.delta_control(x_del, y_del, z_del)
+        self.delta_control(x_del, y_del, z_del)
         #place stirrer in correct location
 	p.setJointMotorControl2(
 	    bodyIndex=self.armID,
@@ -118,7 +117,7 @@ class World():
         objPos, objQuat = p.getBasePositionAndOrientation(objID)
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
-        cam_distance = 0.25
+        cam_distance = k*0.25
         im_w = 200
         im_h = 200
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
@@ -153,9 +152,9 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 90
-       radius = 0.013
-       cup_thickness = 0.001
+       num_droplets = 160
+       radius = k*0.011
+       cup_thickness = k*0.001
 
        lower, upper = get_lower_upper(self.cupID)
        buffer = cup_thickness + radius
@@ -164,6 +163,7 @@ class World():
        limits = zip(lower, upper)
        x_range, y_range = limits[:2]
        z = upper[2] + 0.1
+       droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
@@ -174,7 +174,7 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = 1.5
+	time_to_fall = k*2.5
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
@@ -182,7 +182,7 @@ class World():
 	        simulate_for_duration(time_to_fall, dt= 0.001)
 
 
-    def set_grip(self, pr2ID, width):
+    def set_grip(self, pr2ID):
 	self.set_pos(pr2ID, 8,6)
         nice_joint_states = [0.0, 0.006508613619013667, 0.0, 0.19977108955651196]
         for i in range(7,11):
@@ -190,53 +190,42 @@ class World():
         if not self.is_real_time:
 	    simulate_for_duration(1.0)
 
-    def delta_control(self, dx, dy, dz):
+    def delta_control(self, dx, dy, dz, posGain=0.3, velGain=1):
         endEIndex = 6
         jointPos = p.getLinkState(self.armID, endEIndex)[0]
         jointOrn = p.getLinkState(self.armID, endEIndex)[1]
         desiredPos = (jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz)
-        self.move_arm_to_point(desiredPos, orn=jointOrn)        
+        self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
-    def move_arm_to_point(self, pos, orn = None):
+    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
         endEIndex = 6
         ikSolver = 0
         if orn is None:
 	    orn = p.getQuaternionFromEuler([0,-math.pi,0])
         numJoints = p.getNumJoints(self.armID)
         
-        jd=[0.1]*numJoints
+        jd=[damper]*numJoints
 	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
 	for i in range (numJoints-3):
-	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=0.3,velocityGain=1, targetVelocity=0)
+	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
         if not self.is_real_time:
 	    simulate_for_duration(0.2)
     
 
     def place_stirrer_in_pr2_hand(self):
-        
-        
-	maxForce = 10
-	#set joints to be slightly open
-	open_width = 0.4
-	spoon_radius = 0.005
-	closed_width = 2*spoon_radius-0.01
-	spoon_l = 0.4
-        self.spoon_l = spoon_l
-	hand_height = 0.7
-        cup_r = -0.04 
-        above_loc = Point(cup_r,cup_r,0.7)
-	self.zoom_in_on(self.cupID, 1.8, z_offset=0.3)
+        cup_r = k*-0.04 
+        above_loc = Point(cup_r,cup_r,k*0.7)
 	#set_point(self.spoonID,spoon_loc)
         for i in range(14):
             self.move_arm_to_point(above_loc)
         self.toggle_real_time()
-	self.set_grip(self.armID, open_width)
-
+	self.set_grip(self.armID)
         #stirring motion
-        in_loc = Point(cup_r-0.03,cup_r,0.2)
+        in_loc = Point(cup_r-k*0.03,cup_r,k*0.2)
         for i in range(11):
             self.move_arm_to_point(in_loc)
-	self.zoom_in_on(self.cupID, 0.2, z_offset=0.1)
+	self.zoom_in_on(self.cupID, k*0.2, z_offset=k*0.1)
+	self.zoom_in_on(self.cupID, k*1.2, z_offset=k*0.1)
 
 
     def set_pos(self,objID, jointIndex, pos, force=500):
@@ -263,21 +252,21 @@ class World():
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
 
-	    best_arm_pos = [-0.6,0,0]
+	    best_arm_pos = [k*-0.6,0,0]
             if self.visualize:
-	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf")[0]
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf", globalScaling = k)[0]
             else: 
-	        self.armID = p.loadSDF("urdf/kuka_iiwa/invisible_kuka_with_gripper.sdf")[0]
+	        self.armID = p.loadSDF("urdf/kuka_iiwa/invisible_kuka_with_gripper.sdf", globalScaling = k)[0]
                 blacken(self.armID, end_index=8)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
-            #self.zoom_in_on(self.armID, 2)
+            self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
 	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=5.0)
+                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
 
 	    self.drop_beads_in_cup()
@@ -287,13 +276,21 @@ class World():
         else:
             try:
                 p.restoreState(self.bullet_id)
-                print("Woo hoo! Successfully restored state!")
             except:
                 self.real_init = True
                 p.resetSimulation()
                 self.setup()
+    def cup_knocked_over(self):
+        cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
+        roll, pitch, yaw = euler_from_quat(cupQuat)
+        thresh = 0.6
+        if abs(roll) > thresh or abs(pitch) > thresh:
+            return True
+        return False
+        
 
-    def zoom_in_on(self,objID, dist = 0.7, z_offset = 0):
+
+    def zoom_in_on(self,objID, dist = k*0.7, z_offset = 0):
 	objPos, objQuat = p.getBasePositionAndOrientation(objID)
         adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
 	roll, pitch, yaw = euler_from_quat(objQuat)
