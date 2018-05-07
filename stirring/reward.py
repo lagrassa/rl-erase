@@ -22,7 +22,12 @@ def get_out(img):
 
 def get_num_contours(hsv_filtered):
     _, binary_mask = cv2.threshold(hsv_filtered, 0.9,255, cv2.THRESH_BINARY)
-    contours, hierarchy = cv2.findContours(binary_mask, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    results= cv2.findContours(binary_mask, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    if len(results) == 3: #dealing with weird versioning stufff
+        contours = results[1]
+    else:
+        contours = results[0]
+
     valid_contours = [ct for ct in contours if cv2.contourArea(ct) > 30 ]
  
     if CONTOUR_DEBUG:

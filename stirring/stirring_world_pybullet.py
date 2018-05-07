@@ -34,11 +34,9 @@ class World():
         p.setRealTimeSimulation(self.is_real_time)
        
     def stirrer_close(self):
-        
-        
         jointPos = p.getJointState(self.armID, 8)[0]
         distance = np.linalg.norm(jointPos)
-        far = k*0.8
+        far = k*1.5
         if distance <= far:
             return True
         print("distance is far at", distance)
@@ -47,11 +45,12 @@ class World():
     def stir(self, action):
         #a force to apply on the pr2 hand, failing that the gripper
         theta_diff = action[0]
-        period = action[1]
-        max_del = k*0.01
-        x_del = max_del*np.tanh(action[2])
-        y_del = max_del*np.tanh(action[3])
-        z_del = max_del*np.tanh(action[4])
+        curl = action[1]
+        period = action[2]
+        max_del = k*0.001
+        x_del = max_del*np.tanh(action[3])
+        y_del = max_del*np.tanh(action[4])
+        z_del = max_del*np.tanh(action[5])
         direction = 1
         wrist_joint_num = 8; 
         self.delta_control(x_del, y_del, z_del)
@@ -63,6 +62,8 @@ class World():
 	    targetVelocity = 0,
 	    controlMode=p.POSITION_CONTROL,
 	    force=500)
+        
+        self.set_pos(self.armID, 10, curl) #10 = curl ID
 	simulate_for_duration(period)
         
         
@@ -152,8 +153,8 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 160
-       radius = k*0.011
+       num_droplets = 70
+       radius = k*0.013
        cup_thickness = k*0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -180,10 +181,11 @@ class World():
 	    self.create_beads(color = color)
             if not self.is_real_time:
 	        simulate_for_duration(time_to_fall, dt= 0.001)
+	simulate_for_duration(time_to_fall, dt= 0.001)
 
 
     def set_grip(self, pr2ID):
-	self.set_pos(pr2ID, 8,6)
+	self.set_pos(pr2ID, 8,0)
         nice_joint_states = [0.0, 0.006508613619013667, 0.0, 0.19977108955651196]
         for i in range(7,11):
 	    self.set_pos(pr2ID, i, nice_joint_states[i-7])
@@ -194,10 +196,20 @@ class World():
         endEIndex = 6
         jointPos = p.getLinkState(self.armID, endEIndex)[0]
         jointOrn = p.getLinkState(self.armID, endEIndex)[1]
-        desiredPos = (jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz)
+        desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
     def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
+        endEIndex = 6
+        actualPos =  p.getLinkState(self.armID, endEIndex)[0]
+        diff = np.array(actualPos)-pos
+        threshold = 0.03
+        while(np.linalg.norm(diff) >= threshold):
+            self.move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
+	    actualPos =  p.getLinkState(self.armID, endEIndex)[0]
+	    diff = actualPos-pos
+
+    def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
         endEIndex = 6
         ikSolver = 0
         if orn is None:
@@ -213,17 +225,15 @@ class World():
     
 
     def place_stirrer_in_pr2_hand(self):
-        cup_r = k*-0.04 
+        cup_r = k*-0.06 
         above_loc = Point(cup_r,cup_r,k*0.7)
 	#set_point(self.spoonID,spoon_loc)
-        for i in range(14):
-            self.move_arm_to_point(above_loc)
+        self.move_arm_to_point(above_loc)
         self.toggle_real_time()
 	self.set_grip(self.armID)
         #stirring motion
-        in_loc = Point(cup_r-k*0.03,cup_r,k*0.2)
-        for i in range(11):
-            self.move_arm_to_point(in_loc)
+        in_loc = Point(cup_r,cup_r,k*0.4)
+        self.move_arm_to_point(in_loc)
 	self.zoom_in_on(self.cupID, k*0.2, z_offset=k*0.1)
 	self.zoom_in_on(self.cupID, k*1.2, z_offset=k*0.1)
 

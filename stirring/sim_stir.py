@@ -14,7 +14,7 @@ for i in range(100000):
     step = 0.005
     theta_diff = 0.7
     
-    world.stir([theta_diff*direction, 0.5, 0, 0, -0.1])
+    world.stir([theta_diff*direction, 0.5, 0.1,0, 0, 0])
     direction *=-1
     rew = reward_func(world.world_state())
     print("reward", rew)

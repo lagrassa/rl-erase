@@ -155,7 +155,7 @@ class StirEnv(gym.Env):
             return -30
         rew =  reward_func(self.world_state)
         if (self.counter % LOG_INTERVAL == 0):
-            print(rew)
+            print("reward",rew)
             reward_file.write(str(rew)+",")
         self.counter +=1
         return rew
