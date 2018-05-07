@@ -174,7 +174,7 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = k*2.5
+	time_to_fall = k*3.5
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
