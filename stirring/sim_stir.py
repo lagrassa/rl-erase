@@ -4,7 +4,7 @@ import stirring_world_pybullet
 from stirring_world_pybullet import World
 timeStep = 1
 vel_iters, pos_iters = 6,2
-world = World(visualize=True)
+world = World(visualize=False)
 from reward import reward_func
 direction = 1
 for i in range(100000):

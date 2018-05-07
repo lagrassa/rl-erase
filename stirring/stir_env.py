@@ -22,7 +22,7 @@ REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
-world = World(visualize=True, real_init=True)
+world = World(visualize=False, real_init=True)
 
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}

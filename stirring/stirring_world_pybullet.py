@@ -13,11 +13,12 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=True, real_init=True):
+    def __init__(self, visualize=False, real_init=True):
         self.visualize=visualize
         self.real_init = real_init
         if real_init:
 	    if visualize:
+                pdb.set_trace()
 		print("Using GUI server")
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	    else:
