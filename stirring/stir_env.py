@@ -12,7 +12,8 @@ import pygame
 logger = logging.getLogger(__name__)
 pygame.display.init()
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER = True
+RENDER = False
+
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
@@ -22,7 +23,7 @@ REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
-world = World(visualize=False, real_init=True)
+world = World(visualize=RENDER, real_init=True)
 
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -92,14 +93,11 @@ class StirEnv(gym.Env):
         HACK = True
         #this is horrible: make a matrix of zeros and set the top left to be what you want
         if HACK:
-            robot_state = np.zeros(self.world_state.shape[0:2])
             state_shape = list(self.world_state.shape)
             state_shape[2] +=1
             state = np.zeros(state_shape)
-            robot_state[0] = 17
-            robot_state[1] = 19
             state[:,:,0:3] = self.world_state
-            state[:,:,3] = robot_state
+            state[0,0:robot_state.shape[0],3] = robot_state
         else:
             state = self.world_state
         return state
@@ -107,6 +105,7 @@ class StirEnv(gym.Env):
     def step(self, action):
         if self.counter % LOG_INTERVAL == 0:
             action_file.write(str(action) + ",")
+            print("action", action)
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
