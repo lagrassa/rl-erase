@@ -12,12 +12,11 @@ for i in range(100000):
     # generally best to keep the time step and iterations fixed.
     #world.stir(0.3)
     step = 0.005
-    theta_diff = 0.7
+    theta_diff = 0.1
     
-    world.stir([theta_diff*direction, 0.5, 0.1,0, 0, 0])
-    direction *=-1
+    world.stir([theta_diff*direction, 0, 1,0])
     rew = reward_func(world.world_state())
-    print("reward", rew)
+    world.stirrer_close()
    
     # Clear applied body forces. We didn't apply any forces, but you
     # should know about this function.

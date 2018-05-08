@@ -17,7 +17,7 @@ class World():
         self.visualize=visualize
         self.real_init = real_init
         if real_init:
-	    if visualize:
+	    if visualize or not visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
@@ -29,11 +29,13 @@ class World():
     def toggle_real_time(self):
         self.is_real_time = 1
         p.setRealTimeSimulation(self.is_real_time)
+    #goes through beads and counts the number that are no longer there
        
     def stirrer_close(self):
-        jointPos = p.getJointState(self.armID, 8)[0]
+        jointPos = np.array(p.getLinkState(self.armID, 10)[0])
+        cupPos = np.array(p.getBasePositionAndOrientation(self.cupID))
         distance = np.linalg.norm(jointPos)
-        far = k*1.5
+        far = k*0.4
         if distance <= far:
             return True
         print("distance is far at", distance)
@@ -102,7 +104,7 @@ class World():
         #crop to only relevant parts
         rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1)
         #rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
-        return rgbPixels # decided against cropping 
+        return rgbPixels[:,:,0:3] # decided against cropping 
 
     def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0):
         objPos, objQuat = p.getBasePositionAndOrientation(objID)
@@ -182,29 +184,30 @@ class World():
 	    simulate_for_duration(1.0)
 
     def delta_control(self, dx, dy, dz, posGain=0.3, velGain=1):
-        endEIndex = 6
+        endEIndex = 7
         jointPos = p.getLinkState(self.armID, endEIndex)[0]
         jointOrn = p.getLinkState(self.armID, endEIndex)[1]
         desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
     def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
-        endEIndex = 6
+        endEIndex = 7
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
         threshold = 0.03
-        timeout = 90
+        timeout = 600
         num_attempts = 0
         while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
             self.move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
 	    actualPos =  p.getLinkState(self.armID, endEIndex)[0]
 	    diff = actualPos-pos
             num_attempts += 1
+
         if num_attempts > timeout:
             print ("Failed to move to point with a distance of ",np.linalg.norm(diff))
 
     def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
-        endEIndex = 6
+        endEIndex = 7
         ikSolver = 0
         if orn is None:
 	    orn = p.getQuaternionFromEuler([0,-np.pi,0])
@@ -219,15 +222,23 @@ class World():
     
 
     def place_stirrer_in_pr2_hand(self):
-        cup_r = k*-0.01 
-        above_loc = Point(cup_r,cup_r,k*0.7)
+        cup_r = k*-0.07 
+        height_above = k*0.7
+        above_loc = Point(cup_r,cup_r,height_above)
 	#set_point(self.spoonID,spoon_loc)
         self.move_arm_to_point(above_loc)
         
         self.toggle_real_time()
 	self.set_grip(self.armID)
+        num_steps = 4
+        desired_end_height=0.33
+        dz_in_loc = height_above - desired_end_height
+        step_size = dz_in_loc/num_steps
+        for z in range(1,num_steps+1): #fake one indexing
+            in_loc = Point(cup_r,cup_r,height_above - z*step_size)
+            self.move_arm_to_point(in_loc)
         #stirring motion
-        in_loc = Point(cup_r,cup_r,k*0.35)
+        #in_loc = Point(cup_r,cup_r,k*0.35)
         self.move_arm_to_point(in_loc)
 	self.zoom_in_on(self.cupID, k*0.2, z_offset=k*0.1)
 
@@ -256,7 +267,7 @@ class World():
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
 
-	    best_arm_pos = [k*-0.6,0,0]
+	    best_arm_pos = [k*-0.65,0,0]
             if self.visualize:
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf", globalScaling = k)[0]
             else: 
@@ -264,6 +275,7 @@ class World():
                 gripper_indices = [8,9,10]
                 blacken(self.armID, end_index=8)
                 greenen(self.armID, gripper_indices)
+            p.enableJointForceTorqueSensor(self.armID, 8, 1)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)

@@ -20,7 +20,7 @@ from rl.callbacks import FileLogger, ModelIntervalCheckpoint
 
 
 WINDOW_LENGTH = 1
-ENV_NAME = "mix_cup_flakey"
+ENV_NAME = "mix_cup_5_7_2018"
 class Learner:
     def __init__(self, env, nb_actions, input_shape):
         env_shape = env.create_state().shape
@@ -87,7 +87,7 @@ def load_supervised_data(actionfile=None, statefile=None):
 # Finally, evaluate our algorithm for 10 episodes.
               
 if __name__=="__main__":
-     nb_actions = 6; #control period held and angle,curl, plus 3 dx dy dz
+     nb_actions = 4; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
      visualize=False
      
      env = StirEnv(visualize=visualize)

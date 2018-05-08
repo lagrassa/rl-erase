@@ -12,7 +12,6 @@ def reward_func(img):
     #calculate mixedness
     mixed_k = 1
     out_k = 20
-    #pdb.set_trace()
     num_mixed = get_mixedness(img)
     num_out = get_out(img)
     rew =  mixed_k*num_mixed + out_k*num_out
@@ -47,14 +46,9 @@ def get_num_contours(hsv_filtered):
 def get_mixedness(img):
     #sum up how faro ratios are from 0.5
     #Image.fromarray(img).show()
-    x_num_chunks = 5.0;
-    y_num_chunks = 5.0
-    sum_mixed = 0
-    i_chunk_size = int(img.shape[0]/x_num_chunks)
-    j_chunk_size = int(img.shape[1]/y_num_chunks)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
-    blue  = cv2.inRange(hsv_img, np.array([115,0,0]),np.array([125,256,210]))
-    red  = cv2.inRange(hsv_img, np.array([-5,0,0]),np.array([5,256,210]))
+    red  = cv2.inRange(hsv_img, np.array([115,0,0]),np.array([125,256,210])) #hack, this is okay because there are only two colors
+    blue  = cv2.inRange(hsv_img, np.array([-5,0,0]),np.array([5,256,210]))
     contours_red  = get_num_contours(red)
     contours_blue  = get_num_contours(blue)
     return contours_red+contours_blue
@@ -78,7 +72,7 @@ def mixedness_region(red_section, blue_section):
             
 if __name__ == "__main__":
     ims = ["all_blue.png","all_red.png", "nearly_blue.png", "nearly_red.png", "mix.png"]
-    ims = ["not-mixed.png", "stirred.png"]
+    ims = ["not-mixed.png"]
     for im_name in ims:
         #im = Image.open(im_name).resize((10,10))
         im = cv2.imread(im_name)
