@@ -147,11 +147,18 @@ class World():
         rgbPixels = self.getImageFromDistance(objID, cam_distance,z_offset=z_offset, y_offset=y_offset, x_offset=x_offset)
         Image.fromarray(rgbPixels[:,:,0:3]).show()
 
+    #this function is now a complete lie and has not only the stirrer state but
+    #also the vector from the cup
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
         linkPos = p.getJointState(self.armID, 8)[0]
         jointPos, jointVel, jointReactionForces, _ = p.getJointState(self.armID,8)
-        return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5]])
+         
+        cupPos=  np.array(p.getBasePositionAndOrientation(self.cupID)[0])
+        stirrerPos=  np.array(p.getLinkState(self.armID, 10)[0])
+        vector_from_cup = cupPos-stirrerPos
+    
+        return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
 
     def reset(self):
         self.__init__(visualize=self.visualize, real_init=False)
