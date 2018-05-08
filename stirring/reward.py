@@ -10,11 +10,12 @@ small_reward = False
 def reward_func(img):
     #calculate number of beads outside of cup
     #calculate mixedness
-    mixed_k = 4
+    mixed_k = 1
     out_k = 20
+    #pdb.set_trace()
     num_mixed = get_mixedness(img)
     num_out = get_out(img)
-    rew =  mixed_k*num_mixed + out_k+num_out
+    rew =  mixed_k*num_mixed + out_k*num_out
     return rew
 
 def get_out(img):
