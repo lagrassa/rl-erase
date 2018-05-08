@@ -18,17 +18,13 @@ class World():
         self.real_init = real_init
         if real_init:
 	    if visualize:
-                pdb.set_trace()
-		print("Using GUI server")
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	    else:
-		print("Using Direct server")
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
 
  
         self.setup()
-        print("Done with setup")
 
     def toggle_real_time(self):
         self.is_real_time = 1
@@ -49,24 +45,17 @@ class World():
         curl = action[1]
         period = action[2]
         max_del = k*0.001
-        x_del = max_del*np.tanh(action[3])
-        y_del = max_del*np.tanh(action[4])
-        z_del = max_del*np.tanh(action[5])
-        direction = 1
+        x_del = 0; #max_del*np.tanh(action[3])
+        y_del = 0; #max_del*np.tanh(action[4])
+        z_del = max_del*np.tanh(action[3])
         wrist_joint_num = 8; 
         self.delta_control(x_del, y_del, z_del)
         #place stirrer in correct location
-	p.setJointMotorControl2(
-	    bodyIndex=self.armID,
-	    jointIndex=wrist_joint_num,
-	    targetPosition = direction*theta_diff,
-	    targetVelocity = 0,
-	    controlMode=p.POSITION_CONTROL,
-	    force=500)
-        
+        self.set_pos(self.armID, wrist_joint_num, theta_diff)
         self.set_pos(self.armID, 10, curl) #10 = curl ID
 	simulate_for_duration(period)
-        
+        self.set_pos(self.armID, wrist_joint_num, -theta_diff)
+	simulate_for_duration(period)
         
 
     def stir_circle(self, radius, step, depth):
@@ -112,8 +101,8 @@ class World():
         #self.showImageFromDistance(0.25)
         #crop to only relevant parts
         rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1)
-        rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
-        return rgbPixels_cropped
+        #rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
+        return rgbPixels # decided against cropping 
 
     def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0):
         objPos, objQuat = p.getBasePositionAndOrientation(objID)
@@ -149,12 +138,11 @@ class World():
         return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5]])
 
     def reset(self):
-        print("In visualize self.visualize=",self.visualize)
         self.__init__(visualize=self.visualize, real_init=False)
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 70
+       num_droplets = 80
        radius = k*0.013
        cup_thickness = k*0.001
 
@@ -205,16 +193,21 @@ class World():
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
         threshold = 0.03
-        while(np.linalg.norm(diff) >= threshold):
+        timeout = 90
+        num_attempts = 0
+        while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
             self.move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
 	    actualPos =  p.getLinkState(self.armID, endEIndex)[0]
 	    diff = actualPos-pos
+            num_attempts += 1
+        if num_attempts > timeout:
+            print ("Failed to move to point with a distance of ",np.linalg.norm(diff))
 
     def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
         endEIndex = 6
         ikSolver = 0
         if orn is None:
-	    orn = p.getQuaternionFromEuler([0,-math.pi,0])
+	    orn = p.getQuaternionFromEuler([0,-np.pi,0])
         numJoints = p.getNumJoints(self.armID)
         
         jd=[damper]*numJoints
@@ -222,21 +215,21 @@ class World():
 	for i in range (numJoints-3):
 	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
         if not self.is_real_time:
-	    simulate_for_duration(0.2)
+	    simulate_for_duration(0.1)
     
 
     def place_stirrer_in_pr2_hand(self):
-        cup_r = k*-0.06 
+        cup_r = k*-0.01 
         above_loc = Point(cup_r,cup_r,k*0.7)
 	#set_point(self.spoonID,spoon_loc)
         self.move_arm_to_point(above_loc)
+        
         self.toggle_real_time()
 	self.set_grip(self.armID)
         #stirring motion
-        in_loc = Point(cup_r,cup_r,k*0.4)
+        in_loc = Point(cup_r,cup_r,k*0.35)
         self.move_arm_to_point(in_loc)
 	self.zoom_in_on(self.cupID, k*0.2, z_offset=k*0.1)
-	self.zoom_in_on(self.cupID, k*1.2, z_offset=k*0.1)
 
 
     def set_pos(self,objID, jointIndex, pos, force=500):
@@ -268,7 +261,9 @@ class World():
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf", globalScaling = k)[0]
             else: 
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/invisible_kuka_with_gripper.sdf", globalScaling = k)[0]
+                gripper_indices = [8,9,10]
                 blacken(self.armID, end_index=8)
+                greenen(self.armID, gripper_indices)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)
@@ -325,6 +320,9 @@ def blacken(objID, end_index =None):
         end_index =  p.getNumJoints(objID)
     for link in range(end_index):
         p.changeVisualShape(objID, link, rgbaColor=(0,1,0,0))
+def greenen(objID, indices):
+    for link in indices:
+        p.changeVisualShape(objID, link, rgbaColor=(0,1,0,1))
     
     
 
