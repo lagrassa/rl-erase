@@ -7,14 +7,13 @@ import numpy as np
 CONTOUR_DEBUG = False
 
 small_reward = False 
-def reward_func(img):
+def reward_func(img, num_out):
     #calculate number of beads outside of cup
     #calculate mixedness
     mixed_k = 1
-    out_k = 20
+    out_k = 0.5
     num_mixed = get_mixedness(img)
-    num_out = get_out(img)
-    rew =  mixed_k*num_mixed + out_k*num_out
+    rew =  mixed_k*num_mixed - out_k*num_out
     return rew
 
 def get_out(img):
@@ -28,7 +27,7 @@ def get_num_contours(hsv_filtered):
     else:
         contours = results[0]
 
-    valid_contours = [ct for ct in contours if cv2.contourArea(ct) > 30 ]
+    valid_contours = [ct for ct in contours if cv2.contourArea(ct) > 3 ]
  
     if CONTOUR_DEBUG:
 	for indx in range(len(contours)):
@@ -44,8 +43,9 @@ def get_num_contours(hsv_filtered):
     
 #@precondition:img.shape[0] and shape[1] on being multiples of 10
 def get_mixedness(img):
-    #sum up how faro ratios are from 0.5
     #Image.fromarray(img).show()
+    #filter out the green stirrer! 
+    img[:,:,1] = np.zeros(img[:,:,1].shape)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
     red  = cv2.inRange(hsv_img, np.array([115,0,0]),np.array([125,256,210])) #hack, this is okay because there are only two colors
     blue  = cv2.inRange(hsv_img, np.array([-5,0,0]),np.array([5,256,210]))

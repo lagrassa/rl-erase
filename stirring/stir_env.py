@@ -15,7 +15,7 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = False
 
 MAX_AIMLESS_WANDERING = 100
-P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
+P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
 EXP_NAME = "DDPG"
@@ -31,7 +31,7 @@ class StirEnv(gym.Env):
     def __init__(self, visualize=True, real_init=True):
         print("Visualize=",visualize)
         self.visualize=visualize
-        self.done_percentage =  80 #pretty well mixed in original example HACK
+        self.done_percentage =  15 #pretty well mixed in original example HACK
         self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
@@ -114,10 +114,14 @@ class StirEnv(gym.Env):
             cup_knocked_over =  self.world.cup_knocked_over()
             mostly_done = reward > self.done_percentage
             stirrer_far = not self.world.stirrer_close()
+            if cup_knocked_over:
+                print("CUP KNOCKED OVER")
+            if stirrer_far:
+                print("STIRRER FAR")
+            if mostly_done:
+                print("MOSTLY DONE")
             
             episode_over = reward > self.done_percentage or self.world.cup_knocked_over() or  not self.world.stirrer_close()
-            if episode_over:
-                print("EPISODE SHOULD BE OVER!!")
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
@@ -152,7 +156,7 @@ class StirEnv(gym.Env):
     def _get_reward(self):
         if self.world.cup_knocked_over():
             return -30
-        rew =  reward_func(self.world_state)
+        rew =  reward_func(self.world_state, self.world.num_beads_out())
         if (self.counter % LOG_INTERVAL == 0):
             print("reward",rew)
             reward_file.write(str(rew)+",")

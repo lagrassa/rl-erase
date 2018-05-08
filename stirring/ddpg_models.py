@@ -37,31 +37,14 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
     #horrible hack: the top left corner
     robot =  Lambda(lambda x: x[:,0,:,:,3][:,0][:,0:dims],  (dims,) , dtype='float32')(picture_tensor)
     #Convolution stuff
-    grid = Conv2D(10,(5,5), activation='relu', padding='same')(grid)
-
-    grid = MaxPooling2D((3,3),strides=(1,1),padding='same')(grid)
+    grid = Conv2D(32,(5,5), activation='relu', padding='same')(grid)
+    grid = MaxPooling2D((2,2),strides=(2,2),padding='same')(grid)
+    grid = Conv2D(64,(5,5), activation='relu', padding='same')(grid)
     grid = Flatten(dtype='float32')(grid)
-    #robot = Flatten(dtype='float32')(robot)
     fc1 = concatenate([robot, grid]) 
-    actor = Dense(16, activation='relu')(fc1)
-    actor = Dense(16, activation='relu')(actor)
-
+    actor = Dense(1024, activation='relu')(fc1) #shamelessly copied from an mnist tutorial architecture
     actor = Dense(nb_actions, activation = 'sigmoid', dtype='float32')(actor) 
     actor = Model(inputs=picture_tensor, outputs=actor)
- 
-    
-    """
-    actor = Sequential()
-    actor.add(Flatten(input_shape=(1,) + env_shape))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(16))
-    actor.add(Activation('relu'))
-    actor.add(Dense(nb_actions))
-    actor.add(Activation('linear'))
-    """
     print(actor.summary())
 
     action_input = Input(shape=(nb_actions,), name='action_input')
@@ -73,8 +56,6 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
     x = Activation('relu')(x)
     x = Dense(32)(x)
     x = Activation('relu')(x)
-    x = Dense(32)(x)
-    x = Activation('relu')(x)
     x = Dense(1)(x)
     x = Activation('linear')(x)
     critic = Model(inputs=[action_input, picture_tensor], outputs=x)
@@ -82,8 +63,8 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
 
 
     processor = EmptyProcessor()
-    memory = SequentialMemory(limit=100000, window_length=1)
-    random_process = OrnsteinUhlenbeckProcess(theta=.15, mu=0., sigma=.3, size=nb_actions)
+    memory = SequentialMemory(limit=1000000, window_length=1)
+    random_process = OrnsteinUhlenbeckProcess(theta=.25, mu=0., sigma=.3, size=nb_actions)
     agent = DDPGAgent(nb_actions=nb_actions, actor=actor, critic=critic, critic_action_input=action_input, memory=memory, nb_steps_warmup_critic=100, nb_steps_warmup_actor=100,random_process=random_process, gamma=.99, target_model_update=1e-3)
     agent.compile(Adam(lr=.0001, clipnorm=0.99, clipvalue=0.5), metrics=['mae'])
     return agent

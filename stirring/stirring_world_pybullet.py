@@ -29,12 +29,26 @@ class World():
     def toggle_real_time(self):
         self.is_real_time = 1
         p.setRealTimeSimulation(self.is_real_time)
+
     #goes through beads and counts the number that are no longer there
+    def num_beads_out(self):
+        cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
+        far = 0.5
+	num_out = sum([1 for d in self.droplets if self.distance_from_cup(d,-1) > far])   
+        return num_out
+
+    def distance_from_cup(self, otherObj, otherLinkIndex):
+        cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
+        if otherLinkIndex == -1:
+            otherPos = np.array(p.getBasePositionAndOrientation(otherObj)[0])
+        
+        else:
+            otherPos = np.array(p.getLinkState(otherObj, otherLinkIndex)[0])
+        return np.linalg.norm(cupPos-otherPos)
+        
        
     def stirrer_close(self):
-        jointPos = np.array(p.getLinkState(self.armID, 10)[0])
-        cupPos = np.array(p.getBasePositionAndOrientation(self.cupID))
-        distance = np.linalg.norm(jointPos)
+        distance = self.distance_from_cup(self.armID, 10)
         far = k*0.4
         if distance <= far:
             return True
@@ -111,8 +125,8 @@ class World():
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         cam_distance = k*0.25
-        im_w = 200
-        im_h = 200
+        im_w = 40
+        im_h = 40
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
         if self.visualize:
             renderer = p.ER_BULLET_HARDWARE_OPENGL
@@ -144,8 +158,8 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 80
-       radius = k*0.013
+       num_droplets = 150
+       radius = k*0.010
        cup_thickness = k*0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -155,13 +169,13 @@ class World():
        limits = zip(lower, upper)
        x_range, y_range = limits[:2]
        z = upper[2] + 0.1
-       droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
-       for droplet in droplets:
+       self.droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
+       for droplet in self.droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
 	   set_point(droplet, Point(x, y, z))
 
-       for i, droplet in enumerate(droplets):
+       for i, droplet in enumerate(self.droplets):
 	   x, y = np.random.normal(0, 1e-3, 2)
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 

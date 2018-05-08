@@ -15,7 +15,7 @@ for i in range(100000):
     theta_diff = 0.1
     
     world.stir([theta_diff*direction, 0, 1,0])
-    rew = reward_func(world.world_state())
+    rew = reward_func(world.world_state(), world.num_beads_out())
     world.stirrer_close()
    
     # Clear applied body forces. We didn't apply any forces, but you
