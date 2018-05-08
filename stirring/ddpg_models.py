@@ -37,12 +37,8 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
     #horrible hack: the top left corner
     robot =  Lambda(lambda x: x[:,0,:,:,3][:,0][:,0:dims],  (dims,) , dtype='float32')(picture_tensor)
     #Convolution stuff
-    grid = Conv2D(32,(5,5), activation='relu', padding='same')(grid)
-    grid = MaxPooling2D((2,2),strides=(2,2),padding='same')(grid)
-    grid = Conv2D(64,(5,5), activation='relu', padding='same')(grid)
-    grid = Flatten(dtype='float32')(grid)
-    fc1 = concatenate([robot, grid]) 
-    actor = Dense(1024, activation='relu')(fc1) #shamelessly copied from an mnist tutorial architecture
+    actor = Dense(32, activation='relu')(robot) #shamelessly copied from an mnist tutorial architecture
+    actor = Dense(32, activation='relu')(robot) #shamelessly copied from an mnist tutorial architecture
     actor = Dense(nb_actions, activation = 'sigmoid', dtype='float32')(actor) 
     actor = Model(inputs=picture_tensor, outputs=actor)
     print(actor.summary())
@@ -50,8 +46,7 @@ def construct_agent(env, env_shape, nb_actions, input_shape):
     action_input = Input(shape=(nb_actions,), name='action_input')
     #observation_input = Input(shape=(1,) + env_shape, name='observation_input')
     #observation_input = picture_tensor
-    flattened_observation = fc1
-    x = Concatenate()([action_input, flattened_observation])
+    x = Concatenate()([action_input, robot])
     x = Dense(32)(x)
     x = Activation('relu')(x)
     x = Dense(32)(x)
