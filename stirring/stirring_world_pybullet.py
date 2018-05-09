@@ -27,13 +27,13 @@ class World():
     def toggle_real_time(self):
         self.is_real_time = int(not self.is_real_time)
         p.setRealTimeSimulation(self.is_real_time)
+    
 
     #goes through beads and counts the number that are no longer there
     def num_beads_out(self):
-        return 0
         cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
-        far = 0.5
-	num_out = sum([1 for d in self.droplets if self.distance_from_cup(d,-1) > far])   
+        #this line is slow AF, comment out for rowdier but more correct performance
+        num_out = sum(map( lambda x: np.any(p.getBasePositionAndOrientation(x)[0]>0.2), self.droplets))
         return num_out
 
     def distance_from_cup(self, otherObj, otherLinkIndex):

@@ -11,7 +11,7 @@ def reward_func(img, num_out):
     #calculate number of beads outside of cup
     #calculate mixedness
     K1 = 1
-    K2 = 0.5
+    K2 = 100
     K3 = 0.1
     
     num_mixed, largest_unmixed = get_mixedness(img)
