@@ -59,13 +59,10 @@ class World():
         theta_diff = action[0]
         curl = action[1]
         period = action[2]
-        max_del = k*0.001
-        x_del = 0; #max_del*np.tanh(action[3])
-        y_del = 0; #max_del*np.tanh(action[4])
-        z_del = max_del*np.tanh(action[3])
-        wrist_joint_num = 8; 
-        self.delta_control(x_del, y_del, z_del)
-        #place stirrer in correct location
+        rot = action[3]
+        #got rid of delta control since it was a horrible idea from the start
+        wrist_joint_num = 8
+        self.stir_circle(time_step = 0.01, size_step = rot)
         self.set_pos(self.armID, wrist_joint_num, theta_diff)
         self.set_pos(self.armID, 10, curl) #10 = curl ID
 	simulate_for_duration(period)
@@ -73,16 +70,15 @@ class World():
 	simulate_for_duration(period)
         
     
-
-    def stir_circle(self, action):
-        size_step = action[0]
-        time_step = action[1]
-        num_steps = 8
+    #adds something of size_step to the current angle
+    def stir_circle(self, size_step=0, time_step = 0):
         #let's say it takes 1 second t
         #and find out where x,y is is 
-        for i in range(num_steps+1):
-	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=6,controlMode=p.POSITION_CONTROL,force=500,positionGain=0.3,velocityGain=1, targetPosition=i*size_step)
-            simulate_for_duration(time_step) 
+        current_pos = p.getJointState(self.armID, 6)[0]
+        desired_pos = current_pos + size_step
+        if desired_pos >= 3:
+            desired_pos = -3 #reset
+	p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=6,controlMode=p.POSITION_CONTROL,force=500,positionGain=0.3,velocityGain=1, targetPosition=desired_pos)
             
 
 
