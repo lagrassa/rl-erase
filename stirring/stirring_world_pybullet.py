@@ -105,8 +105,8 @@ class World():
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         cam_distance = k*0.25
-        im_w = 40
-        im_h = 40
+        im_w = 100
+        im_h = 100
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
         if self.visualize:
             renderer = p.ER_BULLET_HARDWARE_OPENGL
@@ -289,7 +289,6 @@ class World():
             if beads:
 	        self.drop_beads_in_cup()
 	    self.place_stirrer_in_pr2_hand()
-            self.toggle_real_time()
             self.bullet_id = p.saveState()
             self.real_init = False
         else:
