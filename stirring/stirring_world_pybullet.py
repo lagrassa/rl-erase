@@ -13,7 +13,7 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True):
+    def __init__(self, visualize=False, real_init=True, beads=True):
         self.visualize=visualize
         self.real_init = real_init
         if real_init:
@@ -22,16 +22,15 @@ class World():
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-
- 
-        self.setup()
+        self.setup(beads=beads)
 
     def toggle_real_time(self):
-        self.is_real_time = 1
+        self.is_real_time = int(not self.is_real_time)
         p.setRealTimeSimulation(self.is_real_time)
 
     #goes through beads and counts the number that are no longer there
     def num_beads_out(self):
+        return 0
         cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
         far = 0.5
 	num_out = sum([1 for d in self.droplets if self.distance_from_cup(d,-1) > far])   
@@ -73,34 +72,31 @@ class World():
         self.set_pos(self.armID, wrist_joint_num, -theta_diff)
 	simulate_for_duration(period)
         
+    
 
-    def stir_circle(self, radius, step, depth):
-        #work on a clockwise circle around (0,0)
-        #try to move to the closest point on the circle, and then a circumference of step away from that
-        spoon_pos,spoon_quat = p.getBasePositionAndOrientation(self.spoonID)
-        roll, pitch, yaw = euler_from_quat(spoon_quat)
-        r = self.spoon_l
-        elevation=np.pi/2.0-pitch
-        azimuth = yaw
-        x_top = spoon_pos[0]+r*np.sin(elevation)*np.cos(azimuth)
-        y_top = spoon_pos[1] +r*np.sin(elevation)*np.sin(azimuth)
-        z_top = spoon_pos[2]  + r*np.cos(elevation)
-        top_pos = [x_top, y_top, z_top]
-        p.addUserDebugLine(spoon_pos,top_pos,[0.8,0,0],1,5)
-        _,phi_current = cart2pol(spoon_pos[0],spoon_pos[1])
-        #increase phi by step, and set rho to what you have
-        target_xy = pol2cart(radius, phi_current)
-        target_pos = target_xy + (float(depth),)
-        # 
-        diff_pos = [target_xy[i]-spoon_pos[i] for i in range(len(target_xy))]
-        p.applyExternalForce(self.spoonID,0,[-17,0,0],[0,0,0],p.LINK_FRAME)
-        #p.setJointMotorControl2(
-        #    bodyIndex = self.spoonID,
-        #    jointIndex=0,
-        #    controlMode=p.POSITION_CONTROL,
-        #    targetPosition=diff_pos[0],
-        #    force=1.0)
-        #p.setJointMotorControl2(bodyIndex = self.spoonID,jointIndex=0,controlMode=p.POSITION_CONTROL,targetPosition=190,force=500)
+    def stir_circle(self, action):
+        #start at 0,radius and make a counterclockwise circle with this depth
+        radius = action[0]
+        num_steps= 8
+        step_size = 2*np.pi/num_steps
+        #let's say it takes 1 second t
+        cupPos, _ = p.getBasePositionAndOrientation(self.cupID)
+        prevPos = p.getLinkState(self.armID, 10)[0]
+        #and find out where x,y is is 
+        for i in range(num_steps+1):
+            cupPos, _ = p.getBasePositionAndOrientation(self.cupID)
+            tipPos = p.getLinkState(self.armID, 10)[0]
+            #want to go to phi being step_size*i, and the origin being the cupPos
+            desired_pos_cup_frame = pol2cart(radius, i*step_size)
+            desired_pos = (desired_pos_cup_frame[0]+cupPos[0], desired_pos_cup_frame[1]+cupPos[1], tipPos[2])
+            p.addUserDebugLine(prevPos,desired_pos,[1,0,0],lineWidth=5, lifeTime= 6)
+            self.move_arm_to_point(desired_pos, threshold=0.06, timeout=3, posGain=20.2)
+          
+            pdb.set_trace()
+            prevPos = tipPos
+            
+            
+
 
 
     def render(self):
@@ -211,17 +207,15 @@ class World():
         desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
-    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
+    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.03, timeout=700):
         endEIndex = 7
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
-        threshold = 0.03
-        timeout = 600
         num_attempts = 0
         while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
             self.move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
 	    actualPos =  p.getLinkState(self.armID, endEIndex)[0]
-	    diff = actualPos-pos
+	    diff = np.array(actualPos)-pos
             num_attempts += 1
 
         if num_attempts > timeout:
@@ -273,7 +267,7 @@ class World():
 	force = 500)
 
 
-    def setup(self):
+    def setup(self, beads=True):
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
@@ -307,9 +301,10 @@ class World():
 	    else:
                 self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
-
-	    self.drop_beads_in_cup()
+            if beads:
+	        self.drop_beads_in_cup()
 	    self.place_stirrer_in_pr2_hand()
+            self.toggle_real_time()
             self.bullet_id = p.saveState()
             self.real_init = False
         else:
