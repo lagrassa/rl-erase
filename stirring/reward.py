@@ -12,7 +12,7 @@ def reward_func(img, num_out):
     #calculate mixedness
     K1 = 1
     K2 = 0.5
-    K3 = 0.6
+    K3 = 0.1
     
     num_mixed, largest_unmixed = get_mixedness(img)
     rew =  K1*num_mixed - K2*num_out-K3*largest_unmixed

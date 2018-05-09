@@ -89,7 +89,6 @@ def load_supervised_data(actionfile=None, statefile=None):
 if __name__=="__main__":
      nb_actions = 4; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
      visualize=False
-     
      env = StirEnv(visualize=visualize)
      state_shape = list(env.world_state.shape)
      robot_dims = env.robot_state.shape[0]

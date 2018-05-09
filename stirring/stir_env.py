@@ -25,13 +25,14 @@ reward_file = open("rewards"+EXP_NAME+".py", "a")
 LOG_INTERVAL = 20
 world = World(visualize=RENDER, real_init=True)
 
+
 class StirEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, visualize=True, real_init=True):
         print("Visualize=",visualize)
         self.visualize=visualize
-        self.done_percentage =  15 #pretty well mixed in original example HACK
+        self.done_amount =  -90 #pretty well mixed in original example HACK
         self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
@@ -39,7 +40,7 @@ class StirEnv(gym.Env):
         self.counter = 0;
         self.replay_counter = 0;
         self.num_steps_same = 0;
-        self.prev_reward = 0; 
+        self.prev_val = 0; 
         self.saved_robot_state = []
         self.saved_world_state = []
 
@@ -73,13 +74,14 @@ class StirEnv(gym.Env):
 
     #returns the reward and checks if it's been the same for a while
     def process_reward(self):
-        reward = self._get_reward()
-        if abs(reward-self.prev_reward) < 0.0001:
+        reward_val = self._get_reward()
+        if abs(reward_val) < 0.11:
             self.num_steps_same +=1;
         else:
             self.num_steps_same = 0
-        self.prev_reward = reward; 
-        return reward 
+        reward = reward_val - self.prev_val
+        self.prev_val = reward_val; 
+        return reward, reward_val
 
     def stop_if_necessary(self):
         if self.num_steps_same >= MAX_AIMLESS_WANDERING:
@@ -109,10 +111,11 @@ class StirEnv(gym.Env):
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
-        reward = self.process_reward()
+        reward, val = self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
+            """
             cup_knocked_over =  self.world.cup_knocked_over()
-            mostly_done = reward > self.done_percentage
+            mostly_done = val > self.done_amount
             stirrer_far = not self.world.stirrer_close()
             if cup_knocked_over:
                 print("CUP KNOCKED OVER")
@@ -120,8 +123,9 @@ class StirEnv(gym.Env):
                 print("STIRRER FAR")
             if mostly_done:
                 print("MOSTLY DONE")
+            """
             
-            episode_over = reward > self.done_percentage or self.world.cup_knocked_over() or  not self.world.stirrer_close()
+            episode_over = val > self.done_amount or self.world.cup_knocked_over() or  not self.world.stirrer_close()
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
                 print("EPISODE OVER", reward) 
@@ -155,7 +159,7 @@ class StirEnv(gym.Env):
 
     def _get_reward(self):
         if self.world.cup_knocked_over():
-            return -30
+            return -3000
         rew =  reward_func(self.world_state, self.world.num_beads_out())
         if (self.counter % LOG_INTERVAL == 0):
             print("reward",rew)
