@@ -75,26 +75,14 @@ class World():
     
 
     def stir_circle(self, action):
-        #start at 0,radius and make a counterclockwise circle with this depth
-        radius = action[0]
-        num_steps= 8
-        step_size = 2*np.pi/num_steps
+        size_step = action[0]
+        time_step = action[1]
+        num_steps = 8
         #let's say it takes 1 second t
-        cupPos, _ = p.getBasePositionAndOrientation(self.cupID)
-        prevPos = p.getLinkState(self.armID, 10)[0]
         #and find out where x,y is is 
         for i in range(num_steps+1):
-            cupPos, _ = p.getBasePositionAndOrientation(self.cupID)
-            tipPos = p.getLinkState(self.armID, 10)[0]
-            #want to go to phi being step_size*i, and the origin being the cupPos
-            desired_pos_cup_frame = pol2cart(radius, i*step_size)
-            desired_pos = (desired_pos_cup_frame[0]+cupPos[0], desired_pos_cup_frame[1]+cupPos[1], tipPos[2])
-            p.addUserDebugLine(prevPos,desired_pos,[1,0,0],lineWidth=5, lifeTime= 6)
-            self.move_arm_to_point(desired_pos, threshold=0.06, timeout=3, posGain=20.2)
-          
-            pdb.set_trace()
-            prevPos = tipPos
-            
+	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=6,controlMode=p.POSITION_CONTROL,force=500,positionGain=0.3,velocityGain=1, targetPosition=i*size_step)
+            simulate_for_duration(time_step) 
             
 
 
@@ -245,6 +233,7 @@ class World():
         
         self.toggle_real_time()
 	self.set_grip(self.armID)
+        
         num_steps = 4
         desired_end_height=0.33
         dz_in_loc = height_above - desired_end_height
