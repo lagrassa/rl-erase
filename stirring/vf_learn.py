@@ -20,8 +20,8 @@ ENV_NAME = "mix_cup_5_7_2018"
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 25
-        self.rollout_size = 200
+        self.batch_size = 15
+        self.rollout_size = 25
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -76,11 +76,11 @@ class Learner:
     
         
     def collect_batch(self):
-        img1s = np.zeros(self.input_shape + (self.batch_size,))
-        img2s =  np.zeros(self.input_shape + (self.batch_size,))
-        robot_states = np.zeros((self.batch_size, self.robot_dims))
-        rewards = np.zeros(self.batch_size)
-        actions = np.zeros((self.batch_size, self.nb_actions))
+        img1s = np.zeros( (self.rollout_size,)+self.input_shape)
+        img2s =  np.zeros( (self.rollout_size,)+ self.input_shape)
+        robot_states = np.zeros((self.rollout_size, self.robot_dims))
+        rewards = np.zeros(self.rollout_size)
+        actions = np.zeros((self.rollout_size, self.nb_actions))
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
@@ -88,16 +88,14 @@ class Learner:
             #predict best action
             _, reward, episode_over, _ = self.env.step(best_action)
             #then collect reward
-            if episode_over:
-                #just end the episode
-                self.env.reset()
-                return img1s[:,:,:i], imgs2[:,:,:i], robot_states[:i, :], actions[:i, :], rewards[:i]
-            else:    
-                img1s[:,:,i] = img1
-                img2s[:,:,i] = img2
-                robot_states[i, :] = robot_state
-                actions[i, :] = action
-                rewards[i] = reward
+            
+	    img1s[i,:,:,:] = img1
+	    img2s[i,:,:,:] = img2
+	    robot_states[i, :] = robot_state
+	    actions[i, :] = best_action
+	    rewards[i] = reward
+            if i > 3 and episode_over:
+                self.env.reset() #this is okay even though it's not a full rollout because we don't care about the state transitions, since this is super local
         return img1s, img2s, robot_states, actions,rewards
             
             

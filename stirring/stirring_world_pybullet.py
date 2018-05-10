@@ -49,7 +49,7 @@ class World():
        
     def stirrer_close(self):
         distance = self.distance_from_cup(self.armID, 10)
-        far = k*0.4
+        far = k*0.1
         if distance <= far:
             return True
         print("distance is far at", distance)
@@ -291,7 +291,7 @@ class World():
                 self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
           
-            if False and  beads:
+            if beads:
 	        self.drop_beads_in_cup()
 	        self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
@@ -306,7 +306,7 @@ class World():
     def cup_knocked_over(self):
         cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
         roll, pitch, yaw = euler_from_quat(cupQuat)
-        thresh = 0.6
+        thresh = 1
         if abs(roll) > thresh or abs(pitch) > thresh:
             return True
         return False

@@ -114,7 +114,7 @@ class StirEnv(gym.Env):
                 print("MOSTLY DONE")
             """
             
-            episode_over = val > self.done_amount or self.world.cup_knocked_over() or  not self.world.stirrer_close()
+            episode_over = reward > self.done_amount or self.world.cup_knocked_over() or  not self.world.stirrer_close()
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
 		reward_file.write(str(reward)+",")
@@ -149,7 +149,7 @@ class StirEnv(gym.Env):
 
     def _get_reward(self):
         if self.world.cup_knocked_over():
-            return -3000
+            return -30
         #fun enough, world_state should now be a tuple
         rew =  reward_func(self.world_state, self.world.num_beads_out())
         self.counter +=1
