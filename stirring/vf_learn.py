@@ -1,4 +1,5 @@
 from __future__ import division
+
 from scipy import misc
 from random import random
 
@@ -8,6 +9,7 @@ import pickle
 from stir_env import StirEnv
 
 from keras.models import Sequential, Model
+from keras.callbacks import CSVLogger
 from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D, LSTM
 from keras.optimizers import Adam
 import keras.backend as K
@@ -18,7 +20,11 @@ ENV_NAME = "mix_cup_5_7_2018"
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 50
+        self.batch_size = 25
+        self.rollout_size = 200
+        self.input_shape = input_shape
+        self.robot_dims = robot_dims
+        self.nb_actions = nb_actions
         self.build_model(nb_actions,input_shape, robot_dims) 
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
 
@@ -67,39 +73,43 @@ class Learner:
         values = self.model.predict([img1s, img2s, robot_states, random_actions])
         best_value_index = np.argmax(values)
         return random_actions[best_value_index]
+    
         
     def collect_batch(self):
-        img1s = []
-        img2s = []
-        robot_states = []
-        rewards = []
-        actions = []
-        for _ in range(self.batch_size):
+        img1s = np.zeros(self.input_shape + (self.batch_size,))
+        img2s =  np.zeros(self.input_shape + (self.batch_size,))
+        robot_states = np.zeros((self.batch_size, self.robot_dims))
+        rewards = np.zeros(self.batch_size)
+        actions = np.zeros((self.batch_size, self.nb_actions))
+        for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
             best_action = self.select_action(img1, img2, robot_state)
             #predict best action
-            self.env.step(best_action)
-   
+            _, reward, episode_over, _ = self.env.step(best_action)
             #then collect reward
-            reward = self.env._get_reward()
-            #and add to list 
-            img1s.append(img1)
-            img2s.append(img2)
-            robot_states.append(robot_state)
-            actions.append(best_action)
-            rewards.append(reward)
+            if episode_over:
+                #just end the episode
+                self.env.reset()
+                return img1s[:,:,:i], imgs2[:,:,:i], robot_states[:i, :], actions[:i, :], rewards[:i]
+            else:    
+                img1s[:,:,i] = img1
+                img2s[:,:,i] = img2
+                robot_states[i, :] = robot_state
+                actions[i, :] = action
+                rewards[i] = reward
         return img1s, img2s, robot_states, actions,rewards
             
             
 
     def train(self):
-        numsteps = 100
+        numsteps = 5
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
+        csv_logger = CSVLogger('log'+ENV_NAME+'.csv', append=True, separator=';')
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
-            self.model.fit([np.array(img1s), np.array(img2s), np.array(robot_states), np.array(actions)], np.array(rewards), epochs=2, batch_size=self.batch_size) 
+            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=10, batch_size=self.batch_size, callbacks=[csv_logger]) 
         self.model.save_weights(ENV_NAME+'weights.h5f')
 
 
