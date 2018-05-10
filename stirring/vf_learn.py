@@ -18,19 +18,33 @@ ENV_NAME = "mix_cup_5_7_2018"
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 5
+        self.batch_size = 50
         self.build_model(nb_actions,input_shape, robot_dims) 
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
 
+    #Let's make these images kinda small
     def build_model(self, nb_actions, input_shape, robot_dims):
         img1 = Input(shape=input_shape)
         img2 = Input(shape=input_shape)
         action = Input(shape=(nb_actions,))
         robot_state = Input(shape=(robot_dims,))
+        #Conv layer and max pooling layer for img1, expecting 50x50 cup
+        img1_layers = Conv2D(32, 5,5, activation='relu')(img1)
+        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
+        img1_layers = Conv2D(32, 2,2, activation='relu')(img1_layers)
+        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
         #for now, flatten im1+ 2 
-        img1_layers = Flatten()(img1)
+        img1_layers = Flatten()(img1_layers)
+        img2_layers = Conv2D(32, 5,5, activation='relu')(img2)
+        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
+        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        #for now, flatten im2+ 2 
+        img2_layers = Flatten()(img2_layers)
+
         img2_layers = Flatten()(img2)
         layer = concatenate([img1_layers, img2_layers, robot_state, action])
+        predictions = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
 

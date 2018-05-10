@@ -110,8 +110,8 @@ class World():
         roll, pitch, yaw = euler_from_quat(objQuat)
         yaw = yaw + theta_offset
         cam_distance = k*0.25
-        im_w = 100
-        im_h = 100
+        im_w = 50
+        im_h = 50
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
         if self.visualize:
             renderer = p.ER_BULLET_HARDWARE_OPENGL
@@ -149,7 +149,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 20#150
+       num_droplets = 150
        radius = k*0.010
        cup_thickness = k*0.001
 
@@ -290,9 +290,9 @@ class World():
 	    else:
                 self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
-            #if beads:
-	    #    self.drop_beads_in_cup()
-	    #self.place_stirrer_in_pr2_hand()
+            if  beads:
+	        self.drop_beads_in_cup()
+	        self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
             self.real_init = False
         else:
