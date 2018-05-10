@@ -31,6 +31,7 @@ class World():
 
     #goes through beads and counts the number that are no longer there
     def num_beads_out(self):
+        return 0 #currently too slow to actually use this....
         cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
         #this line is slow AF, comment out for rowdier but more correct performance
         num_out = sum(map( lambda x: np.any(p.getBasePositionAndOrientation(x)[0]>0.2), self.droplets))
@@ -123,7 +124,6 @@ class World():
         projectionMatrix = p.computeProjectionMatrixFOV(fov,aspect,nearPlane, farPlane)
   
         _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, projectionMatrix=projectionMatrix, shadow=0, lightDirection = [1,1,1],renderer=renderer)
-        Image.fromarray(rgbPixels).show()
         return rgbPixels
         
         
@@ -290,9 +290,9 @@ class World():
 	    else:
                 self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
-            if beads:
-	        self.drop_beads_in_cup()
-	    self.place_stirrer_in_pr2_hand()
+            #if beads:
+	    #    self.drop_beads_in_cup()
+	    #self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
             self.real_init = False
         else:

@@ -36,7 +36,7 @@ class StirEnv(gym.Env):
         self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
-        self.n = self.world_state.shape[1]*self.world_state.shape[0]
+        self.n = self.world_state[0].shape[1]*self.world_state[0].shape[0]
         self.counter = 0;
         self.replay_counter = 0;
         self.num_steps_same = 0;
@@ -92,17 +92,8 @@ class StirEnv(gym.Env):
 
     def create_state(self):
         robot_state = self.robot_state
-        HACK = True
-        #this is horrible: make a matrix of zeros and set the top left to be what you want
-        if HACK:
-            state_shape = list(self.world_state.shape)
-            state_shape[2] +=1
-            state = np.zeros(state_shape)
-            state[:,:,0:3] = self.world_state
-            state[0,0:robot_state.shape[0],3] = robot_state
-        else:
-            state = self.world_state
-        return state
+        img1, img2 = self.world_state
+        return img1, img2, robot_state
         
     def step(self, action):
         if self.counter % LOG_INTERVAL == 0:
@@ -160,6 +151,7 @@ class StirEnv(gym.Env):
     def _get_reward(self):
         if self.world.cup_knocked_over():
             return -3000
+        #fun enough, world_state should now be a tuple
         rew =  reward_func(self.world_state, self.world.num_beads_out())
         if (self.counter % LOG_INTERVAL == 0):
             print("reward",rew)
