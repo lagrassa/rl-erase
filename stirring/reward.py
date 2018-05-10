@@ -9,10 +9,13 @@ import numpy as np
 CONTOUR_DEBUG = False
 
 small_reward = False 
-def reward_func(img, num_out):
+def reward_func(imgs, num_out):
     #calculate number of beads outside of cup
     #calculate mixedness
-    rew = get_mixedness(img)
+    rew = 0
+    assert(len(imgs) == 2)
+    for img in imgs:
+        rew += get_mixedness(img)
     return rew
 
 
@@ -81,11 +84,8 @@ def n_entropy(red, blue, n):
 def entropy_region(red_section, blue_section):
     num_red = 0.0
     num_blue = 0.0
-    try:
-        num_red = sum(sum(red_section))
-        num_blue = sum(sum(blue_section))
-    except:
-        pdb.set_trace()
+    num_red = sum(sum(red_section))
+    num_blue = sum(sum(blue_section))
     p_red = num_red/(num_red+num_blue)
     p_blue = num_blue/(num_red+num_blue)
     #avoid math domain errors this way

@@ -93,17 +93,21 @@ class World():
         time.sleep(0.0001)
         return 
 
+    """Fun enough, this function returns a tuple of two different camera views!"""
     def world_state(self):
-        #self.showImageFromDistance(0.25)
         #crop to only relevant parts
-        rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1)
-        #rgbPixels_cropped = rgbPixels[:,40:160,0:3] #maaaagic need to adjust if changing either resolution or distance....
-        return rgbPixels[:,:,0:3] # decided against cropping 
+        views = [0, 180] #I have no idea why, but these seems to be in degrees
+        images = ()
+        for view in views:
+            rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1, theta_offset = view)
+            images += (rgbPixels[:,:,0:3],) # decided against cropping 
+        return images
 
-    def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0):
+    def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0, theta_offset = 0):
         objPos, objQuat = p.getBasePositionAndOrientation(objID)
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
+        yaw = yaw + theta_offset
         cam_distance = k*0.25
         im_w = 100
         im_h = 100
@@ -119,7 +123,7 @@ class World():
         projectionMatrix = p.computeProjectionMatrixFOV(fov,aspect,nearPlane, farPlane)
   
         _,_,rgbPixels,_,_ = p.getCameraImage(width=im_w,height=im_h, viewMatrix=viewMatrix, projectionMatrix=projectionMatrix, shadow=0, lightDirection = [1,1,1],renderer=renderer)
-        #Image.fromarray(rgbPixels).show()
+        Image.fromarray(rgbPixels).show()
         return rgbPixels
         
         
@@ -145,7 +149,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 150
+       num_droplets = 20#150
        radius = k*0.010
        cup_thickness = k*0.001
 
