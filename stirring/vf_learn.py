@@ -83,10 +83,9 @@ class Learner:
         numsteps = 100
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
-        img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
         for i in range(numsteps):
-            self.model.fit([np.array(img1s), np.array(img2s), np.array(robot_states), np.array(actions)], np.array(rewards), epochs=5, batch_size=self.batch_size) 
-
+            img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
+            self.model.fit([np.array(img1s), np.array(img2s), np.array(robot_states), np.array(actions)], np.array(rewards), epochs=2, batch_size=self.batch_size) 
         self.model.save_weights(ENV_NAME+'weights.h5f')
 
 
