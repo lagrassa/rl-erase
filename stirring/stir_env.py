@@ -1,10 +1,7 @@
 import gym
 import pdb
 import random
-from gym import error, spaces
 from reward import reward_func
-from gym import utils
-from gym.utils import seeding
 import numpy as np
 from stirring_world_pybullet import World
 import logging
