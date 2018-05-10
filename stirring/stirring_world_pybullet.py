@@ -290,7 +290,8 @@ class World():
 	    else:
                 self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
-            if  beads:
+          
+            if False and  beads:
 	        self.drop_beads_in_cup()
 	        self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()

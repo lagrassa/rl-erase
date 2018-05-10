@@ -12,7 +12,7 @@ for i in range(100000):
     # generally best to keep the time step and iterations fixed.
     #world.stir(0.3)
     step = 0.005
-    theta_diff = 0.3
+    theta_diff = 0.5
     world.stir([0.5, 0.8,0.5,0.5])
     print(reward_func(world.world_state(),num_out=0) )
     #world.stir([theta_diff*direction, 0, 1,0])

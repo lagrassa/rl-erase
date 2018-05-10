@@ -15,10 +15,10 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = False
 
 MAX_AIMLESS_WANDERING = 100
-P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
+P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
-EXP_NAME = "DDPG"
+EXP_NAME = "value_estimation"
 REPLAY_LENGTH = LENGTH_REPLAY
 action_file = open("actions"+EXP_NAME+".py", "a") 
 reward_file = open("rewards"+EXP_NAME+".py", "a")
@@ -32,7 +32,7 @@ class StirEnv(gym.Env):
     def __init__(self, visualize=True, real_init=True):
         print("Visualize=",visualize)
         self.visualize=visualize
-        self.done_amount =  -90 #pretty well mixed in original example HACK
+        self.done_amount =  90 #pretty well mixed in original example HACK
         self.world = world
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.stirrer_state()
@@ -73,6 +73,7 @@ class StirEnv(gym.Env):
             self.replay_counter +=1
 
     #returns the reward and checks if it's been the same for a while
+    
     def process_reward(self):
         reward_val = self._get_reward()
         if abs(reward_val) < 0.11:
@@ -81,7 +82,7 @@ class StirEnv(gym.Env):
             self.num_steps_same = 0
         reward = reward_val - self.prev_val
         self.prev_val = reward_val; 
-        return reward, reward_val
+        return reward_val
 
     def stop_if_necessary(self):
         if self.num_steps_same >= MAX_AIMLESS_WANDERING:
@@ -102,7 +103,7 @@ class StirEnv(gym.Env):
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
-        reward, val = self.process_reward()
+        reward= self.process_reward()
         if self.replay_counter == 0: #never end episode during experience replay
             """
             cup_knocked_over =  self.world.cup_knocked_over()
@@ -119,6 +120,7 @@ class StirEnv(gym.Env):
             episode_over = val > self.done_amount or self.world.cup_knocked_over() or  not self.world.stirrer_close()
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
+		reward_file.write(str(reward)+",")
                 print("EPISODE OVER", reward) 
 
         self.should_replay_and_setup()
@@ -153,9 +155,6 @@ class StirEnv(gym.Env):
             return -3000
         #fun enough, world_state should now be a tuple
         rew =  reward_func(self.world_state, self.world.num_beads_out())
-        if (self.counter % LOG_INTERVAL == 0):
-            print("reward",rew)
-            reward_file.write(str(rew)+",")
         self.counter +=1
         return rew
 
