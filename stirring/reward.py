@@ -45,9 +45,8 @@ def get_mixedness(img):
     #filter out the green stirrer! 
     img[:,:,1] = np.zeros(img[:,:,1].shape)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
-    pdb.set_trace()
-    blue  = cv2.inRange(hsv_img, np.array([115,0,0]),np.array([125,256,210]))/255.0 #hack, this is okay because there are only two colors
-    red  = cv2.inRange(hsv_img, np.array([-5,0,0]),np.array([5,256,210]))/255.0
+    blue  = cv2.inRange(hsv_img, np.array([115,200,0]),np.array([125,256,210]))/255.0 #hack, this is okay because there are only two colors
+    red  = cv2.inRange(hsv_img, np.array([-5,200,0]),np.array([5,256,210]))/255.0
     return hierarchical_entropy(red, blue)
 
 def hierarchical_entropy(red, blue):
@@ -55,7 +54,7 @@ def hierarchical_entropy(red, blue):
     #@requires 32x32 image or 64x64 image to work well, some multiple of 8
     #I continue to think this is reasonable.
     total_entropy = 0
-    for n in [2]:
+    for n in [2, 4, 8]:
         total_entropy += n_entropy(red, blue, n)
     return total_entropy
 
@@ -63,7 +62,6 @@ def showImage(red_section, blue_section):
     img = np.zeros(red_section.shape+(3,), dtype = np.uint8)
     img[:,:,0] = red_section*255
     img[:,:,2] = blue_section*255
-    pdb.set_trace()
     Image.fromarray(img).show()
         
 
@@ -76,7 +74,6 @@ def n_entropy(red, blue, n):
         for j in range(n):
             red_section = red[i*i_chunk_size:i*i_chunk_size+i_chunk_size, j*j_chunk_size:j*j_chunk_size+j_chunk_size]
             blue_section = blue[i*i_chunk_size:i*i_chunk_size+i_chunk_size, j*j_chunk_size:j*j_chunk_size+j_chunk_size]
-            showImage(red_section, blue_section)
             entropy = entropy_region(red_section, blue_section)
             sum_entropy += entropy
     return sum_entropy
@@ -87,12 +84,10 @@ def entropy_region(red_section, blue_section):
     try:
         num_red = sum(sum(red_section))
         num_blue = sum(sum(blue_section))
-        print("num_red", num_red, "num_blue", num_blue)
     except:
         pdb.set_trace()
     p_red = num_red/(num_red+num_blue)
     p_blue = num_blue/(num_red+num_blue)
-    print("p_red", p_red, "p_blue", p_blue)
     #avoid math domain errors this way
     entropy_individual = 0
     if p_red > 0:
@@ -105,11 +100,11 @@ def entropy_region(red_section, blue_section):
             
 if __name__ == "__main__":
     ims = ["all_blue.png","all_red.png", "nearly_blue.png", "nearly_red.png", "mix.png"]
-    ims = ["stirred.png"]
+    ims = ["pink.png"]
     for im_name in ims:
         #im = Image.open(im_name).resize((10,10))
         im = cv2.imread(im_name)
-        im = cv2.resize(im, (10,10))
+        #im = cv2.resize(im, (20,20))
     
         print(get_mixedness(im))
 
