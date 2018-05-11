@@ -9,14 +9,16 @@ import numpy as np
 CONTOUR_DEBUG = False
 
 small_reward = False 
-def reward_func(imgs, num_out):
+def reward_func(imgs, num_in):
     #calculate number of beads outside of cup
     #calculate mixedness
     rew = 0
+    #k should try to keep the mixness proportions approx equal to the ratios, so like 10
+    k = 20
     assert(len(imgs) == 2)
     for img in imgs:
         rew += get_mixedness(img)
-    return rew
+    return rew + k*num_in
 
 
 def get_num_contours(hsv_filtered):

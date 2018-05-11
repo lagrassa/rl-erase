@@ -1,3 +1,4 @@
+from __future__ import division
 import pybullet as p
 import math
 import pdb
@@ -29,13 +30,12 @@ class World():
         p.setRealTimeSimulation(self.is_real_time)
     
 
-    #goes through beads and counts the number that are no longer there
-    def num_beads_out(self):
-        return 0 #currently too slow to actually use this....
-        cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
-        #this line is slow AF, comment out for rowdier but more correct performance
-        num_out = sum(map( lambda x: np.any(p.getBasePositionAndOrientation(x)[0]>0.2), self.droplets))
-        return num_out
+    """Returns the proportion of beads that are still in the cup"""
+    def ratio_beads_in(self):
+        aabbMin, aabbMax = p.getAABB(self.cupID)
+        num_in = len(p.getOverlappingObjects(aabbMin, aabbMax))
+        total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
+        return num_in/total
 
     def distance_from_cup(self, otherObj, otherLinkIndex):
         cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
@@ -150,6 +150,7 @@ class World():
 
     def create_beads(self, color = (0,0,1,1)):
        num_droplets = 150
+       self.num_droplets = num_droplets
        radius = k*0.010
        cup_thickness = k*0.001
 
@@ -160,13 +161,13 @@ class World():
        limits = zip(lower, upper)
        x_range, y_range = limits[:2]
        z = upper[2] + 0.1
-       self.droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
-       for droplet in self.droplets:
+       droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
+       for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
 	   set_point(droplet, Point(x, y, z))
 
-       for i, droplet in enumerate(self.droplets):
+       for i, droplet in enumerate(droplets):
 	   x, y = np.random.normal(0, 1e-3, 2)
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 

@@ -151,7 +151,7 @@ class StirEnv(gym.Env):
         if self.world.cup_knocked_over():
             return -30
         #fun enough, world_state should now be a tuple
-        rew =  reward_func(self.world_state, self.world.num_beads_out())
+        rew =  reward_func(self.world_state, self.world.ratio_beads_in())
         self.counter +=1
         return rew
 
