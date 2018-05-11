@@ -16,12 +16,12 @@ import keras.backend as K
 
 
 WINDOW_LENGTH = 1
-ENV_NAME = "mix_cup_5_7_2018"
+ENV_NAME = "mix_cup_5_10_2018"
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
         self.batch_size = 15
-        self.rollout_size = 25
+        self.rollout_size = 100
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -64,7 +64,7 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 10
+        num_to_check = 40
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -101,14 +101,17 @@ class Learner:
             
 
     def train(self):
-        numsteps = 5
+        numsteps = 1000
+        SAVE_INTERVAL = 200
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+ENV_NAME+'.csv', append=True, separator=';')
+        self.model.load_weights('mix_cup_5_7_2018weights.h5f') #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
-            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=10, batch_size=self.batch_size, callbacks=[csv_logger]) 
-        self.model.save_weights(ENV_NAME+'weights.h5f')
+            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=50, batch_size=self.batch_size, callbacks=[csv_logger]) 
+            if i % SAVE_INTERVAL == 0:
+                self.model.save_weights(ENV_NAME+'_'+str(i)+'weights.h5f')
 
 
     def test_supervised(self,env):
