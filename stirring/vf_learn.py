@@ -1,4 +1,10 @@
 from __future__ import division
+import keras
+
+import tensorflow as tf
+config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 30} )
+sess = tf.Session(config=config) 
+keras.backend.set_session(sess)
 
 from scipy import misc
 from random import random
@@ -13,11 +19,13 @@ from keras.models import Sequential, Model
 from keras.callbacks import CSVLogger
 from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Input, Lambda, concatenate, Conv2D, MaxPooling2D, Convolution3D, LSTM
 from keras.optimizers import Adam
-import keras.backend as K
+
+
+
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "1fca5a" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "1fca5a_nonlinear_2" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -59,15 +67,15 @@ class Learner:
 
     """ returns a list of samples of img1, img2, robot_states, and rewards"""
     def select_random_action(self):
-        theta_diff = random()
-        curl = random()
+        theta_diff = 3.14*random()
+        curl = 3.14*random()
         period = random()
-        rot = random()
+        rot = 3.14*random()
         return (theta_diff, curl, period, rot)
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 80
+        num_to_check = 300
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -126,7 +134,7 @@ class Learner:
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
-        #self.model.load_weights('mix_cup_5_7_2018weights.h5f') #uncomment if you want to start from scratch
+        self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 

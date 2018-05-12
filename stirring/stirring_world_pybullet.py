@@ -316,7 +316,7 @@ class World():
     def cup_knocked_over(self):
         cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
         roll, pitch, yaw = euler_from_quat(cupQuat)
-        thresh = 1
+        thresh = 0.7 #pi/4 plus some
         if abs(roll) > thresh or abs(pitch) > thresh:
             return True
         return False
