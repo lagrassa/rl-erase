@@ -17,20 +17,18 @@ import keras.backend as K
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "513c7" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "1fca5a" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
     if os.path.isfile(myfile):
 	os.remove(myfile)
 
-average_length_file = open(avg_l_fn,"a")
-average_reward_file = open(avg_r_fn,"a")
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
         self.batch_size = 25
-        self.rollout_size = 100
+        self.rollout_size = 50
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -114,8 +112,12 @@ class Learner:
         #log the average V for the rollout, average length episode
         average_length = sum(ep_times)/len(ep_times)
         average_reward = sum(rewards)/len(rewards)
+	average_length_file = open(avg_l_fn,"a")
+	average_reward_file = open(avg_r_fn,"a")
         average_length_file.write(str(average_length)+",")
         average_reward_file.write(str(average_reward)+",")
+        average_length_file.close()
+        average_reward_file.close()
     
         return img1s, img2s, robot_states, actions,rewards
             
@@ -131,7 +133,7 @@ class Learner:
         #self.model.load_weights('mix_cup_5_7_2018weights.h5f') #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
-            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=50, batch_size=self.batch_size, callbacks=[csv_logger], verbose=2) 
+            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 
             print("On interval",i)
             if i % SAVE_INTERVAL == 0:
                 self.model.save_weights(EXP_NAME+'_'+str(i)+'weights.h5f')
@@ -142,7 +144,6 @@ class Learner:
         self.model.load_weights(EXP_NAME+'weights.h5f')
         X, Y = load_supervised_data(actionfile = "actions.pkl", statefile = "states.pkl")
         score = self.model.evaluate(X, Y);
-        print("The score is")
          
         state = env.reset()
         state = state.reshape((1,state.shape[0],state.shape[1],state.shape[2]))
