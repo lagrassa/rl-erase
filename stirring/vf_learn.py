@@ -1,10 +1,10 @@
 from __future__ import division
-import keras
-
 import tensorflow as tf
-config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 30} )
-sess = tf.Session(config=config) 
-keras.backend.set_session(sess)
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.1
+config.gpu_options.visible_device_list = "2"
+set_session(tf.Session(config=config))
 
 from scipy import misc
 from random import random
@@ -25,7 +25,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "1fca5a_nonlinear_check_600" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "151cd6_nonlinear_check_600_force_more_dense" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -65,6 +65,8 @@ class Learner:
 
         img2_layers = Flatten()(img2)
         layer = concatenate([img1_layers, img2_layers, robot_state, action])
+        predictions = Dense(64, activation="relu")(layer)
+        predictions = Dense(1, activation="linear")(layer)
         predictions = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
@@ -138,7 +140,7 @@ class Learner:
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
-        self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
+        #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 
