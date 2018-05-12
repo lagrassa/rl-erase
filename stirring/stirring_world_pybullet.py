@@ -136,13 +136,22 @@ class World():
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
         linkPos = p.getJointState(self.armID, 8)[0]
-        jointPos, jointVel, jointReactionForces, _ = p.getJointState(self.armID,8)
          
+        theta_diff_pos, _, _ = p.getJointState(self.armID,8)
+        rot_joint_pos, _, _ = p.getJointState(self.armID,6)
+        curl_joint_pos, _, curl_joint_forces = p.getJointState(self.armID,10)
+
+        #r, theta, z in pos 
         cupPos=  np.array(p.getBasePositionAndOrientation(self.cupID)[0])
         stirrerPos=  np.array(p.getLinkState(self.armID, 10)[0])
         vector_from_cup = cupPos-stirrerPos
-    
-        return  np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
+        r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
+        #forces in cup frame
+        r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
+        return np.flatten([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos, r_theta_z_force]) 
+ 
+        #np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
+       
 
     def reset(self):
         self.__init__(visualize=self.visualize, real_init=False)

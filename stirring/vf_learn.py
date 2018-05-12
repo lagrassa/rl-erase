@@ -122,16 +122,16 @@ class Learner:
             
 
     def train(self):
-        numsteps = 10000
-        SAVE_INTERVAL = 200
-        PRINT_INTERVAL = 20
+        numsteps = 1000
+        SAVE_INTERVAL = 100
+        PRINT_INTERVAL=5
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights('mix_cup_5_7_2018weights.h5f') #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
-            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=50, batch_size=self.batch_size, callbacks=[csv_logger]) 
+            self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=50, batch_size=self.batch_size, callbacks=[csv_logger], verbose=2) 
             print("On interval",i)
             if i % SAVE_INTERVAL == 0:
                 self.model.save_weights(EXP_NAME+'_'+str(i)+'weights.h5f')

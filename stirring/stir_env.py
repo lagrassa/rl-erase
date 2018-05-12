@@ -1,13 +1,10 @@
-import gym
 import pdb
 import random
 from reward import reward_func
 import numpy as np
 from stirring_world_pybullet import World
 import logging
-import pygame
 logger = logging.getLogger(__name__)
-pygame.display.init()
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = False
 
@@ -23,7 +20,7 @@ LOG_INTERVAL = 20
 world = World(visualize=RENDER, real_init=True)
 
 
-class StirEnv(gym.Env):
+class StirEnv():
     metadata = {'render.modes': ['human']}
 
     def __init__(self, visualize=True, real_init=True):
@@ -114,7 +111,7 @@ class StirEnv(gym.Env):
                 print("MOSTLY DONE")
             """
             
-            episode_over = reward > self.done_amount or self.world.cup_knocked_over() or  not self.world.stirrer_close()
+            episode_over = self.world.cup_knocked_over() or  not self.world.stirrer_close()
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
 		reward_file.write(str(reward)+",")
