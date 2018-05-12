@@ -114,6 +114,7 @@ class StirEnv():
             episode_over = self.world.cup_knocked_over() or  not self.world.stirrer_close()
             episode_over = episode_over or self.stop_if_necessary()
             if episode_over:
+                reward = -1000
 		reward_file.write(str(reward)+",")
                 print("EPISODE OVER", reward) 
 
