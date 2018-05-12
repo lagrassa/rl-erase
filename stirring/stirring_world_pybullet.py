@@ -23,7 +23,7 @@ class World():
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.setup(beads=beads)
+        self.setup(beads=True)
 
     def toggle_real_time(self):
         self.is_real_time = int(not self.is_real_time)
@@ -137,9 +137,9 @@ class World():
         #returns position and velocity of stirrer flattened
         linkPos = p.getJointState(self.armID, 8)[0]
          
-        theta_diff_pos, _, _ = p.getJointState(self.armID,8)
-        rot_joint_pos, _, _ = p.getJointState(self.armID,6)
-        curl_joint_pos, _, curl_joint_forces = p.getJointState(self.armID,10)
+        theta_diff_pos, _, _,_ = p.getJointState(self.armID,8)
+        rot_joint_pos, _, _ ,_= p.getJointState(self.armID,6)
+        curl_joint_pos, _, curl_joint_forces,_ = p.getJointState(self.armID,10)
 
         #r, theta, z in pos 
         cupPos=  np.array(p.getBasePositionAndOrientation(self.cupID)[0])
@@ -148,7 +148,7 @@ class World():
         r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
         #forces in cup frame
         r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
-        return np.flatten([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos, r_theta_z_force]) 
+        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
  
         #np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
        
@@ -289,7 +289,7 @@ class World():
                 gripper_indices = [8,9,10]
                 blacken(self.armID, end_index=8)
                 greenen(self.armID, gripper_indices)
-            p.enableJointForceTorqueSensor(self.armID, 8, 1)
+            p.enableJointForceTorqueSensor(self.armID, 10, 1)
 	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
             
             self.zoom_in_on(self.armID, 2)
