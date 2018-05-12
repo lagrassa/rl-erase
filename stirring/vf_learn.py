@@ -17,7 +17,7 @@ import keras.backend as K
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "mix_cup_5_10_2018"
+EXP_NAME = "513c7" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -73,7 +73,7 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 40
+        num_to_check = 80
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -124,6 +124,7 @@ class Learner:
     def train(self):
         numsteps = 10000
         SAVE_INTERVAL = 200
+        PRINT_INTERVAL = 20
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
@@ -131,6 +132,7 @@ class Learner:
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=50, batch_size=self.batch_size, callbacks=[csv_logger]) 
+            print("On interval",i)
             if i % SAVE_INTERVAL == 0:
                 self.model.save_weights(EXP_NAME+'_'+str(i)+'weights.h5f')
 
