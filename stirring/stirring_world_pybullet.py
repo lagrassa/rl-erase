@@ -49,7 +49,7 @@ class World():
        
     def stirrer_close(self):
         distance = self.distance_from_cup(self.armID, 10)
-        far = k*0.1
+        far = k*0.3
         if distance <= far:
             return True
         print("distance is far at", distance)
