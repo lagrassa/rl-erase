@@ -1,5 +1,6 @@
 from __future__ import division
 import keras
+from reward import entropy
 
 import tensorflow as tf
 config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 30} )
@@ -36,7 +37,7 @@ class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
         self.batch_size = 5
-        self.rollout_size = 15
+        self.rollout_size = 25 #5
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -85,7 +86,21 @@ class Learner:
         best_value_index = np.argmax(values)
         return random_actions[best_value_index]
     
-        
+    def collect_test_batch(self):
+        beads_in= []
+        entropies = []
+        for i in range(self.rollout_size):
+            #get current state
+            img1, img2, robot_state = self.env.create_state()
+            best_action = self.select_action(img1, img2, robot_state)
+            #predict best action
+            _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+            beads_in.append(beads_ratio)
+            entropies.append(entropy)
+        return beads_in, entropies
+            
+            
+                
     def collect_batch(self):
         img1s = np.zeros( (self.rollout_size,)+self.input_shape)
         img2s =  np.zeros( (self.rollout_size,)+ self.input_shape)
@@ -142,23 +157,30 @@ class Learner:
             if i % SAVE_INTERVAL == 0:
                 self.model.save_weights(EXP_NAME+'_'+str(i)+'weights.h5f')
 
-
-    def test_supervised(self,env):
-        self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
-        self.model.load_weights(EXP_NAME+'weights.h5f')
-        X, Y = load_supervised_data(actionfile = "actions.pkl", statefile = "states.pkl")
-        score = self.model.evaluate(X, Y);
+    def test_model(self,filename):
+        #do 10 rollouts, 
+        #how many beads left in?
+        #what is the entropy?
+        #run all of the models + totall random
+        self.model.load_weights(filename)       
+        bead_results_file = open("policy_results/"+filename[:-4]+"bead_results.py","w" )
+        entropy_results_file = open("policy_results/"+filename[:-4]+"entropy_results.py", "w")
+        beads_over_time_list = []
+        entropy_over_time_list = []
+        numtrials = 8
+        for i in range(numtrials):
+            print("On trial #", numtrials)
+            try:
+                beads_over_time, entropy_over_time = self.collect_test_batch()
+            except:
+                pdb.set_trace()
+            beads_over_time_list.append(beads_over_time)
+            entropy_over_time_list.append(entropy_over_time)
+        bead_results_file.write(str(beads_over_time_list))
+        entropy_results_file.write(str(entropy_over_time_list))
+        bead_results_file.close()
+        entropy_results_file.close()
          
-        state = env.reset()
-        state = state.reshape((1,state.shape[0],state.shape[1],state.shape[2]))
-        numsteps = 120;
-        for i in range(numsteps):
-            env.render()
-            action = int(round(self.model.predict(state).item()))
-            state  = env.step(action)[0]
-            state = state.reshape((1,state.shape[0],state.shape[1],state.shape[2]))
-   
-
 # Finally, evaluate our algorithm for 10 episodes.
               
 if __name__=="__main__":
@@ -168,4 +190,6 @@ if __name__=="__main__":
      state_shape = list(env.world_state[0].shape)
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
-     l.train()
+     for filename in os.listdir("policies/") 
+         print("Testing", filename)
+         l.test_model(filename)

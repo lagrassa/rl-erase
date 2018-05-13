@@ -1,6 +1,6 @@
 import pdb
 import random
-from reward import reward_func
+from reward import reward_func, entropy
 import numpy as np
 from stirring_world_pybullet import World
 import logging
@@ -98,6 +98,9 @@ class StirEnv():
         ob = self.create_state() #self.world_state
         episode_over = False
         reward= self.process_reward()
+        entropies = entropy(self.world_state)  
+        beads = self.world.ratio_beads_in()
+        
         if self.replay_counter == 0: #never end episode during experience replay
             """
             cup_knocked_over =  self.world.cup_knocked_over()
@@ -124,7 +127,7 @@ class StirEnv():
             #self.saved_robot_state = []
             self.saved_world_state = []
 
-        return ob, reward, episode_over, {}
+        return ob, beads, entropy, episode_over, {}
 
     #sets up replay and determines whether to replay
     def should_replay_and_setup(self):
