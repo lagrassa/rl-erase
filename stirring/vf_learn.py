@@ -25,7 +25,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "6389e_linear_less_restricted" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "4e5147_nonlinear_less_restricted_shorter_600_heavy_cup_2" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -35,8 +35,8 @@ for myfile in [avg_l_fn, avg_r_fn]:
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 25
-        self.rollout_size = 50
+        self.batch_size = 5
+        self.rollout_size = 15
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -134,7 +134,7 @@ class Learner:
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
-        self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
+        #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 
