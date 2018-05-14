@@ -1,11 +1,12 @@
 from __future__ import division
 import keras
 from reward import entropy
-
 import tensorflow as tf
-config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 30} )
-sess = tf.Session(config=config) 
-keras.backend.set_session(sess)
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.1
+config.gpu_options.visible_device_list = "2"
+set_session(tf.Session(config=config))
 
 from scipy import misc
 from random import random
@@ -66,6 +67,8 @@ class Learner:
 
         img2_layers = Flatten()(img2)
         layer = concatenate([img1_layers, img2_layers, robot_state, action])
+        predictions = Dense(64, activation="relu")(layer)
+        predictions = Dense(1, activation="linear")(layer)
         predictions = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
@@ -80,7 +83,7 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 300
+        num_to_check = 600
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
