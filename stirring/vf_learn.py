@@ -28,7 +28,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "bdc818_linear_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "bdc818_linear_no_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -45,7 +45,8 @@ class Learner:
         self.eps_greedy = 0.1
         self.nb_actions = nb_actions
         self.build_model(nb_actions,input_shape, robot_dims) 
-        self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
+        adam = Adam(lr=0.1)
+        self.model.compile(loss = "mean_absolute_error", optimizer=adam, metrics = ['accuracy'])
 
     #Let's make these images kinda small
     def build_model(self, nb_actions, input_shape, robot_dims):
@@ -68,7 +69,7 @@ class Learner:
         #img2_layers = Flatten()(img2)
         #no visual input in this one
         layer = concatenate([robot_state, action])
-        layer = Dense(32, activation="linear")(layer)
+        layer = Dense(16, activation="linear")(layer)
         layer = Dense(32, activation="linear")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
@@ -78,7 +79,7 @@ class Learner:
     def select_random_action(self):
         theta_diff = 3.14*random()
         curl = 3.14*random()
-        period = 0.7*random() #running out of time :c
+        period = 0.3*random() #running out of time :c
         rot = 3.14*random()
         return (theta_diff, curl, period, rot)
 
