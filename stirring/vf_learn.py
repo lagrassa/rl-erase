@@ -1,12 +1,12 @@
 from __future__ import division
 import keras
+import sys
 from reward import entropy
 import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.1
-config.gpu_options.visible_device_list = "2"
-set_session(tf.Session(config=config))
+config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 8} )
+sess = tf.Session(config=config)
+keras.backend.set_session(sess)
+
 
 from scipy import misc
 from random import random
@@ -38,7 +38,7 @@ class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
         self.batch_size = 5
-        self.rollout_size = 25 #5
+        self.rollout_size = 90 #5
         self.input_shape = input_shape
         self.robot_dims = robot_dims
         self.nb_actions = nb_actions
@@ -64,14 +64,11 @@ class Learner:
         img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
         #for now, flatten im2+ 2 
         img2_layers = Flatten()(img2_layers)
-
-        img2_layers = Flatten()(img2)
         layer = concatenate([img1_layers, img2_layers, robot_state, action])
         predictions = Dense(64, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
-        predictions = Dense(32, activation="relu")(layer)
-        predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
+
 
     """ returns a list of samples of img1, img2, robot_states, and rewards"""
     def select_random_action(self):
@@ -83,7 +80,7 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 600
+        num_to_check = 1
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -96,14 +93,21 @@ class Learner:
     def collect_test_batch(self):
         beads_in= []
         entropies = []
+        episode_over = False
+        beads_ratio = None
+        entropy = None
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
             best_action = self.select_action(img1, img2, robot_state)
             #predict best action
-            _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+            if not episode_over:
+                _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+                if episode_over:
+                    self.env.reset()
             beads_in.append(beads_ratio)
             entropies.append(entropy)
+        self.env.reset()
         return beads_in, entropies
             
             
@@ -170,13 +174,13 @@ class Learner:
         #what is the entropy?
         #run all of the models + totall random
         self.model.load_weights(filename)       
-        bead_results_file = open("policy_results/"+filename[:-4]+"bead_results.py","w" )
-        entropy_results_file = open("policy_results/"+filename[:-4]+"entropy_results.py", "w")
+        bead_results_file = open("policy_results/"+filename[:-4]+"control_bead_results.py","w" )
+        entropy_results_file = open("policy_results/"+filename[:-4]+"control_entropy_results.py", "w")
         beads_over_time_list = []
         entropy_over_time_list = []
-        numtrials = 8
+        numtrials = 10
         for i in range(numtrials):
-            print("On trial #", numtrials)
+            print("On trial #", i)
             try:
                 beads_over_time, entropy_over_time = self.collect_test_batch()
             except:
@@ -197,6 +201,5 @@ if __name__=="__main__":
      state_shape = list(env.world_state[0].shape)
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
-     for filename in os.listdir("policies/") 
-         print("Testing", filename)
-         l.test_model(filename)
+     #l.test_model(sys.argv[1])
+     l.train()
