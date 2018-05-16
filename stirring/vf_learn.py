@@ -3,9 +3,10 @@ import keras
 import sys
 from reward import entropy
 import tensorflow as tf
-config = tf.ConfigProto( device_count = {'GPU': 0 , 'CPU': 8} )
-sess = tf.Session(config=config)
-keras.backend.set_session(sess)
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.15
+set_session(tf.Session(config=config))
 
 
 from scipy import misc
@@ -27,7 +28,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "c188d_nonlinear_less_restricted_2" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "bdc818_nonlinear_no_force_less_restricted_very_simple" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -41,6 +42,7 @@ class Learner:
         self.rollout_size = 90 #5
         self.input_shape = input_shape
         self.robot_dims = robot_dims
+        self.eps_greedy = 0.1
         self.nb_actions = nb_actions
         self.build_model(nb_actions,input_shape, robot_dims) 
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
@@ -82,7 +84,11 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 1
+        #epsilon greedy for training:
+        if random() <= self.eps_greedy:
+            num_to_check = 1
+        else:
+            num_to_check = 600
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -164,6 +170,8 @@ class Learner:
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
+            if i > 100:
+                self.eps_greedy = 0.01
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 
             print("On interval",i)
