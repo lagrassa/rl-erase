@@ -54,22 +54,22 @@ class Learner:
         action = Input(shape=(nb_actions,))
         robot_state = Input(shape=(robot_dims,))
         #Conv layer and max pooling layer for img1, expecting 50x50 cup
-        #img1_layers = Conv2D(16, 5,5, activation='relu')(img1)
-        #img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
-        #img1_layers = Conv2D(32, 2,2, activation='relu')(img1_layers)
-        #img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
+        img1_layers = Conv2D(16, 5,5, activation='relu')(img1)
+        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
+        img1_layers = Conv2D(32, 2,2, activation='relu')(img1_layers)
+        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
         #for now, flatten im1+ 2 
-        #img1_layers = Flatten()(img1)
-        #img2_layers = Conv2D(16, 5,5, activation='relu')(img2)
-        #img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
-        #img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
-        #img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        img1_layers = Flatten()(img1_layers)
+        img2_layers = Conv2D(16, 5,5, activation='relu')(img2)
+        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
+        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
         #for now, flatten im2+ 2 
-        #img2_layers = Flatten()(img2)
-        #no visual input in this one
-        layer = concatenate([robot_state, action])
-        layer = Dense(32, activation="linear")(layer)
-        layer = Dense(32, activation="linear")(layer)
+        img2_layers = Flatten()(img2_layers)
+
+        img2_layers = Flatten()(img2)
+        layer = concatenate([img1_layers, img2_layers, robot_state, action])
+        predictions = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
 
@@ -110,7 +110,9 @@ class Learner:
             best_action = self.select_action(img1, img2, robot_state)
             #predict best action
             if not episode_over:
+              
                 _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+                print("HAS TAKEN STEP")
                 if episode_over:
                     self.env.reset()
             beads_in.append(beads_ratio)
@@ -212,4 +214,5 @@ if __name__=="__main__":
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
      l.test_model(sys.argv[1])
-     #l.train()
+     
+#l.train()
