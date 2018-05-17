@@ -28,7 +28,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "bdc818_linear_no_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "d0ef95_linear_no_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
