@@ -28,7 +28,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "bdc818_linear_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "7233d3_nonlinear_force_less_restricted_very_simple_1" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -38,11 +38,11 @@ for myfile in [avg_l_fn, avg_r_fn]:
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 35
-        self.rollout_size = 40 #5
+        self.batch_size = 25
+        self.rollout_size = 20 #5
         self.input_shape = input_shape
         self.robot_dims = robot_dims
-        self.eps_greedy = 0.1
+        self.eps_greedy = 0.0
         self.nb_actions = nb_actions
         self.build_model(nb_actions,input_shape, robot_dims) 
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
@@ -65,20 +65,21 @@ class Learner:
         img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
         img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
         #for now, flatten im2+ 2 
-        img2_layers = Flatten()(img2_layers)
-
-        img2_layers = Flatten()(img2)
-        layer = concatenate([img1_layers, img2_layers, robot_state, action])
-        predictions = Dense(32, activation="relu")(layer)
+        #img2_layers = Flatten()(img2)
+        #no visual input in this one
+        layer = concatenate([robot_state, action])
+        layer = Dense(64, activation="relu")(layer)
+        layer = Dense(32, activation="relu")(layer)
+        layer = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
 
 
     """ returns a list of samples of img1, img2, robot_states, and rewards"""
     def select_random_action(self):
-        theta_diff = 1.5*random()
+        theta_diff = 3.14*random()
         curl = 3.14*random()
-        period = 0.2*random()
+        period = 0,7*random()
         rot = 3.14*random()
         return (theta_diff, curl, period, rot)
 
@@ -193,10 +194,7 @@ class Learner:
         numtrials = 10
         for i in range(numtrials):
             print("On trial #", i)
-            try:
-                beads_over_time, entropy_over_time = self.collect_test_batch()
-            except:
-                pdb.set_trace()
+            beads_over_time, entropy_over_time = self.collect_test_batch()
             beads_over_time_list.append(beads_over_time)
             entropy_over_time_list.append(entropy_over_time)
         bead_results_file.write(str(beads_over_time_list))

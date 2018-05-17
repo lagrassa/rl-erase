@@ -9,7 +9,7 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 RENDER = True
 
 MAX_AIMLESS_WANDERING = 100
-P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
+P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
 EXP_NAME = "value_estimation"
@@ -59,8 +59,8 @@ class StirEnv():
             self.progress_state(action=action)
             self.world_state = self.world.world_state()
 
-            self.saved_world_state.append(self.world_state)
-            self.saved_robot_state.append(self.world.stirrer_state())
+            #self.saved_world_state.append(self.world_state)
+            #self.saved_robot_state.append(self.world.stirrer_state())
         else:
             self.world_state = self.replay_world_states[self.replay_counter]
             self.robot_state = self.replay_robot_states[self.replay_counter]
@@ -127,8 +127,8 @@ class StirEnv():
             #self.saved_robot_state = []
             self.saved_world_state = []
 
-        #return ob, beads, entropies, episode_over, {}
-        return ob, reward, episode_over, {}
+        return ob, beads, entropies, episode_over, {}
+        #return ob, reward, episode_over, {}
 
     #sets up replay and determines whether to replay
     def should_replay_and_setup(self):
