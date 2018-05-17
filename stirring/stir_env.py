@@ -6,7 +6,7 @@ from stirring_world_pybullet import World
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER = False
+RENDER = True
 
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0002 #with this probability, go back to a state you've done before, and just do that again until self.replay counter

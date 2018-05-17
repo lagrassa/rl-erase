@@ -8,6 +8,7 @@ import utils
 import time
 import pybullet_data
 k = 1 #scaling factor
+DEMO = True
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
 
 real_init = True    
@@ -32,6 +33,8 @@ class World():
 
     """Returns the proportion of beads that are still in the cup"""
     def ratio_beads_in(self):
+        if DEMO:
+            return 1
         aabbMin, aabbMax = p.getAABB(self.cupID)
         num_in = len(p.getOverlappingObjects(aabbMin, aabbMax))
         total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
@@ -48,6 +51,8 @@ class World():
         
        
     def stirrer_close(self):
+        if DEMO:
+            return True
         distance = self.distance_from_cup(self.armID, 10)
         far = k*0.3
         if distance <= far:
@@ -147,9 +152,9 @@ class World():
         vector_from_cup = cupPos-stirrerPos
         r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
         #forces in cup frame
-        #r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
-        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
-        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
+        r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
+        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
+        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
  
         #np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
        
@@ -159,7 +164,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 150
+       num_droplets = 190#150
        self.num_droplets = num_droplets
        radius = k*0.010
        cup_thickness = k*0.001
@@ -315,6 +320,8 @@ class World():
                 p.resetSimulation()
                 self.setup()
     def cup_knocked_over(self):
+        if DEMO:
+            return False
         cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
         roll, pitch, yaw = euler_from_quat(cupQuat)
         thresh = 0.7 #pi/4 plus some

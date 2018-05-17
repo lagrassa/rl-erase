@@ -1,5 +1,6 @@
 from __future__ import division
 import keras
+import sys
 from reward import entropy
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -67,23 +68,22 @@ class Learner:
 
         img2_layers = Flatten()(img2)
         layer = concatenate([img1_layers, img2_layers, robot_state, action])
-        predictions = Dense(64, activation="relu")(layer)
-        predictions = Dense(1, activation="linear")(layer)
         predictions = Dense(32, activation="relu")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
 
+
     """ returns a list of samples of img1, img2, robot_states, and rewards"""
     def select_random_action(self):
-        theta_diff = 3.14*random()
+        theta_diff = 1.5*random()
         curl = 3.14*random()
-        period = random()
+        period = 0.2*random()
         rot = 3.14*random()
         return (theta_diff, curl, period, rot)
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 600
+        num_to_check = 200
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -197,6 +197,4 @@ if __name__=="__main__":
      state_shape = list(env.world_state[0].shape)
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
-     for filename in os.listdir("policies/") 
-         print("Testing", filename)
-         l.test_model(filename)
+     l.test_model(sys.argv[1])
