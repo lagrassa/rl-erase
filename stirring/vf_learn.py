@@ -5,9 +5,9 @@ from reward import entropy
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.1
-config.gpu_options.visible_device_list = "2"
+config.gpu_options.per_process_gpu_memory_fraction = 0.15
 set_session(tf.Session(config=config))
+
 
 from scipy import misc
 from random import random
@@ -28,7 +28,7 @@ from keras.optimizers import Adam
 
 
 WINDOW_LENGTH = 1
-EXP_NAME = "c188d_nonlinear_less_restricted_2" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "bdc818_linear_force_less_restricted_very_simple_2" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -38,10 +38,11 @@ for myfile in [avg_l_fn, avg_r_fn]:
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
         self.env = env
-        self.batch_size = 5
-        self.rollout_size = 25 #5
+        self.batch_size = 35
+        self.rollout_size = 40 #5
         self.input_shape = input_shape
         self.robot_dims = robot_dims
+        self.eps_greedy = 0.1
         self.nb_actions = nb_actions
         self.build_model(nb_actions,input_shape, robot_dims) 
         self.model.compile(loss = "mean_absolute_error", optimizer='adam', metrics = ['accuracy'])
@@ -53,22 +54,22 @@ class Learner:
         action = Input(shape=(nb_actions,))
         robot_state = Input(shape=(robot_dims,))
         #Conv layer and max pooling layer for img1, expecting 50x50 cup
-        img1_layers = Conv2D(16, 5,5, activation='relu')(img1)
-        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
-        img1_layers = Conv2D(32, 2,2, activation='relu')(img1_layers)
-        img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
+        #img1_layers = Conv2D(16, 5,5, activation='relu')(img1)
+        #img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
+        #img1_layers = Conv2D(32, 2,2, activation='relu')(img1_layers)
+        #img1_layers = MaxPooling2D((2,2), 2)(img1_layers)
         #for now, flatten im1+ 2 
-        img1_layers = Flatten()(img1_layers)
-        img2_layers = Conv2D(16, 5,5, activation='relu')(img2)
-        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
-        img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
-        img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        #img1_layers = Flatten()(img1)
+        #img2_layers = Conv2D(16, 5,5, activation='relu')(img2)
+        #img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
+        #img2_layers = Conv2D(32, 2,2, activation='relu')(img2_layers)
+        #img2_layers = MaxPooling2D((2,2), 2)(img2_layers)
         #for now, flatten im2+ 2 
-        img2_layers = Flatten()(img2_layers)
-
-        img2_layers = Flatten()(img2)
-        layer = concatenate([img1_layers, img2_layers, robot_state, action])
-        predictions = Dense(32, activation="relu")(layer)
+        #img2_layers = Flatten()(img2)
+        #no visual input in this one
+        layer = concatenate([robot_state, action])
+        layer = Dense(32, activation="linear")(layer)
+        layer = Dense(32, activation="linear")(layer)
         predictions = Dense(1, activation="linear")(layer)
         self.model = Model(inputs=[img1, img2, robot_state, action], outputs = predictions)
 
@@ -83,7 +84,11 @@ class Learner:
 
     def select_action(self, img1, img2, robot_state):
         #randomly sample actions, check their value, pick the best 
-        num_to_check = 200
+        #epsilon greedy for training:
+        if random() <= self.eps_greedy:
+            num_to_check = 1
+        else:
+            num_to_check = 600
         img1s = np.array([img1]*num_to_check)
         img2s = np.array([img2]*num_to_check)
         robot_states = np.array([robot_state]*num_to_check)
@@ -96,14 +101,21 @@ class Learner:
     def collect_test_batch(self):
         beads_in= []
         entropies = []
+        episode_over = False
+        beads_ratio = None
+        entropy = None
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
             best_action = self.select_action(img1, img2, robot_state)
             #predict best action
-            _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+            if not episode_over:
+                _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
+                if episode_over:
+                    self.env.reset()
             beads_in.append(beads_ratio)
             entropies.append(entropy)
+        self.env.reset()
         return beads_in, entropies
             
             
@@ -158,6 +170,8 @@ class Learner:
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
+            if i > 100:
+                self.eps_greedy = 0.01
             img1s, img2s, robot_states, actions, rewards = self.collect_batch() #collect batch using this policy
             self.model.fit([img1s, img2s, robot_states, actions], rewards, epochs=100, batch_size=self.batch_size, callbacks=[csv_logger], verbose=0) 
             print("On interval",i)
@@ -170,13 +184,13 @@ class Learner:
         #what is the entropy?
         #run all of the models + totall random
         self.model.load_weights(filename)       
-        bead_results_file = open("policy_results/"+filename[:-4]+"bead_results.py","w" )
-        entropy_results_file = open("policy_results/"+filename[:-4]+"entropy_results.py", "w")
+        bead_results_file = open("policy_results/"+filename[:-4]+"control_bead_results.py","w" )
+        entropy_results_file = open("policy_results/"+filename[:-4]+"control_entropy_results.py", "w")
         beads_over_time_list = []
         entropy_over_time_list = []
-        numtrials = 8
+        numtrials = 10
         for i in range(numtrials):
-            print("On trial #", numtrials)
+            print("On trial #", i)
             try:
                 beads_over_time, entropy_over_time = self.collect_test_batch()
             except:
@@ -198,3 +212,4 @@ if __name__=="__main__":
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
      l.test_model(sys.argv[1])
+     #l.train()

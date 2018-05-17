@@ -127,7 +127,8 @@ class StirEnv():
             #self.saved_robot_state = []
             self.saved_world_state = []
 
-        return ob, beads, entropy, episode_over, {}
+        #return ob, beads, entropies, episode_over, {}
+        return ob, reward, episode_over, {}
 
     #sets up replay and determines whether to replay
     def should_replay_and_setup(self):
