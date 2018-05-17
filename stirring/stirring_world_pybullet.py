@@ -21,6 +21,8 @@ class World():
         if real_init:
 	    if visualize or not visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+                time.sleep(5)
+                p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "stirring.mp4")
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
@@ -153,8 +155,8 @@ class World():
         r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
         #forces in cup frame
         r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
-        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
-        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
+        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
+        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
  
         #np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
        
@@ -211,7 +213,7 @@ class World():
         desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
-    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.03, timeout=700):
+    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.04, timeout=700):
         endEIndex = 7
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
@@ -287,7 +289,7 @@ class World():
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
 
-	    best_arm_pos = [k*-0.65,0,0]
+	    best_arm_pos = [k*-0.6,0,0]
             if self.visualize:
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf", globalScaling = k)[0]
             else: 
