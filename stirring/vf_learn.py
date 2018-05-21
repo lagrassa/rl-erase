@@ -78,9 +78,9 @@ class Learner:
     """ returns a list of samples of img1, img2, robot_states, and rewards"""
     def select_random_action(self):
         theta_diff = 3.14*random()
-        curl = 3.14*random()
-        period = 0,7*random()
-        rot = 3.14*random()
+        curl = -1**(randint(0,1))*3.14*random()
+        period = random()
+        rot = -1**(randint(0,1))*3.14*random()
         return (theta_diff, curl, period, rot)
 
     def select_action(self, img1, img2, robot_state):
