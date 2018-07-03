@@ -12,9 +12,9 @@ for i in range(80):
     # generally best to keep the time step and iterations fixed.
     #world.stir(0.3)
     step = 0.005
-    theta_diff = 0.5
+    theta_diff = 0.1
     pdb.set_trace()
-    world.stir([1.1, 1, 0.8, 0.3])
+    world.stir([0.2, 0.3, 0.3, 0.3])
 
    
     # Clear applied body forces. We didn't apply any forces, but you

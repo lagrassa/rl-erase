@@ -9,7 +9,7 @@ import time
 import pybullet_data
 k = 1 #scaling factor
 DEMO = True
-from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
+from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions
 
 real_init = True    
 
@@ -162,7 +162,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets =  130#100#140#150
+       num_droplets =  3#100#140#150
        self.num_droplets = num_droplets
        radius = k*0.010 #formerly 0.010
        cup_thickness = k*0.001
@@ -209,7 +209,7 @@ class World():
         desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
-    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.02, timeout=10):
+    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.02, timeout=200):
         endEIndex = 7
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
@@ -218,31 +218,35 @@ class World():
             self.move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
 	    actualPos =  p.getLinkState(self.armID, endEIndex)[0]
 	    diff = np.array(actualPos)-pos
+            print("Diff", diff)
             num_attempts += 1
 
         if num_attempts > timeout:
             print ("Failed to move to point with a distance of ",np.linalg.norm(diff))
 
-    def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
+    def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, teleport=True):
         endEIndex = 7
         ikSolver = 0
-        if orn is None:
-	    orn = p.getQuaternionFromEuler([0,-np.pi,0])
+        #if orn is None:
+	#    orn = p.getQuaternionFromEuler([0,-np.pi,0])
         numJoints = p.getNumJoints(self.armID)
-        
         jd=[damper]*numJoints
-	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
-	for i in range (numJoints-3):
-	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
+        jd =[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,solver=ikSolver, maxNumIterations=500, residualThreshold=0.001)
+        if teleport:
+	    joints = list(range(len(jointPoses)))
+	    set_joint_positions(self.armID, joints, jointPoses)
+        else:
+	    for i in range (numJoints-3):
+		p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
         if not self.is_real_time:
 	    simulate_for_duration(0.1)
     
 
     def place_stirrer_in_pr2_hand(self):
         cup_r = k*-0.07 
-        height_above = k*0.7
+        height_above = k*0.8
         above_loc = Point(cup_r,cup_r,height_above)
-	#set_point(self.spoonID,spoon_loc)
         self.move_arm_to_point(above_loc)
         
         self.toggle_real_time()
@@ -285,7 +289,7 @@ class World():
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
 
-	    best_arm_pos = [k*-0.65,0,0]
+	    best_arm_pos = [k*-0.45,0,0]
             if self.visualize:
 	        self.armID = p.loadSDF("urdf/kuka_iiwa/kuka_with_gripper.sdf", globalScaling = k)[0]
             else: 
@@ -307,7 +311,7 @@ class World():
           
             if beads:
 	        self.drop_beads_in_cup()
-                p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "stirring6.mp4")
+                #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "stirring6.mp4")
 	        self.place_stirrer_in_pr2_hand()
             self.bullet_id = p.saveState()
             self.real_init = False
@@ -379,7 +383,8 @@ def pol2cart(rho, phi):
         
 
 if __name__ == "__main__":
-    world = World(visualize=False)
+    world = World(visualize=True)
+    pdb.set_trace()
     world.reset()
 	
 
