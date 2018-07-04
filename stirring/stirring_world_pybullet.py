@@ -8,7 +8,8 @@ import utils
 import time
 import pybullet_data
 k = 1 #scaling factor
-from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose
+DEMO =False 
+from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions, get_joint_positions
 
 real_init = True    
 
@@ -17,8 +18,9 @@ class World():
     def __init__(self, visualize=False, real_init=True, beads=True):
         self.visualize=visualize
         self.real_init = real_init
+        self.num_droplets = 160
         if real_init:
-	    if visualize or not visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
+	    if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
@@ -32,6 +34,8 @@ class World():
 
     """Returns the proportion of beads that are still in the cup"""
     def ratio_beads_in(self):
+        if DEMO:
+            return 1
         aabbMin, aabbMax = p.getAABB(self.cupID)
         num_in = len(p.getOverlappingObjects(aabbMin, aabbMax))
         total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
@@ -61,13 +65,14 @@ class World():
         curl = action[1]
         period = action[2]
         rot = action[3]
+        force = action[4]
         #got rid of delta control since it was a horrible idea from the start
         wrist_joint_num = 8
         self.stir_circle(time_step = 0.01, size_step = rot)
-        self.set_pos(self.armID, wrist_joint_num, theta_diff)
-        self.set_pos(self.armID, 10, curl) #10 = curl ID
+        self.set_pos(self.armID, wrist_joint_num, theta_diff, force=force)
+        self.set_pos(self.armID, 10, curl, force=force) #10 = curl ID
 	simulate_for_duration(period)
-        self.set_pos(self.armID, wrist_joint_num, -theta_diff)
+        self.set_pos(self.armID, wrist_joint_num, -theta_diff, force=force)
 	simulate_for_duration(period)
         
     
@@ -79,9 +84,8 @@ class World():
         desired_pos = current_pos + size_step
         if desired_pos >= 3:
             desired_pos = -3 #reset
-	p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=6,controlMode=p.POSITION_CONTROL,force=500,positionGain=0.3,velocityGain=1, targetPosition=desired_pos)
+	p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=6,controlMode=p.POSITION_CONTROL,force=900,positionGain=0.3,velocityGain=1, targetPosition=desired_pos)
             
-
 
 
     def render(self):
@@ -148,9 +152,8 @@ class World():
         r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
         #forces in cup frame
         r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
-        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
- 
-        #np.array([linkPos, jointPos, jointVel, jointReactionForces[0], jointReactionForces[1],jointReactionForces[2],jointReactionForces[3],jointReactionForces[4],jointReactionForces[5], vector_from_cup[0], vector_from_cup[1], vector_from_cup[2]])
+        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
+        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
        
 
     def reset(self):
@@ -158,9 +161,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       num_droplets = 150
-       self.num_droplets = num_droplets
-       radius = k*0.010
+       radius = k*0.010 #formerly 0.010
        cup_thickness = k*0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -170,7 +171,7 @@ class World():
        limits = zip(lower, upper)
        x_range, y_range = limits[:2]
        z = upper[2] + 0.1
-       droplets = [create_sphere(radius, color=color) for _ in range(num_droplets)]
+       droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
@@ -181,7 +182,7 @@ class World():
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
 
     def drop_beads_in_cup(self):
-	time_to_fall = k*3.5
+	time_to_fall = k*self.num_droplets*0.1
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
 	    self.create_beads(color = color)
@@ -205,7 +206,7 @@ class World():
         desiredPos = np.array((jointPos[0]+dx, jointPos[1]+dy, jointPos[2]+dz))
         self.move_arm_to_point(desiredPos, orn=jointOrn, posGain=posGain, velGain=velGain)        
     
-    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.03, timeout=700):
+    def move_arm_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, threshold=0.02, timeout=200):
         endEIndex = 7
         actualPos =  p.getLinkState(self.armID, endEIndex)[0]
         diff = np.array(actualPos)-pos
@@ -219,42 +220,57 @@ class World():
         if num_attempts > timeout:
             print ("Failed to move to point with a distance of ",np.linalg.norm(diff))
 
-    def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1):
+    def move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.3, velGain=1, teleport=True):
         endEIndex = 7
         ikSolver = 0
         if orn is None:
 	    orn = p.getQuaternionFromEuler([0,-np.pi,0])
         numJoints = p.getNumJoints(self.armID)
-        
         jd=[damper]*numJoints
-	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,jointDamping=jd,solver=ikSolver)
-	for i in range (numJoints-3):
-	    p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
+        jd =[0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+        rp = [0, 0, 0, math.pi / 2, 0, -math.pi * 0.66, 0]
+	jointPoses = p.calculateInverseKinematics(self.armID,endEIndex,pos,orn,solver=ikSolver, maxNumIterations=500, residualThreshold=0.001, restPoses=rp)
+        if teleport:
+	    joints = list(range(len(jointPoses)))
+	    set_joint_positions(self.armID, joints, jointPoses)
+        else:
+	    for i in range (numJoints-3):
+		p.setJointMotorControl2(bodyIndex=self.armID,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=jointPoses[i],force=500,positionGain=posGain,velocityGain=velGain, targetVelocity=0)
         if not self.is_real_time:
 	    simulate_for_duration(0.1)
     
+    def set_hand(self):
+	good_start = [0.7355926784963512, 0.5954400794648647, 0.26945666316947803, -1.5049405693666376, -0.1823886954058032, 1.0795282294781492, 0.30963124203610953, 0.0, 0.006488946176044567, 0.0, 0.19966462229846724]
+	set_joint_positions(self.armID, list(range(p.getNumJoints(self.armID))), good_start)
 
-    def place_stirrer_in_pr2_hand(self):
+    def place_stirrer_in_pr2_hand(self, teleport=True):
         cup_r = k*-0.07 
-        height_above = k*0.7
-        above_loc = Point(cup_r,cup_r,height_above)
-	#set_point(self.spoonID,spoon_loc)
-        self.move_arm_to_point(above_loc)
-        
+        height_above = k*0.6
+        start_x = 0
+        start_y = 0
+        above_loc = Point(start_x,start_y,height_above)
+        if teleport:
+            self.set_hand()
+        else:
+            self.move_arm_to_point(above_loc)
+            p.addUserDebugLine(above_loc, [0,0,0])
+
         self.toggle_real_time()
 	self.set_grip(self.armID)
-        
-        num_steps = 4
-        desired_end_height=0.33
-        dz_in_loc = height_above - desired_end_height
-        step_size = dz_in_loc/num_steps
-        for z in range(1,num_steps+1): #fake one indexing
-            in_loc = Point(cup_r,cup_r,height_above - z*step_size)
-            self.move_arm_to_point(in_loc)
-        #stirring motion
-        #in_loc = Point(cup_r,cup_r,k*0.35)
-        self.move_arm_to_point(in_loc)
-	self.zoom_in_on(self.cupID, k*0.2, z_offset=k*0.1)
+        if not teleport:
+	    num_steps = 8
+	    desired_end_height=0.31
+	    dz_in_loc = height_above - desired_end_height
+	    step_size = dz_in_loc/num_steps
+	    for z in range(1,num_steps+1): #fake one indexing
+		in_loc = Point(start_x,start_y,height_above - z*step_size)
+		self.move_arm_to_point(in_loc)
+	    #stirring motion
+	    #in_loc = Point(cup_r,cup_r,k*0.35)
+	    self.move_arm_to_point(in_loc)
+	    p.addUserDebugLine(in_loc, [0,0,0])
+
+	self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
 
     def set_pos(self,objID, jointIndex, pos, force=500):
@@ -263,7 +279,7 @@ class World():
 	jointIndex=jointIndex, 
 	controlMode=p.POSITION_CONTROL,
 	targetPosition=pos,
-	force = 500)
+	force = force)
 
 
     def setup(self, beads=True):
@@ -290,7 +306,7 @@ class World():
                 blacken(self.armID, end_index=8)
                 greenen(self.armID, gripper_indices)
             p.enableJointForceTorqueSensor(self.armID, 10, 1)
-	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/2])))
+	    set_pose(self.armID,(best_arm_pos,  p.getQuaternionFromEuler([0,0,-np.pi/4])))
             
             self.zoom_in_on(self.armID, 2)
 	    cupStartPos = (0,0,0)
@@ -303,7 +319,10 @@ class World():
           
             if beads:
 	        self.drop_beads_in_cup()
+                #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "sim_stirring.mp4")
 	        self.place_stirrer_in_pr2_hand()
+            #to be realistic
+            p.setTimeStep(1/1000.)
             self.bullet_id = p.saveState()
             self.real_init = False
         else:
@@ -314,10 +333,13 @@ class World():
                 p.resetSimulation()
                 self.setup()
     def cup_knocked_over(self):
+        if DEMO:
+            return False
         cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
         roll, pitch, yaw = euler_from_quat(cupQuat)
         thresh = 0.7 #pi/4 plus some
         if abs(roll) > thresh or abs(pitch) > thresh:
+            print("CUP KNOCKED OVER")
             return True
         return False
         
@@ -372,7 +394,7 @@ def pol2cart(rho, phi):
         
 
 if __name__ == "__main__":
-    world = World(visualize=False)
+    world = World(visualize=True)
     world.reset()
 	
 
