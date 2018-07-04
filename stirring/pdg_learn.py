@@ -11,9 +11,6 @@ from stir_env import StirEnv
 import os
 from keras.callbacks import CSVLogger
 
-
-
-
 WINDOW_LENGTH = 1
 EXP_NAME = "PGD" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
@@ -28,17 +25,18 @@ class Learner:
         self.nb_actions = nb_actions
         self.robot_dims = robot_dims
         self.env = env
-        self.eps_greedy = 0.2
-        self.params = [0,0,0.5,0]
-        self.rollout_size = 2
+        self.eps_greedy = 0.0
+        self.params = [0,0,0.5,0, 200]
+        self.rollout_size = 5
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_action(self):
-        theta_diff = 3.14*random()
+        theta_diff = random()
         curl = -1**(randint(0,1))*3.14*random()
         period = random()
         rot = -1**(randint(0,1))*3.14*random()
-        return (theta_diff, curl, period, rot)
+        force = random()
+        return (theta_diff, curl, period, rot, force)
 
     def select_action(self, params):
         #randomly sample actions, check their value, pick the best 
@@ -63,7 +61,6 @@ class Learner:
             if not episode_over:
               
                 _, beads_ratio, entropy, episode_over, _ = self.env.step(best_action)
-                print("HAS TAKEN STEP")
                 if episode_over:
                     self.env.reset()
             beads_in.append(beads_ratio)
@@ -96,7 +93,7 @@ class Learner:
 	    robot_states[i, :] = robot_state
 	    actions[i, :] = best_action
 	    rewards[i] = reward
-            if i > 3 and episode_over:
+            if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
                 time_since_last_reset = 0
                 self.env.reset() #this is okay even though it's not a full rollout because we don't care about the state transitions, since this is super local
@@ -119,13 +116,14 @@ class Learner:
         numsteps = 50
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
-        delta = 0.1
-        lr = 1
+        delta = 0.01
+        lr = 10
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
+            print("On interval",i)
             if i > 20:
                 self.eps_greedy = 0.01
             delta_theta = delta*np.array(self.select_random_action())
@@ -134,10 +132,11 @@ class Learner:
             _, _, _, _, rewards_down = self.collect_batch(-1*perturbed_params) #collect batch using this policy
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
+  
             difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
+   
             self.params = self.params + lr*difference
             
-            print("On interval",i)
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
 
@@ -170,19 +169,16 @@ def compute_j(rewards):
 
     
 """assumes delta_theta is an np.array"""	
-def compute_gradient(delta_theta, delta_j):
-    delta_theta =np.matrix(delta_theta)
-    ata = delta_theta.T*delta_theta
-    if np.linalg.det(ata) == 0:
-	print("Found a zero determinant")
-	return delta_theta.shape[0]*[0]
-    gradient = np.linalg.inv(ata)*delta_theta.T*(delta_j)
+def compute_gradient(delta_theta_arr, delta_j):
+    delta_theta =np.matrix(delta_theta_arr)
+    ata = np.dot(delta_theta_arr, delta_theta_arr)
+    gradient = ata*delta_theta.T*(delta_j)
     return gradient
          
 # Finally, evaluate our algorithm for 10 episodes.
               
 if __name__=="__main__":
-     nb_actions = 4; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
+     nb_actions = 5; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
      visualize=False
      env = StirEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)

@@ -6,7 +6,7 @@ from stirring_world_pybullet import World
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER = True
+RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
@@ -93,7 +93,6 @@ class StirEnv():
     def step(self, action):
         if self.counter % LOG_INTERVAL == 0:
             action_file.write(str(action) + ",")
-            print("action", action)
         self.move_if_appropriate(action)
         ob = self.create_state() #self.world_state
         episode_over = False
@@ -127,8 +126,8 @@ class StirEnv():
             #self.saved_robot_state = []
             self.saved_world_state = []
 
-        return ob, beads, entropies, episode_over, {}
-        #return ob, reward, episode_over, {}
+        #return ob, beads, entropies, episode_over, {}
+        return ob, reward, episode_over, {}
 
     #sets up replay and determines whether to replay
     def should_replay_and_setup(self):
