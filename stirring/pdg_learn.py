@@ -12,7 +12,7 @@ import os
 from keras.callbacks import CSVLogger
 
 WINDOW_LENGTH = 1
-EXP_NAME = "PGD" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "PGD_lr1del1" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -27,7 +27,7 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         self.params = [0,0,0.5,0, 200]
-        self.rollout_size = 5
+        self.rollout_size = 8
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_action(self):
@@ -113,11 +113,11 @@ class Learner:
             
 
     def train(self):
-        numsteps = 50
+        numsteps = 100
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
-        delta = 0.01
-        lr = 10
+        delta = 1
+        lr = 1
         # Load dataset
         #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
@@ -139,6 +139,7 @@ class Learner:
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
+        print("Ending params: ", self.params)
 
     def test_model(self,filename):
         #do 10 rollouts, 
