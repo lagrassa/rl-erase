@@ -1,6 +1,7 @@
 from __future__ import division
 import pybullet as p
 import math
+import csv
 import pdb
 from PIL import Image
 import numpy as np
@@ -11,14 +12,15 @@ k = 1 #scaling factor
 DEMO =False 
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions, get_joint_positions
 
-real_init = True    
+real_init = False
 
  
 class World():
     def __init__(self, visualize=False, real_init=True, beads=True):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 160
+        self.num_droplets = 120
+        self.radius = k*0.010
         if real_init:
 	    if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
@@ -26,11 +28,30 @@ class World():
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.setup(beads=True)
+        
 
     def toggle_real_time(self):
         self.is_real_time = int(not self.is_real_time)
         p.setRealTimeSimulation(self.is_real_time)
-    
+    """saves where all the beads are"""
+    def custom_save(self):
+        filename = "bead_poses"
+        with open(filename, "wb") as csvfile:
+            drop_writer = csv.writer(csvfile) 
+	    for i in range(len(self.droplets)):
+		droplet = self.droplets[i]
+		color = self.droplet_colors[i]
+		pos = p.getBasePositionAndOrientation(droplet)[0] 
+                drop_writer.writerow([color, pos])
+
+    def custom_restore(self):
+        filename = "bead_poses"
+        with open(filename, "rb") as csvfile:
+            drop_reader = csv.reader(csvfile)
+            for row in drop_reader:
+                color, pos = [parse_tuple(input_tuple) for input_tuple in row]
+                create_sphere(self.radius, color=color, pos = pos)
+                
 
     """Returns the proportion of beads that are still in the cup"""
     def ratio_beads_in(self):
@@ -161,7 +182,7 @@ class World():
     
 
     def create_beads(self, color = (0,0,1,1)):
-       radius = k*0.010 #formerly 0.010
+       radius = self.radius #formerly 0.010
        cup_thickness = k*0.001
 
        lower, upper = get_lower_upper(self.cupID)
@@ -180,14 +201,22 @@ class World():
        for i, droplet in enumerate(droplets):
 	   x, y = np.random.normal(0, 1e-3, 2)
 	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
+       return droplets
 
     def drop_beads_in_cup(self):
+        self.droplets = []
+        self.droplet_colors = []
 	time_to_fall = k*self.num_droplets*0.1
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
-	    self.create_beads(color = color)
+	    new_drops = self.create_beads(color = color)
+            self.droplets += new_drops 
+            self.droplet_colors += self.num_droplets*[color]
+            assert(len(self.droplet_colors) == len(self.droplets))
+            
             if not self.is_real_time:
 	        simulate_for_duration(time_to_fall, dt= 0.001)
+            
 	simulate_for_duration(time_to_fall, dt= 0.001)
 
 
@@ -318,7 +347,11 @@ class World():
                 blacken(self.cupID)
           
             if beads:
-	        self.drop_beads_in_cup()
+                if real_init:
+	            self.drop_beads_in_cup()
+                    self.custom_save()
+                else:
+                    self.custom_restore()
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "sim_stirring.mp4")
 	        self.place_stirrer_in_pr2_hand()
             #to be realistic
@@ -391,6 +424,13 @@ def pol2cart(rho, phi):
     x = rho * np.cos(phi)
     y = rho * np.sin(phi)
     return(x, y)
+
+def parse_tuple(input_tuple):
+    list_tuple = input_tuple.split(",")
+    #remove first and last parenthesis
+    list_tuple[0] = list_tuple[0][1:]
+    list_tuple[-1] = list_tuple[-1][:-1]
+    return tuple([float(item) for item in list_tuple])
         
 
 if __name__ == "__main__":
