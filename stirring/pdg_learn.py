@@ -1,6 +1,7 @@
 from __future__ import division
 import sys
 from reward import entropy
+import argparse
 from scipy import misc
 from random import random, randint
 
@@ -12,12 +13,6 @@ import os
 from keras.callbacks import CSVLogger
 
 WINDOW_LENGTH = 1
-EXP_NAME = "PGD_adagraddel1" #I'm going to be less dumb and start naming experiment names after commit hashes
-avg_l_fn = "average_length"+EXP_NAME+".py"
-avg_r_fn= "average_reward"+EXP_NAME+".py"
-for myfile in [avg_l_fn, avg_r_fn]:
-    if os.path.isfile(myfile):
-	os.remove(myfile)
 
 class Learner:
     def __init__(self, env, nb_actions, input_shape, robot_dims):
@@ -26,7 +21,7 @@ class Learner:
         self.robot_dims = robot_dims
         self.env = env
         self.eps_greedy = 0.0
-        self.params = [0,0,0.5,0, 200]
+        self.params = [0,0,0.5,0, 500]
         self.rollout_size = 2
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -112,11 +107,10 @@ class Learner:
         return img1s, img2s, robot_states, actions,rewards
             
 
-    def train(self):
+    def train(self, delta):
         numsteps = 100
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
-        delta = 1
         lr = 1
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
@@ -178,16 +172,39 @@ def compute_gradient(delta_theta_arr, delta_j):
     ata = np.dot(delta_theta_arr, delta_theta_arr)
     gradient = ata*delta_theta.T*(delta_j)
     return gradient
+
          
-# Finally, evaluate our algorithm for 10 episodes.
-              
+def parse_args(args):
+    parser = argparse.ArgumentParser(description='This is a demo script by nixCraft.')
+    parser.add_argument('-d','--delta', help='Delta of action',required=False)
+    parser.add_argument('-n','--name',help='exp name', required=False)
+    args = parser.parse_args()
+    arg_dict = vars(args)
+    if arg_dict['delta'] is not None:
+        delta = float(arg_dict['delta'])
+    else:
+        delta = 0.1
+    if arg_dict['name'] is not None:
+        name = arg_dict['name']
+    else:
+        name = "PGD"
+    return delta, name
+
 if __name__=="__main__":
      nb_actions = 5; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
+     delta, exp_name = parse_args(sys.argv[1:])
      visualize=False
      env = StirEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)
      robot_dims = env.robot_state.shape[0]
      l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
-     l.train()
+     #sets up logging
+     EXP_NAME = exp_name #I'm going to be less dumb and start naming experiment names after commit hashes
+     avg_l_fn = "stats/average_length"+EXP_NAME+".py"
+     avg_r_fn= "stats/average_reward"+EXP_NAME+".py"
+     for myfile in [avg_l_fn, avg_r_fn]:
+ 	 if os.path.isfile(myfile):
+	     os.remove(myfile)
+     l.train(delta)
      
 #l.train()
