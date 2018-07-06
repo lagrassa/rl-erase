@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import os
 import ast
 import csv
 import numpy as np
@@ -102,14 +103,12 @@ def get_exps_from_root(root):
     return filenames
 
             
-#Plotting learning curves
-forces_exp_dict = {} 
-forces_exp_dict["force used"] = ["c4af2082_forces_nonlinear_less_restricted_1.py", "c4af2082_forces_nonlinear_less_restricted_3.py"] #increases and converges
-forces_exp_dict["force not used"] = ["c4af2082_no_forces_nonlinear_less_restricted_1.py", "c4af2082_no_forces_nonlinear_less_restricted_3.py", "c4af2082_no_forces_nonlinear_less_restricted_2.py"] #increases and converges
-
 
 adagrad = {}
 adagrad["Adagrad"] = get_exps_from_root("pdg_adagrad")
+print adagrad
+plot_learning_curve(adagrad, title = "Adagrad learning curves", root_dir="stats/", cutoff=None)
+
 
 
 
