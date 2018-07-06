@@ -12,7 +12,8 @@ k = 1 #scaling factor
 DEMO =False 
 from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions, get_joint_positions
 
-real_init = False
+real_init = True
+new_world = False
 
  
 class World():
@@ -348,7 +349,7 @@ class World():
                 blacken(self.cupID)
           
             if beads:
-                if real_init:
+                if new_world:
 	            self.drop_beads_in_cup()
                     self.custom_save()
                 else:
