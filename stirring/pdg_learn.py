@@ -21,8 +21,8 @@ class Learner:
         self.robot_dims = robot_dims
         self.env = env
         self.eps_greedy = 0.0
-        self.params = [0,0,0.5,0, 500]
-        self.rollout_size = 2
+        self.params = [0.01,0.02,0.5,0.3, 500]
+        self.rollout_size = 8
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_action(self):
@@ -80,6 +80,7 @@ class Learner:
             #predict best action
           
             _, reward, episode_over, _ = self.env.step(best_action)
+            print("reward", reward)
 
             #then collect reward
             

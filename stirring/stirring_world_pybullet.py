@@ -33,6 +33,7 @@ class World():
     def toggle_real_time(self):
         self.is_real_time = int(not self.is_real_time)
         p.setRealTimeSimulation(self.is_real_time)
+
     """saves where all the beads are"""
     def custom_save(self):
         filename = "bead_poses"
