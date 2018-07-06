@@ -12,7 +12,7 @@ import os
 from keras.callbacks import CSVLogger
 
 WINDOW_LENGTH = 1
-EXP_NAME = "PGD_lr1del1" #I'm going to be less dumb and start naming experiment names after commit hashes
+EXP_NAME = "PGD_adagraddel1" #I'm going to be less dumb and start naming experiment names after commit hashes
 avg_l_fn = "average_length"+EXP_NAME+".py"
 avg_r_fn= "average_reward"+EXP_NAME+".py"
 for myfile in [avg_l_fn, avg_r_fn]:
@@ -27,7 +27,7 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         self.params = [0,0,0.5,0, 200]
-        self.rollout_size = 8
+        self.rollout_size = 2
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_action(self):
@@ -118,8 +118,9 @@ class Learner:
         PRINT_INTERVAL=5
         delta = 1
         lr = 1
-        # Load dataset
-        #batch_size 25, takes 25 samples of states and actions, learn what the value should be after that
+        eps = 1e-8
+        gti = np.zeros((self.nb_actions,1))
+     
         csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
@@ -132,10 +133,12 @@ class Learner:
             _, _, _, _, rewards_down = self.collect_batch(-1*perturbed_params) #collect batch using this policy
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
+            gti += np.multiply(grad, grad)
   
             difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
-   
-            self.params = self.params + lr*difference
+            adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
+  
+            self.params = self.params + np.dot(adagrad_lr,difference)
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
