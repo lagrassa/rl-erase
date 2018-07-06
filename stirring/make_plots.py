@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import ast
 import csv
+import os
 import numpy as np
 import pdb
 plt.rcParams['font.size'] = 18
@@ -57,7 +58,10 @@ def plot_graph(exp_dict,
     colors = ["red", "blue","green" ]
     color_i = 0
     for exp_name in exp_dict.keys():
-        means, stdevs = get_stdev_and_mean(exp_dict[exp_name], prefix, root_dir = root_dir, cutoff=cutoff, lengths_array=exp_dict[exp_name][lengths_array_index])
+        if lengths_array_index is None:
+            means, stdevs = get_stdev_and_mean(exp_dict[exp_name], prefix, root_dir = root_dir, cutoff=cutoff)
+        else:
+            means, stdevs = get_stdev_and_mean(exp_dict[exp_name], prefix, root_dir = root_dir, cutoff=cutoff, lengths_array=exp_dict[exp_name][lengths_array_index])
         plot_line(means, stdevs, color = colors[color_i], label=exp_name, plot_area = plot_area)
         color_i +=1 
     plot_area.set_xlabel(xlab)
@@ -108,6 +112,7 @@ adagrad = {}
 adagrad["Adagrad"] = get_exps_from_root("pdg_adagrad")
 print adagrad
 plot_learning_curve(adagrad, title = "Adagrad learning curves", root_dir="stats/", cutoff=None)
+
 
 
 
