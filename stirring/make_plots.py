@@ -91,7 +91,16 @@ def get_line_out_file(exp, root_dir = "No root directory"):
         float_list =  [float(elt) for elt in string_list if elt != ""]
         smoothed = moving_average(float_list, n = 1)
         return smoothed
-        
+
+def get_exps_from_root(root):
+    #finds all experiments with root in the name and a number
+    files = os.listdir('stats/')
+    filenames = []
+    for f in files:
+        if root+"_" in f:
+            filenames.append(f)
+    return filenames
+
             
 #Plotting learning curves
 forces_exp_dict = {} 
@@ -99,74 +108,8 @@ forces_exp_dict["force used"] = ["c4af2082_forces_nonlinear_less_restricted_1.py
 forces_exp_dict["force not used"] = ["c4af2082_no_forces_nonlinear_less_restricted_1.py", "c4af2082_no_forces_nonlinear_less_restricted_3.py", "c4af2082_no_forces_nonlinear_less_restricted_2.py"] #increases and converges
 
 
-weight_cup_exp_dict = {}
-weight_cup_exp_dict['light cup, light beads'] = ["1e95_harder_nonlinear_less_restricted_15_rollout_5_batch_check_600_1.py", "1e95_harder_nonlinear_less_restricted_15_rollout_5_batch_check_600_2.py"] #okay results
-weight_cup_exp_dict["heavier cup"] = ["838ae_nonlinear_less_restricted_15_rollout_5_batch_check_600_1.py", "838ae_nonlinear_less_restricted_15_rollout_5_batch_check_600_2.py"] #does better quickly then tapers off
-
-num_checks_exp_dict = {}
-num_checks_exp_dict["200"] = ["838ae_nonlinear_less_restricted_15_rollout_5_batch_1.py", "838ae_nonlinear_less_restricted_15_rollout_5_batch_2.py"] #doesn't get much better
-num_checks_exp_dict["600"] = ["838ae_nonlinear_less_restricted_15_rollout_5_batch_check_600_1.py", "838ae_nonlinear_less_restricted_15_rollout_5_batch_check_600_2.py"] #does better quickly then tapers off
-
-linear_exp_dict = {}
-linear_exp_dict["linear"] = ["6389e_linear_less_restricted.py"]
-#linear_exp_dict["linear"] = ['513c7.py']
-linear_exp_dict["relu"] = ["c188d_nonlinear_less_restricted_2.py"]
-
-#plot_learning_curve(linear_exp_dict, title = "Activation functions", root_dir="stats/", cutoff=170)
-#plot_learning_curve(num_checks_exp_dict, title = "Number samples in actor", root_dir="stats/", cutoff=None)
-#plot_learning_curve(weight_cup_exp_dict, title = "Difficulty of experimental setup", root_dir="stats/", cutoff=None)
-#plot_learning_curve(forces_exp_dict, title = "Using forces in the actor", root_dir="stats/", cutoff=None)
-
-#plot bead and entropy
-exp_dict = {}
-
-#exp dict is of the form
-#dictionary to a tuple with the entropy, then the beadso
-
-#entropy first, then beads
-def beads_and_entropy_from_filename(filename):
-    entropy = ast.literal_eval(open("policy_results/policies/"+filename+ "entropy_results.py", "rb").read())
-    beads = ast.literal_eval(open("policy_results/policies/"+filename+ "bead_results.py", "rb").read())
-    return entropy, beads
-   
-    
-force_be_dict = {}
-no_force_entropy, no_force_beads = beads_and_entropy_from_filename("c4af2082_no_forces_nonlinear_less_restricted_3_500weights")
-force_entropy, force_beads = beads_and_entropy_from_filename("c4af2082_forces_nonlinear_less_restricted_3_500weights")
-force_be_dict["no force"] = (no_force_entropy, no_force_beads)
-force_be_dict["force"] = (force_entropy, force_beads)
-#plot_policy_test(force_be_dict, title = "Force input in the policy", root_dir="")
-
-training_iters = {}
-entropy_100_iters, beads_100_iters = beads_and_entropy_from_filename("c4af2082_forces_nonlinear_less_restricted_3_100weights")
-entropy_500_iters, beads_500_iters = beads_and_entropy_from_filename("c4af2082_forces_nonlinear_less_restricted_3_500weights")
-training_iters["100 episodes"]  = (entropy_100_iters, beads_100_iters)
-training_iters["500 episodes"] = (entropy_500_iters, beads_500_iters)
-#plot_policy_test(training_iters, title = "Policy after training more iterations", root_dir="")
-
-
-harder_be_dict = {}
-harder_prob_entropy, harder_prob_beads = beads_and_entropy_from_filename("1e95_harder_nonlinear_less_restricted_15_rollout_5_batch_check_600_2_100weights")
-harder_be_dict["lighter cup, lighter beads"] = (harder_prob_entropy, harder_prob_beads)
-#plot_policy_test(harder_be_dict, title = "Trained on a lighter cup and lighter bead actors", root_dir = "")
-
-entropy_600, beads_600 = beads_and_entropy_from_filename("838ae_nonlinear_less_restricted_15_rollout_5_batch_check_600_1_200weights")
-""" Needs to be redone on flakey
-sample_dict = {}
-entropy_200, beads_200 = beads_and_entropy_from_filename("838ae_nonlinear_less_restricted_15_rollout_5_batch_2_200weights")
-sample_dict["200"] = (entropy_200, beads_200)
-sample_dict["600"] = (entropy_600, beads_600)
-plot_policy_test(sample_dict, title = "Number of sampled actions in actor only during training", root_dir = "")
-"""
-
-entropy_1200, beads_1200 = beads_and_entropy_from_filename("c4af2082_forces_nonlinear_less_restricted_3_500weights1200_")
-num_samples_test = {}
-num_samples_test["600"] = (entropy_600, beads_600)
-num_samples_test["1200"] = (entropy_1200, beads_1200)
-plot_policy_test(num_samples_test, title = "Number of sampled actions in actor", root_dir = "")
-
-
-
+adagrad = {}
+adagrad["Adagrad"] = get_exps_from_root("pdg_adagrad")
 
 
 
