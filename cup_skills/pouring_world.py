@@ -1,12 +1,16 @@
 from cup_world import *
 import pybullet as p
+from utils import set_point
 
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=True):
-        self.base_world = CupWorld(visualize=visualize)
-        self.setup()
+    def __init__(self, visualize=True, real_init=False):
+        self.base_world = CupWorld(visualize=visualize, beads=False)
+        if real_init:
+            self.setup()
+        else:
+            p.restoreState(self.bullet_id)
 
     def setup(self):
         #create constraint and a second cup
@@ -14,12 +18,26 @@ class PouringWorld():
         cubeStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
         self.target_cup = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*4.5)
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, cupStartPos, cubeStartOrientation, [0,0,1])
+        self.bullet_id = p.saveState()
         
+    def reset(self, real_init=False):
+        p.resetSimulation()
+        self.base_world.reset()
+        self.setup() 
+                
 
-    def move_cup(self, new_loc, new_euler, duration=0.7):
-        new_orn = p.getQuaternionFromEuler(new_euler)
-        p.changeConstraint(self.cid, new_loc, new_orn, maxForce = 3000) 
-        simulate_for_duration(duration)
+    def move_cup(self, new_loc, new_euler, duration=0.7, teleport=False):
+        if teleport:
+            set_point(self.base_world.cupID, new_loc)
+            for bead in self.base_world.droplets:
+                #original_loc 
+                loc = p.getBasePositionAndOrientation(bead)[0]
+                new_loc = np.array(loc)+np.array(new_loc)
+                set_point(bead, new_loc)
+        else:
+            new_orn = p.getQuaternionFromEuler(new_euler)
+            p.changeConstraint(self.cid, new_loc, new_orn, maxForce = 3000) 
+            simulate_for_duration(duration)
     
     #reactive pouring controller 
     #goes to the closest lip of the cup and decreases the pitch until the beads fall out into the right place
@@ -33,6 +51,15 @@ class PouringWorld():
             current_orn[0] += step_size
             self.move_cup(start_pos, current_orn, duration=0.08)
 
+    def pourer_state(self):
+        pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
+        target_pos, target_orn = p.getBasePositionAndOrientation(self.target_cup)
+        cup_rel_pos = np.array(pourer_pos) - np.array(target_pos)
+        return np.hstack([cup_rel_pos, pourer_orn])
+
+    def world_state(self):
+        return self.base_world.world_state() 
+
     def parameterized_pour(self, offset=0.4, desired_height = 0.7, step_size=0.2):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         start_euler = p.getEulerFromQuaternion(pourer_orn)
@@ -41,14 +68,16 @@ class PouringWorld():
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), start_euler)
         #first just straight up
         start_pos = (other_cup_pos[0], other_cup_pos[1]+offset, desired_height)
-        self.pour(start_pos, start_euler, step_size)
+ 
+        self.pour(start_pos, start_euler, abs(step_size))
 
     
        
 
 if __name__ == "__main__":
-    pw = PouringWorld()
+    pw = PouringWorld(visualize=True, real_init = True)
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
     pw.parameterized_pour()
+    pw.reset()
     
     

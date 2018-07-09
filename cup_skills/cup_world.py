@@ -17,10 +17,10 @@ new_world = True
 
  
 class CupWorld():
-    def __init__(self, visualize=False, real_init=True, beads=True):
+    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0)):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 120
+        self.num_droplets = 2
         self.radius = k*0.010
         if real_init:
 	    if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
@@ -28,7 +28,7 @@ class CupWorld():
 	    else:
 		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.setup(beads=True)
+        self.setup(beads=True, cup_offset=cup_offset)
         
 
     def toggle_real_time(self):
@@ -56,10 +56,10 @@ class CupWorld():
                 
 
     """Returns the proportion of beads that are still in the cup"""
-    def ratio_beads_in(self):
-        if DEMO:
-            return 1
-        aabbMin, aabbMax = p.getAABB(self.cupID)
+    def ratio_beads_in(self, cup =None):
+        if cup is None:
+            cup = self.cupID
+        aabbMin, aabbMax = p.getAABB(cup)
         num_in = len(p.getOverlappingObjects(aabbMin, aabbMax))
         total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
         return num_in/total
@@ -75,7 +75,7 @@ class CupWorld():
         
        
 
-    def step(self, timeStep, vel_iters, pos_iters):
+    def step(self, timeStep):
         if not self.is_real_time:
             simulate_for_duration(timeStep, dt= 0.01)
         time.sleep(0.0001)
@@ -123,7 +123,7 @@ class CupWorld():
         self.__init__(visualize=self.visualize, real_init=False)
     
 
-    def create_beads(self, color = (0,0,1,1)):
+    def create_beads(self, color = (0,0,1,1), offset=(0,0,0)):
        radius = self.radius #formerly 0.010
        cup_thickness = k*0.001
 
@@ -142,16 +142,16 @@ class CupWorld():
 
        for i, droplet in enumerate(droplets):
 	   x, y = np.random.normal(0, 1e-3, 2)
-	   set_point(droplet, Point(x, y, z+i*(2*radius+1e-3)))
+	   set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)+offset[2]))
        return droplets
 
-    def drop_beads_in_cup(self):
+    def drop_beads_in_cup(self, offset=(0,0,0)):
         self.droplets = []
         self.droplet_colors = []
 	time_to_fall = k*self.num_droplets*0.1
 	colors = [(0,0,1,1),(1,0,0,1)]
 	for color in colors:
-	    new_drops = self.create_beads(color = color)
+	    new_drops = self.create_beads(color = color, offset=offset)
             self.droplets += new_drops 
             self.droplet_colors += self.num_droplets*[color]
             assert(len(self.droplet_colors) == len(self.droplets))
@@ -164,7 +164,7 @@ class CupWorld():
 
 
 
-    def setup(self, beads=True):
+    def setup(self, beads=True, cup_offset=(0,0,0)):
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
@@ -189,14 +189,13 @@ class CupWorld():
           
             if beads:
                 if new_world:
-	            self.drop_beads_in_cup()
+	            self.drop_beads_in_cup(offset=cup_offset)
                     self.custom_save()
                 else:
                     self.custom_restore()
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "sim_stirring.mp4")
             #to be realistic
             p.setTimeStep(1/1000.)
-            self.bullet_id = p.saveState()
             self.real_init = False
         else:
             try:
@@ -205,10 +204,10 @@ class CupWorld():
                 self.real_init = True
                 p.resetSimulation()
                 self.setup()
-    def cup_knocked_over(self):
-        if DEMO:
-            return False
-        cupPos, cupQuat =  p.getBasePositionAndOrientation(self.cupID)
+    def cup_knocked_over(self, cup=None):
+        if cup is None:
+            cup = self.cupID
+        cupPos, cupQuat =  p.getBasePositionAndOrientation(cup)
         roll, pitch, yaw = euler_from_quat(cupQuat)
         thresh = 0.7 #pi/4 plus some
         if abs(roll) > thresh or abs(pitch) > thresh:
@@ -275,6 +274,9 @@ def parse_tuple(input_tuple):
 
 if __name__ == "__main__":
     world = CupWorld(visualize=True)
+    pdb.set_trace()
+    world.reset()
+    pdb.set_trace()
     world.reset()
 	
 
