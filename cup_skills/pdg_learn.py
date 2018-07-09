@@ -23,7 +23,8 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
-        self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
+        #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
+        self.params = [-0.1]
         self.rollout_size = 1
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -31,7 +32,8 @@ class Learner:
         theta_diff = []
         for i in range(self.nb_actions):
             theta_diff.append(-1**randint(0,1)*random())
-        theta_diff[-1] *= 20 #account for the different magnitude
+        if self.nb_actions > 1:
+            theta_diff[-1] *= 20 #account for the different magnitude
         return theta_diff
 
     def select_action(self, params):
@@ -124,19 +126,25 @@ class Learner:
             print("On interval",i)
             if i > 20:
                 self.eps_greedy = 0.01
+            print("iter", i, "prev params", self.params)
             delta_theta = delta*np.array(self.select_random_diff())
+            print("iter", i, "delta_tjheta", delta_theta)
             perturbed_params = self.params + delta_theta
             neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
             _, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
+            print("iter", i, "gradient", grad)
             gti += np.multiply(grad, grad)
   
             difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
             adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
+            print(adagrad_lr)
   
             self.params = self.params + np.dot(adagrad_lr,difference)
+            print("iter", i, "new params", self.params)
+ 
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
@@ -199,7 +207,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 5; 
+     nb_actions = 1; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)

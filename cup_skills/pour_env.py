@@ -6,7 +6,7 @@ from pouring_world import PouringWorld
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER =True 
+#RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
@@ -15,7 +15,7 @@ LENGTH_REPLAY = 15
 EXP_NAME = "value_estimation"
 REPLAY_LENGTH = LENGTH_REPLAY
 LOG_INTERVAL = 20
-world = PouringWorld(visualize=RENDER, real_init=True)
+#world = PouringWorld(visualize=RENDER, real_init=True)
 
 
 class PourEnv():
@@ -25,7 +25,8 @@ class PourEnv():
         print("Visualize=",visualize)
         self.visualize=visualize
         self.done_amount =  90 #pretty well mixed in original example HACK
-        self.world = world
+        if real_init:
+            self.world = PouringWorld(visualize=visualize, real_init=real_init)
         self.world_state = self.world.world_state() 
         self.robot_state = self.world.pourer_state()
         self.n = self.world_state[0].shape[1]*self.world_state[0].shape[0]
@@ -40,12 +41,13 @@ class PourEnv():
 
     def progress_state(self, action=300):
         offset = action[0]
-        desired_height = action[1]
-        step_size = action[2]
-        dt = action[3]
-        force = action[4]
+        #desired_height = action[1]
+        #step_size = action[2]
+        #dt = action[3]
+        #force = action[4]
         print("action", action)
-        self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size, dt=dt, force=force)
+        #self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size, dt=dt, force=force)
+        self.world.parameterized_pour(offset=offset)
 
     """
     does an annoying amount of functionality
