@@ -40,14 +40,13 @@ class PourEnv():
         
 
     def progress_state(self, action=300):
-        offset = action[0]
+        step_size = action[0]
         #desired_height = action[1]
         #step_size = action[2]
         #dt = action[3]
         #force = action[4]
-        print("action", action)
         #self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size, dt=dt, force=force)
-        self.world.parameterized_pour(offset=offset)
+        self.world.parameterized_pour(step_size=step_size)
 
     """
     does an annoying amount of functionality

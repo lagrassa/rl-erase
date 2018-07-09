@@ -11,7 +11,6 @@ import pickle
 #from stir_env import StirEnv
 from pour_env import PourEnv
 import os
-from keras.callbacks import CSVLogger
 
 WINDOW_LENGTH = 1
 
@@ -24,7 +23,7 @@ class Learner:
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
         #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
-        self.params = [-0.1]
+        self.params = [0.2]
         self.rollout_size = 1
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -83,7 +82,6 @@ class Learner:
             #predict best action
           
             _, reward, episode_over, _ = self.env.step(best_action)
-            print("reward", reward)
 
             #then collect reward
             
@@ -120,30 +118,23 @@ class Learner:
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
      
-        csv_logger = CSVLogger('log'+EXP_NAME+'.csv', append=True, separator=';')
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
-            print("On interval",i)
             if i > 20:
                 self.eps_greedy = 0.01
-            print("iter", i, "prev params", self.params)
             delta_theta = delta*np.array(self.select_random_diff())
-            print("iter", i, "delta_tjheta", delta_theta)
             perturbed_params = self.params + delta_theta
             neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
             _, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
-            print("iter", i, "gradient", grad)
             gti += np.multiply(grad, grad)
   
             difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
             adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
-            print(adagrad_lr)
   
             self.params = self.params + np.dot(adagrad_lr,difference)
-            print("iter", i, "new params", self.params)
  
             
             if i % SAVE_INTERVAL == 0:
