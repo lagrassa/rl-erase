@@ -20,8 +20,8 @@ class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0)):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 20
-        self.radius = k*0.013
+        self.num_droplets = 30
+        self.radius = k*0.014
         if real_init:
 	    if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
 		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
