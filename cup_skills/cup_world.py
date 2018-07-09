@@ -60,7 +60,11 @@ class CupWorld():
         if cup is None:
             cup = self.cupID
         aabbMin, aabbMax = p.getAABB(cup)
-        num_in = len(p.getOverlappingObjects(aabbMin, aabbMax))
+        overlapping_objects = p.getOverlappingObjects(aabbMin, aabbMax)
+        if overlapping_objects is None:
+            num_in = 0
+        else:
+            num_in = len(overlapping_objects)
         total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
         return num_in/total
 
