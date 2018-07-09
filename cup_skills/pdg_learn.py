@@ -23,7 +23,7 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
-        self.params = [0.7, 0.4, 0.2]
+        self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
         self.rollout_size = 1
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -31,6 +31,7 @@ class Learner:
         theta_diff = []
         for i in range(self.nb_actions):
             theta_diff.append(-1**randint(0,1)*random())
+        theta_diff[-1] *= 20 #account for the different magnitude
         return theta_diff
 
     def select_action(self, params):
@@ -110,10 +111,10 @@ class Learner:
             
 
     def train(self, delta):
-        numsteps = 100
+        numsteps = 20
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
-        lr = 1
+        lr = 0.01
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
      
@@ -125,8 +126,9 @@ class Learner:
                 self.eps_greedy = 0.01
             delta_theta = delta*np.array(self.select_random_diff())
             perturbed_params = self.params + delta_theta
+            neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
-            _, _, _, _, rewards_down = self.collect_batch(-1*perturbed_params) #collect batch using this policy
+            _, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
             gti += np.multiply(grad, grad)
@@ -197,7 +199,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 3; #just 3 atm 6; #control period held and angle,curl, plus 3 dx dy dz
+     nb_actions = 5; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)

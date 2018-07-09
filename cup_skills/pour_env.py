@@ -6,7 +6,7 @@ from pouring_world import PouringWorld
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER =False 
+RENDER =True 
 
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
@@ -42,7 +42,10 @@ class PourEnv():
         offset = action[0]
         desired_height = action[1]
         step_size = action[2]
-        self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size)
+        dt = action[3]
+        force = action[4]
+        print("action", action)
+        self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size, dt=dt, force=force)
 
     """
     does an annoying amount of functionality
