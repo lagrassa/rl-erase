@@ -24,7 +24,7 @@ class Learner:
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
         #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
-        self.params = [0.2]
+        self.params = [-0.01]
         self.rollout_size = 1
 
     """ returns a list of theta-diff, curl, period, rot"""
