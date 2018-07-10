@@ -68,14 +68,25 @@ class Learner:
     #
     def plot_param_v_reward(self):
         good_params = [-0.1, 0.8, 0.2, 0.11, 2500]
+        good_params = good_params[::-1]
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
+        corresponding_names = corresponding_names[::-1]
         for i in range(len(corresponding_names)):
+            if i != 2:
+                continue
             good_param = good_params[i]
             #test params from 
-            params_to_test = np.linspace(good_param - (good_param/2.0), good_param + (good_param/2.0), 25) 
-            rewards = [self.collect_batch(param)[4][0] for param in params_to_test]
-            plt.plot(params_to_test, rewards)
+            params_to_test = np.linspace(good_param - (good_param/2.0), good_param + (good_param/2.0),8) 
+            reward = []
+            for param in params_to_test:
+                print("Testing param")
+                test_params = good_params[:]
+                test_params[i] = param
+                rw = self.collect_batch(test_params)[4][0]
+                reward.append(rw)
+
+            plt.plot(params_to_test, reward)
             plt.title("Rewards over varying parameter: " + corresponding_names[i])
             plt.show()
  
@@ -212,7 +223,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 1; 
+     nb_actions = 5; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)
