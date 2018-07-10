@@ -24,7 +24,7 @@ class Learner:
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
         #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
-        self.params = [-0.01]
+        self.params = [-0.12, 0.5]
         self.rollout_size = 1
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -137,7 +137,7 @@ class Learner:
             
 
     def train(self, delta):
-        numsteps = 50
+        numsteps = 20
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         lr = 0.05
@@ -154,13 +154,17 @@ class Learner:
             neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
             _, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
+            print("rewards_up", rewards_up)
+            print("rewards_down", rewards_up)
             delta_j = compute_j(rewards_up)-compute_j(rewards_down)
             grad = compute_gradient(delta_theta, delta_j)
-            gti += np.multiply(grad, grad)
+            gti += np.multiply(grad, grad).reshape(gti.shape)
   
             #difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
             adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
+            print("before", self.params)
             self.params = self.params + np.dot(adagrad_lr,grad)
+            print("after", self.params)
  
             
             if i % SAVE_INTERVAL == 0:
@@ -227,7 +231,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 1; 
+     nb_actions = 2; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)
