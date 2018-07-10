@@ -31,7 +31,7 @@ class Learner:
     def select_random_diff(self):
         theta_diff = []
         for i in range(self.nb_actions):
-            theta_diff.append(-1**randint(0,1)*random())
+            theta_diff.append(((-1)**randint(0,1))*random())
         if self.nb_actions > 1:
             theta_diff[-1] *= 20 #account for the different magnitude
         return theta_diff
@@ -68,8 +68,10 @@ class Learner:
     #
     def plot_param_v_reward(self):
         good_params = [-0.1, 0.8, 0.2, 0.11, 2500]
+        good_params = [0.2]
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
+        corresponding_names = ["step_size"]
         for i in range(len(corresponding_names)):
             good_param = good_params[i]
             #test params from 
@@ -89,6 +91,7 @@ class Learner:
         actions = np.zeros((self.rollout_size, self.nb_actions))
         time_since_last_reset = 0
         ep_times = []
+        print("Collecting batch")
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
@@ -125,10 +128,10 @@ class Learner:
             
 
     def train(self, delta):
-        numsteps = 20
+        numsteps = 50
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
-        lr = 0.01
+        lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
      
@@ -137,6 +140,7 @@ class Learner:
             if i > 20:
                 self.eps_greedy = 0.01
             delta_theta = delta*np.array(self.select_random_diff())
+            print("delta_theta", delta_theta)
             perturbed_params = self.params + delta_theta
             neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
@@ -145,14 +149,14 @@ class Learner:
             grad = compute_gradient(delta_theta, delta_j)
             gti += np.multiply(grad, grad)
   
-            difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
+            #difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
             adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
-  
-            self.params = self.params + np.dot(adagrad_lr,difference)
+            self.params = self.params + np.dot(adagrad_lr,grad)
  
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
+
         print("Ending params: ", self.params)
 
     def test_model(self,filename):
@@ -184,12 +188,14 @@ def compute_j(rewards):
 
     
 """assumes delta_theta is an np.array"""	
-def compute_gradient(delta_theta_arr, delta_j):
+def compute_gradient_old(delta_theta_arr, delta_j):
     delta_theta =np.matrix(delta_theta_arr)
     ata = np.dot(delta_theta_arr, delta_theta_arr)
     gradient = ata*delta_theta.T*(delta_j)
     return gradient
 
+def compute_gradient(delta_theta_arr, delta_j):
+    return delta_j/delta_theta_arr
          
 def parse_args(args):
     parser = argparse.ArgumentParser(description='This is a demo script by nixCraft.')
@@ -226,7 +232,7 @@ if __name__=="__main__":
  	 if os.path.isfile(myfile):
 	     os.remove(myfile)
 
-     l.plot_param_v_reward()
-     #l.train(delta)
+     #l.plot_param_v_reward()
+     l.train(delta)
      
 #l.train()
