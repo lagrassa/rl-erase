@@ -227,7 +227,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 5; 
+     nb_actions = 1; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)

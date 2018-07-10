@@ -20,13 +20,16 @@ class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0)):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 30
-        self.radius = k*0.014
+        self.num_droplets = 40
+        self.radius = k*0.015
         if real_init:
-	    if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
-		physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
-	    else:
-		physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
+            try:
+		if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
+		    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+		else:
+		    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
+            except:
+                pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.setup(beads=True, cup_offset=cup_offset)
         
@@ -153,7 +156,7 @@ class CupWorld():
         self.droplets = []
         self.droplet_colors = []
 	time_to_fall = k*self.num_droplets*0.1
-	colors = [(0,0,1,1),(1,0,0,1)]
+	colors = [(0,0,1,1)]
 	for color in colors:
 	    new_drops = self.create_beads(color = color, offset=offset)
             self.droplets += new_drops 
@@ -199,7 +202,7 @@ class CupWorld():
                     self.custom_restore()
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "sim_stirring.mp4")
             #to be realistic
-            p.setTimeStep(1/1000.)
+            p.setTimeStep(1/80.)
             self.real_init = False
         else:
             try:

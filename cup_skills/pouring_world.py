@@ -48,10 +48,10 @@ class PouringWorld():
         #then start decreasing the roll, pitch or yaw(whatever seems appropriate)
         start_pos, start_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         current_orn = list(p.getEulerFromQuaternion(start_orn))
-        numsteps = 18
+        numsteps = 10
         for i in range(numsteps):
             current_orn[0] += step_size
-            self.move_cup(start_pos, current_orn, duration=0.5, force=force)
+            self.move_cup(start_pos, current_orn, duration=0.2, force=force)
 
     def pourer_state(self):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
