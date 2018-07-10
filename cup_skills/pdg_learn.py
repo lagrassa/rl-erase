@@ -3,6 +3,7 @@ import sys
 from reward import entropy
 import argparse
 from scipy import misc
+import matplotlib.pyplot as plt
 from random import random, randint
 
 import numpy as np
@@ -38,7 +39,7 @@ class Learner:
     def select_action(self, params):
         #randomly sample actions, check their value, pick the best 
         #epsilon greedy for training:
-        sigma = 0.01
+        sigma = 0.001
         if random() <= self.eps_greedy:
             return self.select_random_diff()
         else:
@@ -64,8 +65,21 @@ class Learner:
             entropies.append(entropy)
         self.env.reset()
         return beads_in, entropies
-            
-            
+    #
+    def plot_param_v_reward(self):
+        good_params = [-0.1, 0.8, 0.2, 0.11, 2500]
+        #go through each set of params and plot params + reward
+        corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
+        for i in range(len(corresponding_names)):
+            good_param = good_params[i]
+            #test params from 
+            params_to_test = np.linspace(good_param - (good_param/2.0), good_param + (good_param/2.0), 25) 
+            rewards = [self.collect_batch(param)[4][0] for param in params_to_test]
+            plt.plot(params_to_test, rewards)
+            plt.title("Rewards over varying parameter: " + corresponding_names[i])
+            plt.show()
+ 
+        
                 
     def collect_batch(self, params):
         img1s = np.zeros( (self.rollout_size,)+self.input_shape)
@@ -211,6 +225,8 @@ if __name__=="__main__":
      for myfile in [avg_l_fn, avg_r_fn]:
  	 if os.path.isfile(myfile):
 	     os.remove(myfile)
-     l.train(delta)
+
+     l.plot_param_v_reward()
+     #l.train(delta)
      
 #l.train()
