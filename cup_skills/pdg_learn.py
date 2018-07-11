@@ -4,6 +4,8 @@ from reward import entropy
 import argparse
 from scipy import misc
 import matplotlib.pyplot as plt
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 from random import random, randint
 
 import numpy as np
@@ -24,26 +26,44 @@ class Learner:
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
         #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
-        self.params = [-0.12, 0.5]
+        self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
+        #self.params = [-0.05, 0.6]
         self.rollout_size = 1
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_diff(self):
         theta_diff = []
         for i in range(self.nb_actions):
             theta_diff.append(((-1)**randint(0,1))*random())
-        if self.nb_actions > 1:
-            theta_diff[-1] *= 20 #account for the different magnitude
         return theta_diff
 
-    def select_action(self, params):
+    def select_action(self, params, sigma=0.01):
         #randomly sample actions, check their value, pick the best 
         #epsilon greedy for training:
-        sigma = 0.001
         if random() <= self.eps_greedy:
-            return self.select_random_diff()
+            return self.select_random_diff()+self.params
         else:
-            return np.random.normal(params, [sigma]*len(self.params))
+            return np.random.normal(params, [sigma]*len(params))
+
+    def select_best_action(self,params):
+        N = 15
+        samples = np.zeros((N, self.nb_actions))
+        scores = []
+        
+        scalars = [1,1,1,1,2000]
+        #vary sigma to get more variability 
+        for i in range(N):
+            sigma=2*np.e**(-0.3*N)
+            action = self.select_action(params, sigma=sigma)
+            samples[i,:] = action
+            scores.append(self.gp.predict([action]).item())
+    
+        
+        best_sample = samples[np.argmax(scores), :]
+        return best_sample
+
     
     def collect_test_batch(self):
         beads_in= []
@@ -73,18 +93,18 @@ class Learner:
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
         for i in range(len(corresponding_names)):
-            if i != 2:
+            if i == 2:
                 continue
             good_param = good_params[i]
             #test params from 
-            params_to_test = np.linspace(good_param - (good_param/2.0), good_param + (good_param/2.0),8) 
+            params_to_test = np.linspace(good_param - (2*good_param/3.0), good_param + (2*good_param/3.0),15) 
             reward = []
             for param in params_to_test:
-                print("Testing param")
                 test_params = good_params[:]
                 test_params[i] = param
                 rw = self.collect_batch(test_params)[4][0]
                 reward.append(rw)
+          
 
             plt.plot(params_to_test, reward)
             plt.title("Rewards over varying parameter: " + corresponding_names[i])
@@ -100,7 +120,6 @@ class Learner:
         actions = np.zeros((self.rollout_size, self.nb_actions))
         time_since_last_reset = 0
         ep_times = []
-        print("Collecting batch")
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
@@ -116,6 +135,7 @@ class Learner:
 	    robot_states[i, :] = robot_state
 	    actions[i, :] = best_action
 	    rewards[i] = reward
+            print("reward", reward)
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
                 time_since_last_reset = 0
@@ -143,34 +163,45 @@ class Learner:
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-     
+        rewards = None 
+        actions = None
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             if i > 20:
                 self.eps_greedy = 0.01
             delta_theta = delta*np.array(self.select_random_diff())
-            print("delta_theta", delta_theta)
+            self.params = self.select_best_action(self.params)
             perturbed_params = self.params + delta_theta
-            neg_perturbed_params = self.params - delta_theta
+            #neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
-            _, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
-            print("rewards_up", rewards_up)
-            print("rewards_down", rewards_up)
-            delta_j = compute_j(rewards_up)-compute_j(rewards_down)
-            grad = compute_gradient(delta_theta, delta_j)
-            gti += np.multiply(grad, grad).reshape(gti.shape)
+            #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
+            if rewards is None:
+                rewards = rewards_up
+                #rewards = np.vstack([rewards, rewards_down])
+                actions = perturbed_params
+                #actions = np.vstack([actions, neg_perturbed_params])
+            else:
+                #rewards = np.vstack([rewards, np.vstack(rewards_up, rewards_down)])
+                #actions = np.vstack([actions, np.vstack(actions_up, actions_down)])
+                rewards = np.vstack([rewards, rewards_up])
+                actions = np.vstack([actions,perturbed_params])
+
+            #delta_j = compute_j(rewards_up)-compute_j(rewards_down)
+            #grad = compute_gradient(delta_theta, delta_j)
+            #gti += np.multiply(grad, grad).reshape(gti.shape)
   
             #difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
-            adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
-            print("before", self.params)
-            self.params = self.params + np.dot(adagrad_lr,grad)
-            print("after", self.params)
- 
+            #adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
+            #self.params = self.params + np.dot(adagrad_lr,grad)
+            if len(actions.shape) > 1:
+                self.gp.fit(actions, rewards)
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
 
         print("Ending params: ", self.params)
+        print actions
+        print rewards 
 
     def test_model(self,filename):
         #do 10 rollouts, 
@@ -221,7 +252,7 @@ def parse_args(args):
     if arg_dict['delta'] is not None:
         delta = float(arg_dict['delta'])
     else:
-        delta = 0.1
+        delta = 0.0001
     if arg_dict['name'] is not None:
         name = arg_dict['name']
     else:
@@ -231,7 +262,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 2; 
+     nb_actions = 5; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)
