@@ -26,7 +26,7 @@ def plot_line(mean, stdev, color="red", label="missing label", plot_area = None,
         display_now = True
         plot_area = plt
     #plot mean
-    if xaxis is not None:
+    if xaxis is None:
         coords = list(range(len(mean)))
     else:
         coords = xaxis
@@ -168,7 +168,14 @@ if __name__ == "__main__":
     one_param["force"] = get_exps_from_root("pdg_one_var_force")
     one_param["dt"] = get_exps_from_root("pdg_one_var_dt")
     one_param["all"] = get_exps_from_root("pdg_all_5")
-    plot_learning_curve(one_param, title = "Finite differences one parameter at a time", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(one_param, title = "Finite differences one parameter at a time", root_dir="stats/", cutoff=None)
+    
+    gp_exps = {}
+    gp_exps["big alpha bad start"] = get_exps_from_root("gp_big_alpha_bad_start")
+    gp_exps["large alpha"] = get_exps_from_root("gp_large_alpha")
+    gp_exps["exploration"] = get_exps_from_root("gp_more_explore")
+    gp_exps["good start"] = get_exps_from_root("gp_start_good")
+    plot_learning_curve(gp_exps, title = "Select actions with GP", root_dir="stats/", cutoff=None)
 
 
 
