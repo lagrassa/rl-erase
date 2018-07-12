@@ -20,7 +20,7 @@ class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0)):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 40
+        self.num_droplets = 55
         self.radius = k*0.015
         if real_init:
             try:
@@ -68,7 +68,8 @@ class CupWorld():
             num_in = 0
         else:
             num_in = len(overlapping_objects)
-        total = 11+2*self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup
+        total = 7+self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup, now it's 7
+        total =  self.num_droplets
         return num_in/total
 
     def distance_from_cup(self, otherObj, otherLinkIndex):
@@ -155,7 +156,7 @@ class CupWorld():
     def drop_beads_in_cup(self, offset=(0,0,0)):
         self.droplets = []
         self.droplet_colors = []
-	time_to_fall = k*self.num_droplets*0.1
+	time_to_fall = k*self.num_droplets*0.03
 	colors = [(0,0,1,1)]
 	for color in colors:
 	    new_drops = self.create_beads(color = color, offset=offset)
@@ -200,9 +201,9 @@ class CupWorld():
                     self.custom_save()
                 else:
                     self.custom_restore()
-                #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "sim_stirring.mp4")
+                #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
-            p.setTimeStep(1/80.)
+            p.setTimeStep(1/150.)
             self.real_init = False
         else:
             try:
