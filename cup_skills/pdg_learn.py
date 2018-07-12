@@ -87,12 +87,12 @@ class Learner:
         return beads_in, entropies
     #
     def plot_param_v_reward(self):
-        good_params = [-0.1, 0.8, 0.2, 0.11, 2500]
+        good_params = [-0.05, 0.7, 0.174, 0.11, 1500]
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
-        num_exps = 5
+        num_exps = 4
         num_data_points = 15
         for j in range(len(corresponding_names)):
             good_param = good_params[j]
@@ -283,7 +283,7 @@ if __name__=="__main__":
           if os.path.isfile(myfile):
              os.remove(myfile)
 
-     #l.plot_param_v_reward()
-     l.train(delta)
+     l.plot_param_v_reward()
+     #l.train(delta)
      
 #l.train()
