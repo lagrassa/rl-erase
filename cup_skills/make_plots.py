@@ -16,15 +16,24 @@ def moving_average(a, n=3) :
     return ret[n - 1:] / n
 
 
-def plot_line(mean, stdev, color="red", label="missing label", plot_area = None):
-    x = mean
+def plot_line(mean, stdev, color="red", label="missing label", plot_area = None,xaxis=None) :
+    y = mean
     #smooth  
     y_above = [mean[i]+stdev[i] for i  in range(mean.shape[0])]
     y_below = [mean[i]-stdev[i] for i  in range(mean.shape[0])]
+    display_now = False
+    if plot_area is None:
+        display_now = True
+        plot_area = plt
     #plot mean
-    plot_area.plot(x, label=label, color=color)
-    coords = list(range(len(mean)))
+    if xaxis is not None:
+        coords = list(range(len(mean)))
+    else:
+        coords = xaxis
+    plot_area.plot(coords, y, label=label, color=color)
     plot_area.fill_between(coords, y_below, y_above, color=color, alpha = 0.3)
+    if display_now:
+        plt.show()
 
 
 def get_stdev_and_mean(exp_list, prefix, root_dir = "No root directory", cutoff=None, lengths_array = None):
@@ -34,7 +43,10 @@ def get_stdev_and_mean(exp_list, prefix, root_dir = "No root directory", cutoff=
 	for exp in exp_list:
 	    lengths = get_line_out_file(prefix+exp, root_dir = root_dir)
 	    lengths_list.append(lengths)
-	shortest_length = min([len(l) for l in lengths_list])
+        try:
+	    shortest_length = min([len(l) for l in lengths_list])
+        except: 
+            pdb.set_trace()
 	if cutoff is not None:
 	    shortest_length = min(cutoff, shortest_length)
 	short_length_list = [l[:shortest_length]for l in lengths_list]
@@ -55,7 +67,7 @@ def plot_graph(exp_dict,
               lengths_array_index=None,
               ylab = "No y label"):
     #First plot average lengths
-    colors = ["red", "blue","green" ]
+    colors = ["red", "blue","green", "purple", "gray", "yellow" ]
     color_i = 0
     for exp_name in exp_dict.keys():
         if lengths_array_index is None:
@@ -97,7 +109,7 @@ def get_line_out_file(exp, root_dir = "No root directory"):
             float_list =  [float(elt) for elt in string_list if elt != ""]
         except:
             pdb.set_trace()
-        smoothed = moving_average(float_list, n = 3)
+        smoothed = moving_average(float_list, n = 6)
         return smoothed
 
 def get_exps_from_root(root):
@@ -109,15 +121,64 @@ def get_exps_from_root(root):
             filenames.append(f[len("average_reward"):])
     return filenames
 
-            
+def generate_exp_dictionary_one_vars(root):
+    exp_dict = {}
+    deltas = {"0dot1":0.1, "0dot01":0.01, "0dot05":0.05}
+    for delta_name in deltas:
+        try:
+            exp_dict["delta="+str(deltas[delta_name])] = get_exps_from_root(root+"_del_"+delta_name)
+        except:
+            print("Did not find file name")
+            pdb.set_trace()
+    return exp_dict
+        
+if __name__ == "__main__":            
+    adagrad = {}
+    adagrad["delta=0.1"] = get_exps_from_root("pdg_adagrad")
+    adagrad["delta=0.05"] = get_exps_from_root("pdg_adagrad_del0dot05")
+    adagrad["delta=0.5"] = get_exps_from_root("pdg_adagrad_del0dot5")
+    #plot_learning_curve(adagrad, title = "Adagrad learning curves", root_dir="stats/", cutoff=None)
 
-adagrad = {}
-adagrad["delta=0.1"] = get_exps_from_root("pdg_adagrad")
-adagrad["delta=0.05"] = get_exps_from_root("pdg_adagrad_del0dot05")
-adagrad["delta=0.5"] = get_exps_from_root("pdg_adagrad_del0dot5")
-plot_learning_curve(adagrad, title = "Adagrad learning curves", root_dir="stats/", cutoff=None)
+    pour_delta = {}
+    pour_delta["delta=0.01"] = get_exps_from_root("pdg_pour_del_0dot01")
+    pour_delta["delta=0.05"] = get_exps_from_root("pdg_pour_del_0dot05")
+    pour_delta["delta=0.1"] = get_exps_from_root("pdg_pour_del_0dot1")
+    #plot_learning_curve(pour_delta, title = "Effect of delta", root_dir="stats/", cutoff=None)
+
+    pour_force = {}
+    pour_force["force factor = 10"] = get_exps_from_root("pdg_pour_force_10")
+    pour_force["force factor = 50"] = get_exps_from_root("pdg_pour_force_50")
+    pour_force["force factor = 100"] = get_exps_from_root("pdg_pour_force_100")
+    #plot_learning_curve(pour_force, title = "Effect of force", root_dir="stats/", cutoff=None)
+
+    pour_big_cup = {}
+    pour_big_cup["big"] = get_exps_from_root("pdg_pour_big_force_50")
+    pour_big_cup["small"] = get_exps_from_root("pdg_pour_force_50")
+    #plot_learning_curve(pour_big_cup, title = "Effect of cup size", root_dir="stats/", cutoff=None)
+
+    num_params = {}
+    num_params["2"] = get_exps_from_root("pdg_offset_height")
+    #plot_learning_curve(num_params, title = "Finite differences on more parameters", root_dir="stats/", cutoff=None)
+
+    one_param = {}
+    one_param["offset"] = get_exps_from_root("pdg_one_var_kiwi_visual_offset")
+    one_param["offset"] = get_exps_from_root("pdg_one_var_offset")
+    one_param["height"] = get_exps_from_root("pdg_one_var_height")
+    one_param["step size"] = get_exps_from_root("pdg_one_var_step_size")
+    one_param["force"] = get_exps_from_root("pdg_one_var_force")
+    one_param["dt"] = get_exps_from_root("pdg_one_var_dt")
+    one_param["all"] = get_exps_from_root("pdg_all_5")
+    plot_learning_curve(one_param, title = "Finite differences one parameter at a time", root_dir="stats/", cutoff=None)
 
 
+
+
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var_stepsize"), title = "Step size one variable", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var_desheight"), title = "desired height one variable", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var"), title = "Offset one variable", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var"), title = "Offset one variable", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var_dt"), title = "dt one variable", root_dir="stats/", cutoff=None)
+    #plot_learning_curve(generate_exp_dictionary_one_vars("pdg_one_var_force"), title = "force one variable", root_dir="stats/", cutoff=None)
 
 
 

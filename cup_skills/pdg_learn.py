@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+from make_plots import plot_line
 from reward import entropy
 import argparse
 from scipy import misc
@@ -25,12 +26,12 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
-        #self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
-        self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
+        self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
+        #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
         #self.params = [-0.05, 0.6]
         self.rollout_size = 1
         kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
-        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
+        self.gp = GaussianProcessRegressor(alpha=1e-8, kernel=kernel, n_restarts_optimizer=9)
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_diff(self):
@@ -92,21 +93,28 @@ class Learner:
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
         #go through each set of params and plot params + reward
         corresponding_names = ["offset", "height", "step_size", "timestep", "force"]
-        for i in range(len(corresponding_names)):
-            if i == 2:
-                continue
-            good_param = good_params[i]
-            #test params from 
-            params_to_test = np.linspace(good_param - (2*good_param/3.0), good_param + (2*good_param/3.0),15) 
-            reward = []
-            for param in params_to_test:
-                test_params = good_params[:]
-                test_params[i] = param
-                rw = self.collect_batch(test_params)[4][0]
-                reward.append(rw)
-          
+        num_exps = 5
+        num_data_points = 15
+        for j in range(len(corresponding_names)):
+            good_param = good_params[j]
+	    params_to_test = np.linspace(good_param - good_param, good_param + good_param,num_data_points) 
+            data = np.zeros((num_exps, num_data_points))
+            for i in range(num_exps):
+		#test params from 
+		reward = []
+	        print("On exp number", i)	
+		for param in params_to_test:
+		    test_params = good_params[:]
+		    test_params[j] = param
+		    rw = self.collect_batch(test_params)[4][0]
+		    reward.append(rw)
+                data[i,:] = reward
+            means = np.mean(data, axis=0)
+            stdev = np.std(data, axis=0) 
+            plot_line(means, stdev, xaxis = params_to_test, label = corresponding_names[i])
+	      
 
-            plt.plot(params_to_test, reward)
+            #plt.plot(params_to_test, reward)
             plt.title("Rewards over varying parameter: " + corresponding_names[i])
             plt.show()
  
@@ -276,7 +284,7 @@ if __name__=="__main__":
  	 if os.path.isfile(myfile):
 	     os.remove(myfile)
 
-     #l.plot_param_v_reward()
-     l.train(delta)
+     l.plot_param_v_reward()
+     #l.train(delta)
      
 #l.train()
