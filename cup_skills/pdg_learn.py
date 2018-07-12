@@ -4,7 +4,6 @@ from make_plots import plot_line
 from reward import entropy
 import argparse
 from scipy import misc
-import matplotlib.pyplot as plt
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 from random import random, randint
@@ -26,12 +25,12 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
-        self.params = [-0.1, 0.7, 0.2, 0.11, 2000]
+        self.params = [-0.05, 0.7, 0.174, 0.11, 1500]
         #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
         #self.params = [-0.05, 0.6]
         self.rollout_size = 1
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
-        self.gp = GaussianProcessRegressor(alpha=1e-8, kernel=kernel, n_restarts_optimizer=9)
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
+        self.gp = GaussianProcessRegressor(alpha=3, kernel=kernel, n_restarts_optimizer=9)
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_diff(self):
@@ -56,7 +55,7 @@ class Learner:
         scalars = [1,1,1,1,2000]
         #vary sigma to get more variability 
         for i in range(N):
-            sigma=2*np.e**(-0.3*N)
+            sigma=0.00000002*np.e**(-0.3*N)
             action = self.select_action(params, sigma=sigma)
             samples[i,:] = action
             scores.append(self.gp.predict([action]).item())
@@ -138,11 +137,11 @@ class Learner:
 
             #then collect reward
             
-	    img1s[i,:,:,:] = img1
-	    img2s[i,:,:,:] = img2
-	    robot_states[i, :] = robot_state
-	    actions[i, :] = best_action
-	    rewards[i] = reward
+            img1s[i,:,:,:] = img1
+            img2s[i,:,:,:] = img2
+            robot_states[i, :] = robot_state
+            actions[i, :] = best_action
+            rewards[i] = reward
             print("reward", reward)
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
@@ -154,8 +153,8 @@ class Learner:
         #log the average V for the rollout, average length episode
         average_length = sum(ep_times)/len(ep_times)
         average_reward = sum(rewards)/len(rewards)
-	average_length_file = open(avg_l_fn,"a")
-	average_reward_file = open(avg_r_fn,"a")
+        average_length_file = open(avg_l_fn,"a")
+        average_reward_file = open(avg_r_fn,"a")
         average_length_file.write(str(average_length)+",")
         average_reward_file.write(str(average_reward)+",")
         average_length_file.close()
@@ -165,7 +164,7 @@ class Learner:
             
 
     def train(self, delta):
-        numsteps = 20
+        numsteps = 50
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         lr = 0.05
@@ -208,8 +207,8 @@ class Learner:
                 print("Params:", self.params)
 
         print("Ending params: ", self.params)
-        print actions
-        print rewards 
+        print(actions)
+        print(rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 
@@ -239,7 +238,7 @@ def compute_j(rewards):
     return J
 
     
-"""assumes delta_theta is an np.array"""	
+"""assumes delta_theta is an np.array"""        
 def compute_gradient_old(delta_theta_arr, delta_j):
     delta_theta =np.matrix(delta_theta_arr)
     ata = np.dot(delta_theta_arr, delta_theta_arr)
@@ -260,7 +259,7 @@ def parse_args(args):
     if arg_dict['delta'] is not None:
         delta = float(arg_dict['delta'])
     else:
-        delta = 0.0001
+        delta = 0
     if arg_dict['name'] is not None:
         name = arg_dict['name']
     else:
@@ -281,10 +280,10 @@ if __name__=="__main__":
      avg_l_fn = "stats/average_length"+EXP_NAME+".py"
      avg_r_fn= "stats/average_reward"+EXP_NAME+".py"
      for myfile in [avg_l_fn, avg_r_fn]:
- 	 if os.path.isfile(myfile):
-	     os.remove(myfile)
+          if os.path.isfile(myfile):
+             os.remove(myfile)
 
-     l.plot_param_v_reward()
-     #l.train(delta)
+     #l.plot_param_v_reward()
+     l.train(delta)
      
 #l.train()
