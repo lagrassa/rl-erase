@@ -1,6 +1,5 @@
 from __future__ import division
 import sys
-from make_plots import plot_line
 from reward import entropy
 import argparse
 from scipy import misc
@@ -23,7 +22,7 @@ class Learner:
         self.nb_actions = nb_actions
         self.robot_dims = robot_dims
         self.env = env
-        self.eps_greedy = 0.0
+        self.eps_greedy = 0.4
         #self.params = [0.4, 0.7, 0.2]
         self.params = [-0.05, 0.7, 0.174, 0.11, 1500]
         #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
@@ -42,20 +41,17 @@ class Learner:
     def select_action(self, params, sigma=0.01):
         #randomly sample actions, check their value, pick the best 
         #epsilon greedy for training:
-        if random() <= self.eps_greedy:
-            return self.select_random_diff()+self.params
-        else:
-            return np.random.normal(params, [sigma]*len(params))
+        return np.random.normal(params, [sigma]*len(params))
 
     def select_best_action(self,params):
-        N = 15
+        N = 70
         samples = np.zeros((N, self.nb_actions))
         scores = []
         
         scalars = [1,1,1,1,2000]
         #vary sigma to get more variability 
         for i in range(N):
-            sigma=0.00000002*np.e**(-0.3*N)
+            sigma=2*np.e**(-0.3*N)
             action = self.select_action(params, sigma=sigma)
             samples[i,:] = action
             scores.append(self.gp.predict([action]).item())
@@ -101,7 +97,6 @@ class Learner:
             for i in range(num_exps):
 		#test params from 
 		reward = []
-	        print("On exp number", i)	
 		for param in params_to_test:
 		    test_params = good_params[:]
 		    test_params[j] = param
@@ -142,7 +137,6 @@ class Learner:
             robot_states[i, :] = robot_state
             actions[i, :] = best_action
             rewards[i] = reward
-            print("reward", reward)
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
                 time_since_last_reset = 0
@@ -167,6 +161,7 @@ class Learner:
         numsteps = 50
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
+        LESS_EPS_INTERVAL = 5
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
@@ -174,11 +169,17 @@ class Learner:
         actions = None
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
+            if i % LESS_EPS_INTERVAL == 0:
+                self.eps_greedy = self.eps_greedy/2.0
             if i > 20:
                 self.eps_greedy = 0.01
             delta_theta = delta*np.array(self.select_random_diff())
-            self.params = self.select_best_action(self.params)
-            perturbed_params = self.params + delta_theta
+            if random() < self.eps_greedy:
+                big_sigma = 2
+                perturbed_params =  np.random.normal(self.params, [big_sigma]*len(self.params))
+            else:
+                self.params = self.select_best_action(self.params)
+                perturbed_params = self.params + delta_theta
             #neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
             #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
