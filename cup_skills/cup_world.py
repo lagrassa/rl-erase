@@ -60,6 +60,7 @@ class CupWorld():
                 color, pos = [parse_tuple(input_tuple) for input_tuple in row]
                 if teleport:
                     set_point(self.droplets[i], pos)
+                    i += 1
                 else:       
                     create_sphere(self.radius, color=color, pos = pos)
                 
@@ -220,12 +221,11 @@ class CupWorld():
                 p.restoreState(self.bullet_id)
                 print("Woo hoo! Successfully restored state")
             except:
-                set_pose(self.cupID, (self.cupStartPos, self.cupStartOrientation))
-                self.custom_restore_beads(teleport=True)
-  
-                #self.real_init = True
-                #p.resetSimulation()
-                #self.setup(new_bead_mass=new_bead_mass)
+                #set_pose(self.cupID, (self.cupStartPos, self.cupStartOrientation))
+                #self.custom_restore_beads(teleport=True)
+                self.real_init = True
+                p.resetSimulation()
+                self.setup(new_bead_mass=new_bead_mass)
     def cup_knocked_over(self, cup=None):
         if cup is None:
             cup = self.cupID

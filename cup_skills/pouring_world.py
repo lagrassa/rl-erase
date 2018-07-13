@@ -22,8 +22,10 @@ class PouringWorld():
         self.bullet_id = p.saveState()
         
     def reset(self, real_init=False, new_bead_mass=None):
+  
         self.base_world.reset(new_bead_mass=new_bead_mass)
-        set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
+        self.setup()      
+        #set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
                 
 
     def move_cup(self, new_loc, new_euler=None, duration=0.7, teleport=False, force = 1000):
@@ -96,5 +98,6 @@ if __name__ == "__main__":
     print(pw.base_world.ratio_beads_in(cup=pw.target_cup), "beads in")
 
     pw.reset(new_bead_mass = 1.1)
+    pdb.set_trace()
     
     

@@ -24,7 +24,7 @@ class Learner:
         self.env = env
         self.eps_greedy = 0.4
         #self.params = [0.4, 0.7, 0.2]
-        self.params = [-0.05, 0.7, 0.174, 0.11, 1500]
+        self.params = [-0.09, 0.7, 0.9, 1500]
         #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
         #self.params = [-0.05, 0.6]
         self.rollout_size = 1
@@ -55,8 +55,8 @@ class Learner:
             action = self.select_action(params, sigma=sigma)
             actions[i,:] = action
             sample = np.hstack([action, obs])
-            scores.append(self.gp.predict([sample]).item())
-    
+            score, stdev = self.gp.predict([sample], return_std=True)
+            scores.append(score.item()+stdev.item()) #mean upper bound
         
         best_action = actions[np.argmax(scores), :]
         return best_action
@@ -146,8 +146,7 @@ class Learner:
                 break #this is okay even though it's not a full rollout because we don't care about the state transitions, since this is super local
             if len(ep_times) == 0: #congrats you didn't have to give up
                 ep_times.append(self.rollout_size)
-        random_bead_mass = 3*random()
-        self.env.reset(new_bead_mass=random_bead_mass)
+        self.env.reset()
         #log the average V for the rollout, average length episode
         average_length = sum(ep_times)/len(ep_times)
         average_reward = sum(rewards)/len(rewards)
@@ -162,7 +161,7 @@ class Learner:
             
 
     def train(self, delta):
-        numsteps = 50
+        numsteps = 120
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -173,7 +172,7 @@ class Learner:
         actions = None
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
-            obs = self.world.base_world.total_bead_mass #much simpler than "world state"
+            obs = [] #self.world.base_world.total_bead_mass #much simpler than "world state"
             if i % LESS_EPS_INTERVAL == 0:
                 self.eps_greedy = self.eps_greedy/2.0
             if i > 20:
@@ -275,7 +274,7 @@ def parse_args(args):
     return delta, name, visualize
 
 if __name__=="__main__":
-     nb_actions = 5; 
+     nb_actions = 4; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_shape = list(env.world_state[0].shape)
@@ -289,7 +288,7 @@ if __name__=="__main__":
           if os.path.isfile(myfile):
              os.remove(myfile)
 
-     l.plot_param_v_reward()
-     #l.train(delta)
+     #l.plot_param_v_reward()
+     l.train(delta)
      
 #l.train()

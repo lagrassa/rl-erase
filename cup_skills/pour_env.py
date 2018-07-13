@@ -2,6 +2,7 @@ import pdb
 import random
 from reward import reward_func, entropy
 import numpy as np
+from utils import simulate_for_duration
 from pouring_world import PouringWorld
 import logging
 logger = logging.getLogger(__name__)
@@ -41,10 +42,11 @@ class PourEnv():
     def progress_state(self, action=300):
         offset = action[0]
         desired_height = action[1]
-        step_size = action[2]
-        dt = action[3]
-        force = action[4]
-        self.world.parameterized_pour(offset=offset, desired_height=desired_height, step_size=step_size, dt=dt, force=force)
+        velocity = action[2]
+        force = action[3]
+        self.world.lift_cup(desired_height=desired_height)
+        self.world.pour(offset=offset, velocity=velocity, force=force)
+        simulate_for_duration(1.0)
         #self.world.parameterized_pour(offset=offset, desired_height=desired_height)
 
     """
