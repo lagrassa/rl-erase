@@ -43,9 +43,9 @@ class Learner:
         #epsilon greedy for training:
         return np.random.normal(params, [sigma]*len(params))
 
-    def select_best_action(self,params):
+    def select_best_action(self,params, obs):
         N = 70
-        samples = np.zeros((N, self.nb_actions))
+        actions = np.zeros((N, self.nb_actions))
         scores = []
         
         scalars = [1,1,1,1,2000]
@@ -53,12 +53,13 @@ class Learner:
         for i in range(N):
             sigma=2*np.e**(-0.3*N)
             action = self.select_action(params, sigma=sigma)
-            samples[i,:] = action
-            scores.append(self.gp.predict([action]).item())
+            actions[i,:] = action
+            sample = np.hstack([action, obs])
+            scores.append(self.gp.predict([sample]).item())
     
         
-        best_sample = samples[np.argmax(scores), :]
-        return best_sample
+        best_action = actions[np.argmax(scores), :]
+        return best_action
 
     
     def collect_test_batch(self):
@@ -91,6 +92,8 @@ class Learner:
         num_exps = 4
         num_data_points = 15
         for j in range(len(corresponding_names)):
+            if j == 0:
+                continue
             good_param = good_params[j]
 	    params_to_test = np.linspace(good_param - good_param, good_param + good_param,num_data_points) 
             data = np.zeros((num_exps, num_data_points))
@@ -109,8 +112,8 @@ class Learner:
 	      
 
             #plt.plot(params_to_test, reward)
-            plt.title("Rewards over varying parameter: " + corresponding_names[i])
-            plt.show()
+            #plt.title("Rewards over varying parameter: " + corresponding_names[i])
+            #plt.show()
  
         
                 
@@ -140,10 +143,11 @@ class Learner:
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
                 time_since_last_reset = 0
-                self.env.reset() #this is okay even though it's not a full rollout because we don't care about the state transitions, since this is super local
+                break #this is okay even though it's not a full rollout because we don't care about the state transitions, since this is super local
             if len(ep_times) == 0: #congrats you didn't have to give up
                 ep_times.append(self.rollout_size)
-        self.env.reset()
+        random_bead_mass = 3*random()
+        self.env.reset(new_bead_mass=random_bead_mass)
         #log the average V for the rollout, average length episode
         average_length = sum(ep_times)/len(ep_times)
         average_reward = sum(rewards)/len(rewards)
@@ -169,6 +173,7 @@ class Learner:
         actions = None
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
+            obs = self.world.base_world.total_bead_mass #much simpler than "world state"
             if i % LESS_EPS_INTERVAL == 0:
                 self.eps_greedy = self.eps_greedy/2.0
             if i > 20:
@@ -178,7 +183,7 @@ class Learner:
                 big_sigma = 2
                 perturbed_params =  np.random.normal(self.params, [big_sigma]*len(self.params))
             else:
-                self.params = self.select_best_action(self.params)
+                self.params = self.select_best_action(self.params, obs)
                 perturbed_params = self.params + delta_theta
             #neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy

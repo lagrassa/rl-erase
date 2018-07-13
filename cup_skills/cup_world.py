@@ -17,7 +17,7 @@ new_world = True
 
  
 class CupWorld():
-    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0)):
+    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None):
         self.visualize=visualize
         self.real_init = real_init
         self.num_droplets = 55
@@ -31,7 +31,9 @@ class CupWorld():
             except:
                 pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.setup(beads=True, cup_offset=cup_offset)
+        self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass)
+        if beads:
+            self.total_bead_mass = self.num_droplets*p.getDynamicsInfo(self.droplets[0], -1)[0]#variable beads would be bad, this is faster 
         
 
     def toggle_real_time(self):
@@ -127,8 +129,8 @@ class CupWorld():
         Image.fromarray(rgbPixels[:,:,0:3]).show()
 
 
-    def reset(self):
-        self.__init__(visualize=self.visualize, real_init=False)
+    def reset(self, new_bead_mass = None):
+        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass)
     
 
     def create_beads(self, color = (0,0,1,1), offset=(0,0,0)):
@@ -172,7 +174,7 @@ class CupWorld():
 
 
 
-    def setup(self, beads=True, cup_offset=(0,0,0)):
+    def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None):
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
@@ -201,9 +203,11 @@ class CupWorld():
                     self.custom_save()
                 else:
                     self.custom_restore()
+                if new_bead_mass is not None:
+                    [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
-            p.setTimeStep(1/150.)
+            p.setTimeStep(1/300.)
             self.real_init = False
         else:
             try:
@@ -211,7 +215,7 @@ class CupWorld():
             except:
                 self.real_init = True
                 p.resetSimulation()
-                self.setup()
+                self.setup(new_bead_mass=new_bead_mass)
     def cup_knocked_over(self, cup=None):
         if cup is None:
             cup = self.cupID

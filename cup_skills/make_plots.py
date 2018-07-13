@@ -109,7 +109,7 @@ def get_line_out_file(exp, root_dir = "No root directory"):
             float_list =  [float(elt) for elt in string_list if elt != ""]
         except:
             pdb.set_trace()
-        smoothed = moving_average(float_list, n = 6)
+        smoothed = moving_average(float_list, n = 3)
         return smoothed
 
 def get_exps_from_root(root):
@@ -171,10 +171,11 @@ if __name__ == "__main__":
     #plot_learning_curve(one_param, title = "Finite differences one parameter at a time", root_dir="stats/", cutoff=None)
     
     gp_exps = {}
-    gp_exps["big alpha bad start"] = get_exps_from_root("gp_big_alpha_bad_start")
-    gp_exps["large alpha"] = get_exps_from_root("gp_large_alpha")
-    gp_exps["exploration"] = get_exps_from_root("gp_more_explore")
-    gp_exps["good start"] = get_exps_from_root("gp_start_good")
+    gp_exps["more samples"] = get_exps_from_root("gp_more_samples")
+    gp_exps["big alpha"] = get_exps_from_root("gp_big_alpha_bad_start")
+    #gp_exps["large alpha"] = get_exps_from_root("gp_large_alpha")
+    gp_exps["exploration bad start"] = get_exps_from_root("gp_more_explore")
+    gp_exps["bad start"] = get_exps_from_root("gp_start_good")
     plot_learning_curve(gp_exps, title = "Select actions with GP", root_dir="stats/", cutoff=None)
 
 

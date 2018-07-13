@@ -6,7 +6,7 @@ from stirring_world_pybullet import World
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
-RENDER =True 
+RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
@@ -24,7 +24,6 @@ class StirEnv():
     metadata = {'render.modes': ['human']}
 
     def __init__(self, visualize=True, real_init=True):
-        print("Visualize=",visualize)
         self.visualize=visualize
         self.done_amount =  90 #pretty well mixed in original example HACK
         self.world = world

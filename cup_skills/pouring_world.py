@@ -6,8 +6,8 @@ from utils import set_point
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=True, real_init=False):
-        self.base_world = CupWorld(visualize=visualize, beads=False)
+    def __init__(self, visualize=True, real_init=False, new_bead_mass=None):
+        self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         if real_init:
             self.setup()
         else:
@@ -21,9 +21,9 @@ class PouringWorld():
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, cupStartPos, cubeStartOrientation, [0,0,1])
         self.bullet_id = p.saveState()
         
-    def reset(self, real_init=False):
+    def reset(self, real_init=False, new_bead_mass=None):
         p.resetSimulation()
-        self.base_world.reset()
+        self.base_world.reset(new_bead_mass=new_bead_mass)
         self.setup() 
                 
 
@@ -45,7 +45,7 @@ class PouringWorld():
     def pour(self, offset, start_orn, step_size, dt, force):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         start_point = (pourer_pos[0], pourer_pos[1]+offset, pourer_pos[2])
-        self.move_cup(start_point, start_orn, duration=2,force=1500) #don't even bother with this
+        self.move_cup(start_point, start_orn, duration=2,force=force) 
         #then start decreasing the roll, pitch or yaw(whatever seems appropriate)
         start_pos, start_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         current_orn = list(p.getEulerFromQuaternion(start_orn))
@@ -76,18 +76,18 @@ class PouringWorld():
        
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True)
+    pw = PouringWorld(visualize=True, real_init = True, new_bead_mass=1.1)
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
     #actions = np.array([-6.74658884e-01, -3.99184460e-01, -1.97149862e-01, -1.17733128e-01,-1.99983150e+03])
     #actions = np.array([-6.74658884e-01, -3.99184460e-01, -1.97149862e-01, -1.17733128e-01,-1.99983150e+03])
     #actions = np.array([-6.25397044e-01, -1.43723112e+00, -1.14753149e+00, -1.23676025e+00,1.99868273e+03])
     #actions = np.array([-1.16826367e-01,  6.83036833e-01,  4.13037813e-01,  9.31779934e-02,1.99998315e+03])
     #pw.parameterized_pour(offset=actions[0], desired_height=actions[1], step_size=actions[2], dt=actions[3], force=actions[4])
-    pw.parameterized_pour(offset=-0.1, dt=0.11, force=2500, desired_height=0.4, step_size=0.2)
-
+    pw.parameterized_pour(offset=-0.08, dt=0.12, force=1500, desired_height=0.5, step_size=0.2)
+  
     print(pw.base_world.ratio_beads_in(cup=pw.target_cup), "beads in")
-    pdb.set_trace()
 
-    pw.reset()
+    pw.reset(new_bead_mass = 1.1)
+    pw.parameterized_pour(offset=-0.08, dt=0.12, force=6500, desired_height=0.5, step_size=0.2)
     
     

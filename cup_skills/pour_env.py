@@ -142,9 +142,9 @@ class PourEnv():
         self.counter +=1
         return rew
 
-    def reset(self):
+    def reset(self, new_bead_mass=None):
         self.__init__(visualize=self.visualize, real_init=False)
-        self.world.reset()
+        self.world.reset(new_bead_mass = new_bead_mass)
         return self.create_state()
         
 
