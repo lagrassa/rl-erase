@@ -41,7 +41,7 @@ class CupWorld():
         p.setRealTimeSimulation(self.is_real_time)
 
     """saves where all the beads are"""
-    def custom_save(self):
+    def custom_save_beads(self):
         filename = "bead_poses"
         with open(filename, "wb") as csvfile:
             drop_writer = csv.writer(csvfile) 
@@ -51,13 +51,17 @@ class CupWorld():
 		pos = p.getBasePositionAndOrientation(droplet)[0] 
                 drop_writer.writerow([color, pos])
 
-    def custom_restore(self):
+    def custom_restore_beads(self, teleport=False):
         filename = "bead_poses"
+        i = 0
         with open(filename, "rb") as csvfile:
             drop_reader = csv.reader(csvfile)
             for row in drop_reader:
                 color, pos = [parse_tuple(input_tuple) for input_tuple in row]
-                create_sphere(self.radius, color=color, pos = pos)
+                if teleport:
+                    set_point(self.droplets[i], pos)
+                else:       
+                    create_sphere(self.radius, color=color, pos = pos)
                 
 
     """Returns the proportion of beads that are still in the cup"""
@@ -189,20 +193,21 @@ class CupWorld():
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
 
-	    cupStartPos = (0,0,0)
-	    cubeStartOrientation = p.getQuaternionFromEuler([0,0,0])
+	    self.cupStartPos = (0,0,0)
+	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
+	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",cupStartPos, cubeStartOrientation, globalScaling=k*5.0)
+                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
           
             if beads:
                 if new_world:
 	            self.drop_beads_in_cup(offset=cup_offset)
-                    self.custom_save()
+                    self.bullet_id = p.saveState()
+                    self.custom_save_beads()
                 else:
-                    self.custom_restore()
+                    self.custom_restore_beads()
                 if new_bead_mass is not None:
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
@@ -211,11 +216,16 @@ class CupWorld():
             self.real_init = False
         else:
             try:
+                print("tring to restore state")
                 p.restoreState(self.bullet_id)
+                print("Woo hoo! Successfully restored state")
             except:
-                self.real_init = True
-                p.resetSimulation()
-                self.setup(new_bead_mass=new_bead_mass)
+                set_pose(self.cupID, (self.cupStartPos, self.cupStartOrientation))
+                self.custom_restore_beads(teleport=True)
+  
+                #self.real_init = True
+                #p.resetSimulation()
+                #self.setup(new_bead_mass=new_bead_mass)
     def cup_knocked_over(self, cup=None):
         if cup is None:
             cup = self.cupID
