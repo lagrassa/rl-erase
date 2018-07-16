@@ -22,13 +22,13 @@ class Learner:
         self.nb_actions = nb_actions
         self.robot_dims = robot_dims
         self.env = env
-        self.eps_greedy = 0.4
+        self.eps_greedy = 0.0
         #self.params = [0.4, 0.7, 0.2]
-        self.params = [-0.09, 0.7, 0.9, 1500]
+        self.params = [-0.08, 1.3, 0.65, 2500]
         #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
         #self.params = [-0.05, 0.6]
         self.rollout_size = 1
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
         self.gp = GaussianProcessRegressor(alpha=3, kernel=kernel, n_restarts_optimizer=9)
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -38,21 +38,27 @@ class Learner:
             theta_diff.append(((-1)**randint(0,1))*random())
         return theta_diff
 
-    def select_action(self, params, sigma=0.01):
+    def select_action(self, params, sigma=0.01, uniform_random=False):
         #randomly sample actions, check their value, pick the best 
         #epsilon greedy for training:
+        if uniform_random:
+            return uniform_random_sample()
         return np.random.normal(params, [sigma]*len(params))
 
+    
+
     def select_best_action(self,params, obs):
-        N = 70
+        N = 400
         actions = np.zeros((N, self.nb_actions))
+        c = 2
+        end_sigma=0.01
         scores = []
-        
+        k = -np.log(end_sigma/c)*(1/N) 
         scalars = [1,1,1,1,2000]
         #vary sigma to get more variability 
         for i in range(N):
-            sigma=2*np.e**(-0.3*N)
-            action = self.select_action(params, sigma=sigma)
+            sigma=c*np.e**(-k*i)
+            action = self.select_action(params, sigma=sigma, uniform_random=True)
             actions[i,:] = action
             sample = np.hstack([action, obs])
             score, stdev = self.gp.predict([sample], return_std=True)
@@ -61,6 +67,8 @@ class Learner:
         best_action = actions[np.argmax(scores), :]
         return best_action
 
+            
+            
     
     def collect_test_batch(self):
         beads_in= []
@@ -117,7 +125,7 @@ class Learner:
  
         
                 
-    def collect_batch(self, params):
+    def collect_batch(self, params, avg_l_fn, avg_r_fn):
         img1s = np.zeros( (self.rollout_size,)+self.input_shape)
         img2s =  np.zeros( (self.rollout_size,)+ self.input_shape)
         robot_states = np.zeros((self.rollout_size, self.robot_dims))
@@ -148,19 +156,15 @@ class Learner:
                 ep_times.append(self.rollout_size)
         self.env.reset()
         #log the average V for the rollout, average length episode
-        average_length = sum(ep_times)/len(ep_times)
         average_reward = sum(rewards)/len(rewards)
-        average_length_file = open(avg_l_fn,"a")
         average_reward_file = open(avg_r_fn,"a")
-        average_length_file.write(str(average_length)+",")
         average_reward_file.write(str(average_reward)+",")
-        average_length_file.close()
         average_reward_file.close()
     
         return img1s, img2s, robot_states, actions,rewards
             
 
-    def train(self, delta):
+    def train(self, delta, avg_l_fn,avg_r_fn):
         numsteps = 120
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
@@ -185,7 +189,7 @@ class Learner:
                 self.params = self.select_best_action(self.params, obs)
                 perturbed_params = self.params + delta_theta
             #neg_perturbed_params = self.params - delta_theta
-            _, _, _, _, rewards_up = self.collect_batch(perturbed_params) #collect batch using this policy
+            _, _, _, _, rewards_up = self.collect_batch(perturbed_params, avg_l_fn, avg_r_fn) #collect batch using this policy
             #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             if rewards is None:
                 rewards = rewards_up
@@ -206,7 +210,10 @@ class Learner:
             #adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
             #self.params = self.params + np.dot(adagrad_lr,grad)
             if len(actions.shape) > 1:
-                self.gp.fit(actions, rewards)
+                self.gp, score = fit_and_evaluate(self.gp, actions, rewards)
+		average_length_file = open(avg_l_fn,"a")
+		average_length_file.write(str(score)+",")
+		average_length_file.close()
             
             if i % SAVE_INTERVAL == 0:
                 print("Params:", self.params)
@@ -273,7 +280,20 @@ def parse_args(args):
         visualize = True
     return delta, name, visualize
 
-if __name__=="__main__":
+def uniform_random_sample():
+    lower = [-0.1,0,0.4, 1300]
+    upper = [0.1,0.8,4,1600]
+    sample = []
+    for i in range(len(lower)):
+        sample.append((upper[i] - lower[i]) * random()+ lower[i])
+    return sample
+
+"""Returns a fitted GP and a measure of how well the GP is fitting the data"""
+def fit_and_evaluate(gp, actions, rewards):
+    score = gp.score(actions, rewards)
+    return gp.fit(actions, rewards), score 
+        
+def main():
      nb_actions = 4; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
@@ -289,6 +309,8 @@ if __name__=="__main__":
              os.remove(myfile)
 
      #l.plot_param_v_reward()
-     l.train(delta)
+     l.train(delta, avg_l_fn, avg_r_fn)
+
+if __name__=="__main__":
+     main()
      
-#l.train()
