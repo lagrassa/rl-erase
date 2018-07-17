@@ -1,6 +1,7 @@
 from cup_world import *
 import pybullet as p
 import numpy as np
+
 import reward
 from utils import set_point
 
@@ -28,7 +29,7 @@ class PouringWorld():
         self.bullet_id = p.saveState()
         
     def observe_cup(self):
-        return self.cup_to_dims[self.cup_name]
+        return np.array(self.cup_to_dims[self.cup_name])
 
     def reset(self, real_init=False, new_bead_mass=None):
   
