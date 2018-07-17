@@ -23,6 +23,9 @@ class Learner:
         self.robot_dims = robot_dims
         self.env = env
         self.eps_greedy = 0.0
+        self.good_reward = 50
+        self.bad_reward = 35
+        self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
         #self.params = [0.4, 0.7, 0.2]
         self.params = [-0.08, 1.3, 0.65, 2500]
         #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
@@ -46,7 +49,7 @@ class Learner:
         return np.random.normal(params, [sigma]*len(params))
 
     
-
+    """selects the best action and the corresponding score"""
     def select_best_action(self,params, obs):
         N = 400
         actions = np.zeros((N, self.nb_actions))
@@ -63,9 +66,10 @@ class Learner:
             sample = np.hstack([action, obs])
             score, stdev = self.gp.predict([sample], return_std=True)
             scores.append(score.item()+stdev.item()) #mean upper bound
+        best_score_i = np.argmax(scores)
+        best_action = actions[best_score_i, :]
         
-        best_action = actions[np.argmax(scores), :]
-        return best_action
+        return best_action, scores[best_score_i]
 
             
             
@@ -186,7 +190,13 @@ class Learner:
                 big_sigma = 2
                 perturbed_params =  np.random.normal(self.params, [big_sigma]*len(self.params))
             else:
-                self.params = self.select_best_action(self.params, obs)
+                self.params, score = self.select_best_action(self.params, obs)
+                if score > self.good_reward:
+                    self.exceptional_actions.append(self.params)
+                elif score < self.bad_reward:
+                    #pick a random good action
+                    self.params = self.exceptional_actions[randint(0,len(self.exceptional_actions)-1)]
+
                 perturbed_params = self.params + delta_theta
             #neg_perturbed_params = self.params - delta_theta
             _, _, _, _, rewards_up = self.collect_batch(perturbed_params, avg_l_fn, avg_r_fn) #collect batch using this policy
