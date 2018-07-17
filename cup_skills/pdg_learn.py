@@ -2,6 +2,9 @@ from __future__ import division
 import sys
 from reward import entropy
 import argparse
+from keras.models import Sequential
+from keras.layers import Dense, Activation
+from keras.optimizers import Adam
 from scipy import misc
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
@@ -17,10 +20,9 @@ import os
 WINDOW_LENGTH = 1
 
 class Learner:
-    def __init__(self, env, nb_actions, input_shape, robot_dims):
-        self.input_shape = input_shape
+    def __init__(self, env, nb_actions, input_length):
+        self.input_length = input_length
         self.nb_actions = nb_actions
-        self.robot_dims = robot_dims
         self.env = env
         self.eps_greedy = 0.0
         self.good_reward = 50
@@ -28,11 +30,14 @@ class Learner:
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
         #self.action_mean = [0.4, 0.7, 0.2]
         self.action_mean = [-0.08, 1.3, 0.65, 2500]
-        #self.action_mean = [-0.15, 0.8, 0.15, 0.11, 2000]
-        #self.action_mean = [-0.05, 0.6]
         self.rollout_size = 1
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
-        self.gp = GaussianProcessRegressor(alpha=3, kernel=kernel, n_restarts_optimizer=9)
+        self.model = Sequential()
+        self.model.add(Dense(8, input_dim=self.input_length, activation="relu"))
+        self.model.add(Dense(4, activation="relu"))
+        self.model.add(Dense(1, activation="linear"))
+        opt = Adam(lr=1)
+        self.model.compile(loss="mae", optimizer=opt, metrics = ['accuracy'])
+ 
 
     """ returns a list of theta-diff, curl, period, rot"""
     def select_random_diff(self):
@@ -64,8 +69,11 @@ class Learner:
             action = self.select_action(action_mean, sigma=sigma, uniform_random=True)
             actions[i,:] = action
             sample = np.hstack([action, obs])
-            score, stdev = self.gp.predict([sample], return_std=True)
-            scores.append(score.item()+stdev.item()) #mean upper bound
+            #score, stdev = self.gp.predict([sample], return_std=True)
+            score  = self.model.predict(np.matrix(sample))
+            #scores.append(score.item()+stdev.item()) #mean upper bound
+            scores.append(score.item())
+
         best_score_i = np.argmax(scores)
         best_action = actions[best_score_i, :]
         
@@ -130,16 +138,11 @@ class Learner:
         
                 
     def collect_batch(self, action_mean, avg_l_fn, avg_r_fn):
-        img1s = np.zeros( (self.rollout_size,)+self.input_shape)
-        img2s =  np.zeros( (self.rollout_size,)+ self.input_shape)
-        robot_states = np.zeros((self.rollout_size, self.robot_dims))
         rewards = np.zeros(self.rollout_size)
-        actions = np.zeros((self.rollout_size, self.nb_actions))
         time_since_last_reset = 0
         ep_times = []
         for i in range(self.rollout_size):
             #get current state
-            img1, img2, robot_state = self.env.create_state()
             best_action = self.select_action(action_mean)
             #predict best action
           
@@ -147,10 +150,6 @@ class Learner:
 
             #then collect reward
             
-            img1s[i,:,:,:] = img1
-            img2s[i,:,:,:] = img2
-            robot_states[i, :] = robot_state
-            actions[i, :] = best_action
             rewards[i] = reward
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
@@ -165,7 +164,7 @@ class Learner:
         average_reward_file.write(str(average_reward)+",")
         average_reward_file.close()
     
-        return img1s, img2s, robot_states, actions,rewards
+        return rewards
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
@@ -196,7 +195,7 @@ class Learner:
                     #pick a random good action
                     self.action_mean = self.exceptional_actions[randint(0,len(self.exceptional_actions)-1)]
 
-            _, _, _, _, rewards_up = self.collect_batch(self.action_mean, avg_l_fn, avg_r_fn) #collect batch using this policy
+            rewards_up = self.collect_batch(self.action_mean, avg_l_fn, avg_r_fn) #collect batch using this policy
             #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             if rewards is None:
                 rewards = rewards_up
@@ -205,9 +204,11 @@ class Learner:
                 rewards = np.vstack([rewards, rewards_up])
                 sample = np.hstack([self.action_mean, obs])
                 samples = np.vstack([samples,sample])
-
-            if len(samples.shape) > 1:
-                self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
+            min_samples = 5
+            if len(samples.shape) > 1 and samples.shape[0] > min_samples:
+                print(samples) 
+                print(rewards) 
+                score = fit_and_evaluate_nn(self.model, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
@@ -288,15 +289,20 @@ def uniform_random_sample():
 """Returns a fitted GP and a measure of how well the GP is fitting the data"""
 def fit_and_evaluate(gp, actions, rewards):
     score = gp.score(actions, rewards)
-    return gp.fit(actions, rewards), score 
+    return gp.fit(actions, rewards, verbose=1), score 
+
+def fit_and_evaluate_nn(nn, samples, rewards):
+    score = nn.evaluate(samples, rewards)
+    nn.fit(samples, rewards, epochs = 100, batch_size = int(samples.shape[0]/5.0))
+    return score 
         
 def main():
      nb_actions = 4; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
-     state_shape = list(env.world_state[0].shape)
-     robot_dims = env.robot_state.shape[0]
-     l = Learner(env,nb_actions, tuple(state_shape), robot_dims)
+     state_length = env.observe_state().shape[0]
+     input_length = state_length+nb_actions
+     l = Learner(env,nb_actions, input_length )
      #sets up logging
      EXP_NAME = exp_name #I'm going to be less dumb and start naming experiment names after commit hashes
      avg_l_fn = "stats/average_length"+EXP_NAME+".py"
