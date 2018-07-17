@@ -26,10 +26,10 @@ class Learner:
         self.good_reward = 50
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
-        #self.params = [0.4, 0.7, 0.2]
-        self.params = [-0.08, 1.3, 0.65, 2500]
-        #self.params = [-0.15, 0.8, 0.15, 0.11, 2000]
-        #self.params = [-0.05, 0.6]
+        #self.action_mean = [0.4, 0.7, 0.2]
+        self.action_mean = [-0.08, 1.3, 0.65, 2500]
+        #self.action_mean = [-0.15, 0.8, 0.15, 0.11, 2000]
+        #self.action_mean = [-0.05, 0.6]
         self.rollout_size = 1
         kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
         self.gp = GaussianProcessRegressor(alpha=3, kernel=kernel, n_restarts_optimizer=9)
@@ -50,7 +50,7 @@ class Learner:
 
     
     """selects the best action and the corresponding score"""
-    def select_best_action(self,params, obs):
+    def select_best_action(self, action_mean, obs):
         N = 400
         actions = np.zeros((N, self.nb_actions))
         c = 2
@@ -61,7 +61,7 @@ class Learner:
         #vary sigma to get more variability 
         for i in range(N):
             sigma=c*np.e**(-k*i)
-            action = self.select_action(params, sigma=sigma, uniform_random=True)
+            action = self.select_action(action_mean, sigma=sigma, uniform_random=True)
             actions[i,:] = action
             sample = np.hstack([action, obs])
             score, stdev = self.gp.predict([sample], return_std=True)
@@ -129,7 +129,7 @@ class Learner:
  
         
                 
-    def collect_batch(self, params, avg_l_fn, avg_r_fn):
+    def collect_batch(self, action_mean, avg_l_fn, avg_r_fn):
         img1s = np.zeros( (self.rollout_size,)+self.input_shape)
         img2s =  np.zeros( (self.rollout_size,)+ self.input_shape)
         robot_states = np.zeros((self.rollout_size, self.robot_dims))
@@ -140,7 +140,7 @@ class Learner:
         for i in range(self.rollout_size):
             #get current state
             img1, img2, robot_state = self.env.create_state()
-            best_action = self.select_action(params)
+            best_action = self.select_action(action_mean)
             #predict best action
           
             _, reward, episode_over, _ = self.env.step(best_action)
@@ -177,10 +177,10 @@ class Learner:
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
         rewards = None 
-        actions = None
+        samples = None
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
-            obs = [] #self.world.base_world.total_bead_mass #much simpler than "world state"
+            obs = self.env.observe_state()
             if i % LESS_EPS_INTERVAL == 0:
                 self.eps_greedy = self.eps_greedy/2.0
             if i > 20:
@@ -188,47 +188,34 @@ class Learner:
             delta_theta = delta*np.array(self.select_random_diff())
             if random() < self.eps_greedy:
                 big_sigma = 2
-                perturbed_params =  np.random.normal(self.params, [big_sigma]*len(self.params))
             else:
-                self.params, score = self.select_best_action(self.params, obs)
+                self.action_mean, score = self.select_best_action(self.action_mean, obs)
                 if score > self.good_reward:
-                    self.exceptional_actions.append(self.params)
+                    self.exceptional_actions.append(self.action_mean)
                 elif score < self.bad_reward:
                     #pick a random good action
-                    self.params = self.exceptional_actions[randint(0,len(self.exceptional_actions)-1)]
+                    self.action_mean = self.exceptional_actions[randint(0,len(self.exceptional_actions)-1)]
 
-                perturbed_params = self.params + delta_theta
-            #neg_perturbed_params = self.params - delta_theta
-            _, _, _, _, rewards_up = self.collect_batch(perturbed_params, avg_l_fn, avg_r_fn) #collect batch using this policy
+            _, _, _, _, rewards_up = self.collect_batch(self.action_mean, avg_l_fn, avg_r_fn) #collect batch using this policy
             #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             if rewards is None:
                 rewards = rewards_up
-                #rewards = np.vstack([rewards, rewards_down])
-                actions = perturbed_params
-                #actions = np.vstack([actions, neg_perturbed_params])
+                samples = np.hstack([self.action_mean, obs])
             else:
-                #rewards = np.vstack([rewards, np.vstack(rewards_up, rewards_down)])
-                #actions = np.vstack([actions, np.vstack(actions_up, actions_down)])
                 rewards = np.vstack([rewards, rewards_up])
-                actions = np.vstack([actions,perturbed_params])
+                sample = np.hstack([self.action_mean, obs])
+                samples = np.vstack([samples,sample])
 
-            #delta_j = compute_j(rewards_up)-compute_j(rewards_down)
-            #grad = compute_gradient(delta_theta, delta_j)
-            #gti += np.multiply(grad, grad).reshape(gti.shape)
-  
-            #difference = np.array([delta_theta[i]*grad[i].item() for i in range(delta_theta.shape[0])]) 
-            #adagrad_lr = lr/np.sqrt(np.diag(gti)+np.eye(self.nb_actions)*eps)
-            #self.params = self.params + np.dot(adagrad_lr,grad)
-            if len(actions.shape) > 1:
-                self.gp, score = fit_and_evaluate(self.gp, actions, rewards)
+            if len(samples.shape) > 1:
+                self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
             
             if i % SAVE_INTERVAL == 0:
-                print("Params:", self.params)
+                print("Params:", self.action_mean)
 
-        print("Ending params: ", self.params)
+        print("Ending params: ", self.action_mean)
         print(actions)
         print(rewards)
 

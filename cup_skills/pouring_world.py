@@ -1,5 +1,6 @@
 from cup_world import *
 import pybullet as p
+import numpy as np
 import reward
 from utils import set_point
 
@@ -8,6 +9,7 @@ k = 1
 class PouringWorld():
     def __init__(self, visualize=True, real_init=False, new_bead_mass=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
+        self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         if real_init:
             self.setup()
         else:
@@ -17,10 +19,17 @@ class PouringWorld():
         #create constraint and a second cup
         self.cupStartPos = (0,-0.4,0)
         self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
-        self.target_cup = p.loadURDF("urdf/cup/cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*4.5)
+        #pick random cup
+
+        self.cup_name = np.random.choice(self.cup_to_dims.keys())
+        cup_file = "urdf/cup/"+self.cup_name
+        self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, self.cupStartPos, self.cupStartOrientation, [0,0,1])
         self.bullet_id = p.saveState()
         
+    def observe_cup(self):
+        return self.cup_to_dims[self.cup_name]
+
     def reset(self, real_init=False, new_bead_mass=None):
   
         self.base_world.reset(new_bead_mass=new_bead_mass)
@@ -85,6 +94,7 @@ if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True, new_bead_mass=1.1)
     pw.lift_cup()
     pw.pour(offset=-0.2, velocity=0.9, force=1500, total_diff = 4*np.pi/5.0)
+    pdb.set_trace()
     pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
 
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
@@ -98,6 +108,5 @@ if __name__ == "__main__":
     print(pw.base_world.ratio_beads_in(cup=pw.target_cup), "beads in")
 
     pw.reset(new_bead_mass = 1.1)
-    pdb.set_trace()
     
     

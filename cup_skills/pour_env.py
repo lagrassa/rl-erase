@@ -88,6 +88,9 @@ class PourEnv():
             return True
         return False
 
+    def observe_state(self):
+        return self.world.observe_cup()
+
     def create_state(self):
         robot_state = self.robot_state
         img1, img2 = self.world_state
@@ -95,7 +98,7 @@ class PourEnv():
         
     def step(self, action):
         self.move_if_appropriate(action)
-        ob = self.create_state() #self.world_state
+        ob = self.observe_state() #self.world_state
         episode_over = False
         reward= self.process_reward()
         beads = self.world.base_world.ratio_beads_in(cup = self.world.target_cup)
