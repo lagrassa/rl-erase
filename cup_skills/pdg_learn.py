@@ -186,8 +186,7 @@ class Learner:
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
-            #obs = self.env.observe_state()
-            obs = []
+            obs = self.env.observe_state()
             if i % LESS_EPS_INTERVAL == 0:
                 self.eps_greedy = self.eps_greedy/2.0
             if i > 20:

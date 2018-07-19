@@ -23,7 +23,7 @@ class PouringWorld():
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
-        self.cup_name = "cup_1.urdf"
+        #self.cup_name = "cup_1.urdf"
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, self.cupStartPos, self.cupStartOrientation, [0,0,1])
@@ -86,7 +86,7 @@ class PouringWorld():
     def lift_cup(self, desired_height=0.7, force=1600):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
-        desired_height = other_cup_pos[2]+desired_height
+        #desired_height = other_cup_pos[2]+desired_height
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
 
@@ -95,7 +95,7 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True, new_bead_mass=1.1)
-    pw.lift_cup(desired_height=0.4)
+    pw.lift_cup(desired_height=0.6)
     pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     pdb.set_trace()
     pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
