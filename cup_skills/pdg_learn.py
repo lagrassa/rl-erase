@@ -165,8 +165,8 @@ class Learner:
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        samples = np.load("dataset/samples.npy")
-        rewards = np.load("dataset/rewards.npy")
+        samples = None #np.load("dataset/samples.npy")
+        rewards = None #np.load("dataset/rewards.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
@@ -266,8 +266,8 @@ def parse_args(args):
     return delta, name, visualize
 
 def uniform_random_sample(n=1):
-    lower = [-0.2,0.6,1.2, 1555]
-    upper = [-0.2,0.4,1.4, 1605]
+    lower = [-0.2,0.9,0.9, 1555]
+    upper = [0.1,0.4,1.4, 1605]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]

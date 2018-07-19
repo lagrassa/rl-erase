@@ -95,7 +95,7 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True, new_bead_mass=1.1)
-    pw.lift_cup(desired_height=0.6)
+    pw.lift_cup(desired_height=0.8)
     pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     pdb.set_trace()
     pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)

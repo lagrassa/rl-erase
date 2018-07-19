@@ -178,7 +178,6 @@ class CupWorld():
         self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
 
-
     def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None):
         NEW = self.real_init #unfortunately
         if NEW:
@@ -196,10 +195,11 @@ class CupWorld():
 
 	    self.cupStartPos = (0,0,0)
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
+            self.cup_name = "cup_small.urdf"
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
+	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/invisible_cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
+                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
                 blacken(self.cupID)
           
             if beads:
