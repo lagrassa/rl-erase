@@ -29,14 +29,19 @@ class Learner:
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
         #self.action_mean = [0.4, 0.7, 0.2]
-        self.action_mean = [-0.08, 1.3, 0.65, 2500]
+        self.action_mean = [-0.2, 1.4]
+
         self.rollout_size = 1
+        kernel = C(5.0, (1e-3, 1e3)) * RBF(3, (1e-2, 1e2))
+        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, alpha=10)
+        """
         self.model = Sequential()
         self.model.add(Dense(8, input_dim=self.input_length, activation="relu"))
         self.model.add(Dense(4, activation="relu"))
         self.model.add(Dense(1, activation="linear"))
         opt = Adam(lr=1)
         self.model.compile(loss="mae", optimizer=opt, metrics = ['accuracy'])
+        """
  
 
     """ returns a list of theta-diff, curl, period, rot"""
@@ -56,7 +61,7 @@ class Learner:
     
     """selects the best action and the corresponding score"""
     def select_best_action(self, action_mean, obs):
-        N = 400
+        N = 5000
         actions = np.zeros((N, self.nb_actions))
         c = 2
         end_sigma=0.01
@@ -69,12 +74,13 @@ class Learner:
             action = self.select_action(action_mean, sigma=sigma, uniform_random=True)
             actions[i,:] = action
             sample = np.hstack([action, obs])
-            #score, stdev = self.gp.predict([sample], return_std=True)
-            score  = self.model.predict(np.matrix(sample))
-            #scores.append(score.item()+stdev.item()) #mean upper bound
-            scores.append(score.item())
+            score, stdev = self.gp.predict([sample], return_std=True)
+            #score  = self.model.predict(np.matrix(sample))
+            scores.append(score.item()+stdev.item()) #upper confidence bound
+            #scores.append(score.item())
 
         best_score_i = np.argmax(scores)
+        print("best score", scores[best_score_i])
         best_action = actions[best_score_i, :]
         
         return best_action, scores[best_score_i]
@@ -168,18 +174,20 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 120
+        numsteps = 200
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        rewards = None 
-        samples = None
+        samples = np.load("dataset/samples_1_biger.npy")[:,:-2]
+        rewards = np.load("dataset/rewards_1_biger.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
-            obs = self.env.observe_state()
+            print("on step", i)
+            #obs = self.env.observe_state()
+            obs = []
             if i % LESS_EPS_INTERVAL == 0:
                 self.eps_greedy = self.eps_greedy/2.0
             if i > 20:
@@ -189,13 +197,9 @@ class Learner:
                 big_sigma = 2
             else:
                 self.action_mean, score = self.select_best_action(self.action_mean, obs)
-                if score > self.good_reward:
-                    self.exceptional_actions.append(self.action_mean)
-                elif score < self.bad_reward:
-                    #pick a random good action
-                    self.action_mean = self.exceptional_actions[randint(0,len(self.exceptional_actions)-1)]
 
             rewards_up = self.collect_batch(self.action_mean, avg_l_fn, avg_r_fn) #collect batch using this policy
+            print("rewards", rewards_up)
             #_, _, _, _, rewards_down = self.collect_batch(neg_perturbed_params) #collect batch using this policy
             if rewards is None:
                 rewards = rewards_up
@@ -204,11 +208,10 @@ class Learner:
                 rewards = np.vstack([rewards, rewards_up])
                 sample = np.hstack([self.action_mean, obs])
                 samples = np.vstack([samples,sample])
-            min_samples = 5
+            min_samples = 20
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
-                print(samples) 
-                print(rewards) 
-                score = fit_and_evaluate_nn(self.model, samples, rewards)
+                #score = fit_and_evaluate(self.model, samples, rewards)
+                score = fit_and_evaluate(self.gp, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
@@ -217,8 +220,8 @@ class Learner:
                 print("Params:", self.action_mean)
 
         print("Ending params: ", self.action_mean)
-        print(actions)
-        print(rewards)
+        np.save("dataset/samples_1_huge.npy",samples)
+        np.save("dataset/rewards_1_huge.npy",rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 
@@ -279,8 +282,8 @@ def parse_args(args):
     return delta, name, visualize
 
 def uniform_random_sample():
-    lower = [-0.1,0,0.4, 1300]
-    upper = [0.1,0.8,4,1600]
+    lower = [-0.2,0,0.4, 1300]
+    upper = [0.2,0.8,4,1600]
     sample = []
     for i in range(len(lower)):
         sample.append((upper[i] - lower[i]) * random()+ lower[i])
@@ -289,7 +292,7 @@ def uniform_random_sample():
 """Returns a fitted GP and a measure of how well the GP is fitting the data"""
 def fit_and_evaluate(gp, actions, rewards):
     score = gp.score(actions, rewards)
-    return gp.fit(actions, rewards, verbose=1), score 
+    return gp.fit(actions, rewards), score 
 
 def fit_and_evaluate_nn(nn, samples, rewards):
     score = nn.evaluate(samples, rewards)

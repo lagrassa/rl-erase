@@ -11,16 +11,16 @@ from keras.layers import Dense, Activation, GaussianDropout, Dropout
 from keras.optimizers import Adam
 from keras import regularizers
 
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQuadratic, ExpSineSquared, Matern
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQuadratic, ExpSineSquared, Matern, WhiteKernel
 
 #kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-3, 1e3))
-kernel = C(5.0, (1e-3, 1e3)) * RBF(1.0, (1e-2, 1e2))
+kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))+WhiteKernel(5.0)
 #kernel = C(25.0, (1e-3, 1e3)) * RBF(1, (1e-1, 1e1))+RationalQuadratic(alpha=0.1, length_scale=0.957)
 #kernel = Matern(nu=2.5, length_scale = 0.1)
 
 #kernel = C(50, (1e-3, 10e1)) * RBF(1)
 
-gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5, alpha=10)
+gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, alpha=12)
 #gp = GaussianProcess(theta0=0.1, nugget = 0.1) this works pretty well
 
 nn = Sequential()
@@ -31,13 +31,13 @@ nn.compile(loss="mse", optimizer=opt)
 
 
 
-samples = np.load("dataset/samples_1_two_params.npy")
-rewards = np.load("dataset/rewards_1_two_params.npy")
-samples = np.load("dataset/samples_1_two_spread_params.npy")
-rewards = np.load("dataset/rewards_1_two_spread_params.npy")
+samples = np.load("dataset/samples_1_biger.npy")[:,:-2]
+rewards = np.load("dataset/rewards_1_biger.npy")
+#samples = np.load("dataset/samples_1_two_spread_params.npy")
+#rewards = np.load("dataset/rewards_1_two_spread_params.npy")
 
-samples_test = np.load("dataset/samples_1_two_params_test.npy")
-rewards_test = np.load("dataset/rewards_1_two_params_test.npy")
+samples_test = np.load("dataset/samples_1_two_big_test.npy")
+rewards_test = np.load("dataset/rewards_1_two_big_test.npy")
 
 gp.fit(samples, rewards)
 #nn.fit(samples, rewards, epochs =3, batch_size = 20)
@@ -118,8 +118,8 @@ def test_noise(use_nn=False):
 
 
 def uniform_random_sample():
-    lower = [-0.2, 0.9]
-    upper = [0.2, 2.5]
+    lower = [-0.2,0,0.4, 1300]
+    upper = [0.2,0.8,4,1600]
     sample = []
     for i in range(len(lower)):
         sample.append((upper[i] - lower[i]) * random()+ lower[i])
@@ -127,9 +127,8 @@ def uniform_random_sample():
 
 
 
-def optimize(model):
+def optimize(model, N = 5):
     #picks the value that's highest in the GP
-    N = 5
     scores = []
     for i in range(N):
         random_action = uniform_random_sample()
@@ -137,12 +136,16 @@ def optimize(model):
         scores.append(score+stdev)
     best_score_i = np.argmax(scores)
     best_score = scores[best_score_i]
+    print(best_score)
 
 #test_set(use_nn=False)
 #test_noise(use_nn=False)
 #noisy_samples = add_noise(samples, 0.01)
-predictions = test(samples_test)[1]
-plot_samples_and_rewards_1D(samples_test, rewards_test, predictions)
-#optimize(gp)
+#predictions = test(samples_test)[1]
+#plot_samples_and_rewards_1D(samples_test, rewards_test, predictions)
+Ns = [5000,10000,20000,30000,40000]
+for N in Ns:
+    print("N = ", N)
+    optimize(gp, N)
        
 

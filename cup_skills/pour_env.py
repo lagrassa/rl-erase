@@ -41,8 +41,8 @@ class PourEnv():
 
     def progress_state(self, action=300):
         offset = action[0]
-        desired_height = action[1]
-        velocity = action[2]
+        velocity = action[1]
+        desired_height = action[2]
         force = action[3]
         self.world.lift_cup(desired_height=desired_height)
         self.world.pour(offset=offset, velocity=velocity, force=force)
@@ -107,9 +107,9 @@ class PourEnv():
             
             episode_over = self.world.base_world.cup_knocked_over(cup=self.world.target_cup) 
             episode_over = episode_over or self.stop_if_necessary()
-            if episode_over:
-                reward = -100
-                print("EPISODE OVER", reward) 
+            #if episode_over:
+            #    reward = -1
+            #    print("EPISODE OVER", reward) 
 
         self.should_replay_and_setup()
 

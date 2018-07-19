@@ -16,11 +16,11 @@ def moving_average(a, n=3) :
     return ret[n - 1:] / n
 
 
-def plot_line(mean, stdev, color="red", label="missing label", plot_area = None,xaxis=None) :
+def plot_line(mean, stdev, color="red", label="missing label", plot_area = None,xaxis=None, n=1) :
     y = mean
     #smooth  
-    y_above = [mean[i]+stdev[i] for i  in range(mean.shape[0])]
-    y_below = [mean[i]-stdev[i] for i  in range(mean.shape[0])]
+    y_above = [mean[i]+stdev[i]/n for i  in range(mean.shape[0])]
+    y_below = [mean[i]-stdev[i]/n for i  in range(mean.shape[0])]
     display_now = False
     if plot_area is None:
         display_now = True
@@ -74,7 +74,7 @@ def plot_graph(exp_dict,
             means, stdevs = get_stdev_and_mean(exp_dict[exp_name], prefix, root_dir = root_dir, cutoff=cutoff)
         else:
             means, stdevs = get_stdev_and_mean(exp_dict[exp_name], prefix, root_dir = root_dir, cutoff=cutoff, lengths_array=exp_dict[exp_name][lengths_array_index])
-        plot_line(means, stdevs, color = colors[color_i], label=exp_name, plot_area = plot_area)
+        plot_line(means, stdevs, color = colors[color_i], label=exp_name, plot_area = plot_area, n = len(exp_dict[exp_name]))
         color_i +=1 
     plot_area.set_xlabel(xlab)
     plot_area.set_ylabel(ylab)
@@ -86,7 +86,7 @@ def plot_learning_curve(exp_dict, title = "No title", root_dir="No root director
     f, axarr = plt.subplots(2,sharex=True)
     plt.title(title)
     plot_graph(exp_dict, prefix = "average_reward",root_dir = root_dir,  xlab = "Number of episodes", ylab = "Average episode reward", plot_area=axarr[0], cutoff=cutoff)
-    plot_graph(exp_dict, prefix = "average_length",root_dir = root_dir,  xlab = "Number of episodes", ylab = "Average episode length", plot_area=axarr[1], cutoff=cutoff)
+    #plot_graph(exp_dict, prefix = "average_length",root_dir = root_dir,  xlab = "Number of episodes", ylab = "Average episode length", plot_area=axarr[1], cutoff=cutoff)
     #Then rewards
     plt.legend()
     plt.show()
@@ -109,7 +109,7 @@ def get_line_out_file(exp, root_dir = "No root directory"):
             float_list =  [float(elt) for elt in string_list if elt != ""]
         except:
             pdb.set_trace()
-        smoothed = moving_average(float_list, n = 3)
+        smoothed = moving_average(float_list, n = 6)
         return smoothed
 
 def get_exps_from_root(root):
@@ -171,12 +171,23 @@ if __name__ == "__main__":
     #plot_learning_curve(one_param, title = "Finite differences one parameter at a time", root_dir="stats/", cutoff=None)
     
     gp_exps = {}
-    gp_exps["more samples"] = get_exps_from_root("gp_more_samples")
-    gp_exps["big alpha"] = get_exps_from_root("gp_big_alpha_bad_start")
+    #gp_exps["more samples"] = get_exps_from_root("gp_more_samples")
+    #gp_exps["big alpha"] = get_exps_from_root("gp_big_alpha_bad_start")
     #gp_exps["large alpha"] = get_exps_from_root("gp_large_alpha")
-    gp_exps["exploration bad start"] = get_exps_from_root("gp_more_explore")
-    gp_exps["bad start"] = get_exps_from_root("gp_start_good")
-    plot_learning_curve(gp_exps, title = "Select actions with GP", root_dir="stats/", cutoff=None)
+    #gp_exps["exploration bad start"] = get_exps_from_root("gp_more_explore")
+    #gp_exps["bad start"] = get_exps_from_root("gp_start_good")
+    gp_exps["uniformly random"] = get_exps_from_root("gp_lub_easier_random_0_eps")
+    gp_exps["normal"] = get_exps_from_root("gp_lub_more_samples_bigger_sigma")
+    gp_exps["varying sigma normal"] = get_exps_from_root("gp_lub_uniform_300_easier")
+    gp_exps["uniformly"] = get_exps_from_root("gp_lub_uniform_300_easier")
+    #plot_learning_curve(gp_exps, title = "Select actions with GP", root_dir="stats/", cutoff=30)
+
+    val_est = {}    
+    val_est["gp resets"] = get_exps_from_root("gp_resets_many_diameters")
+    val_est["NN estimation"] = get_exps_from_root("nn_vf_learn")
+    val_est["resets"] = get_exps_from_root("gp_resets_1basis")
+    plot_learning_curve(val_est, title = "Estimating pour value multiple diameters and heights", root_dir="stats/", cutoff=200)
+ 
 
 
 
