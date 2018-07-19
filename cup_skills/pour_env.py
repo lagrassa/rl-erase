@@ -41,8 +41,8 @@ class PourEnv():
 
     def progress_state(self, action=300):
         offset = action[0]
-        velocity = action[1]
-        desired_height = action[2]
+        desired_height = action[1]
+        velocity = action[2]
         force = action[3]
         self.world.lift_cup(desired_height=desired_height)
         self.world.pour(offset=offset, velocity=velocity, force=force)

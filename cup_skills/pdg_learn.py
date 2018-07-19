@@ -2,9 +2,8 @@ from __future__ import division
 import sys
 from reward import entropy
 import argparse
-from keras.models import Sequential
-from keras.layers import Dense, Activation
-from keras.optimizers import Adam
+#from keras.layers import Dense, Activation
+#from keras.optimizers import Adam
 from scipy import misc
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
@@ -58,31 +57,16 @@ class Learner:
             return uniform_random_sample()
         return np.random.normal(params, [sigma]*len(params))
 
-    
     """selects the best action and the corresponding score"""
     def select_best_action(self, action_mean, obs):
-        N = 5000
-        actions = np.zeros((N, self.nb_actions))
+        N = 20
         c = 2
         end_sigma=0.01
-        scores = []
         k = -np.log(end_sigma/c)*(1/N) 
-        scalars = [1,1,1,1,2000]
-        #vary sigma to get more variability 
-        for i in range(N):
-            sigma=c*np.e**(-k*i)
-            action = self.select_action(action_mean, sigma=sigma, uniform_random=True)
-            actions[i,:] = action
-            sample = np.hstack([action, obs])
-            score, stdev = self.gp.predict([sample], return_std=True)
-            #score  = self.model.predict(np.matrix(sample))
-            scores.append(score.item()+stdev.item()) #upper confidence bound
-            #scores.append(score.item())
-
+        action_set = uniform_random_sample(N)
+        scores, stdevs = self.gp.predict(action_set, return_std = True)
         best_score_i = np.argmax(scores)
-        print("best score", scores[best_score_i])
-        best_action = actions[best_score_i, :]
-        
+        best_action = action_set[best_score_i, :]
         return best_action, scores[best_score_i]
 
             
@@ -174,15 +158,15 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 200
+        numsteps = 100
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        samples = np.load("dataset/samples_1_biger.npy")[:,:-2]
-        rewards = np.load("dataset/rewards_1_biger.npy")
+        samples = np.load("dataset/samples.npy")
+        rewards = np.load("dataset/rewards.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
@@ -207,10 +191,11 @@ class Learner:
                 rewards = np.vstack([rewards, rewards_up])
                 sample = np.hstack([self.action_mean, obs])
                 samples = np.vstack([samples,sample])
+
             min_samples = 20
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
-                score = fit_and_evaluate(self.gp, samples, rewards)
+                self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
@@ -219,8 +204,8 @@ class Learner:
                 print("Params:", self.action_mean)
 
         print("Ending params: ", self.action_mean)
-        np.save("dataset/samples_1_huge.npy",samples)
-        np.save("dataset/rewards_1_huge.npy",rewards)
+        np.save("dataset/samples.npy",samples)
+        np.save("dataset/rewards.npy",rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 
@@ -280,18 +265,30 @@ def parse_args(args):
         visualize = True
     return delta, name, visualize
 
-def uniform_random_sample():
-    lower = [-0.2,0,0.4, 1300]
-    upper = [0.2,0.8,4,1600]
-    sample = []
+def uniform_random_sample(n=1):
+    lower = [-0.2,0.6,1.2, 1555]
+    upper = [-0.2,0.4,1.4, 1605]
+    sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
-        sample.append((upper[i] - lower[i]) * random()+ lower[i])
+        sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]
     return sample
+
+    
+
+
 
 """Returns a fitted GP and a measure of how well the GP is fitting the data"""
 def fit_and_evaluate(gp, actions, rewards):
-    score = gp.score(actions, rewards)
+    score = custom_score(gp, actions, rewards)
+    print("custom score", score)
     return gp.fit(actions, rewards), score 
+
+def custom_score(gp, actions, rewards):
+    predictions = gp.predict(actions)
+    squared_differences = (predictions-rewards.reshape(predictions.shape))**2
+    return sum(squared_differences)**0.5/squared_differences.shape[0]
+    
+
 
 def fit_and_evaluate_nn(nn, samples, rewards):
     score = nn.evaluate(samples, rewards)
