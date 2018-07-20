@@ -43,9 +43,9 @@ class PourEnv():
         offset = action[0]
         desired_height = action[1]
         velocity = action[2]
-        force = action[3]
+        total_diff = action[3]
         self.world.lift_cup(desired_height=desired_height)
-        self.world.pour(offset=offset, velocity=velocity, force=force)
+        self.world.pour(offset=offset, velocity=velocity, force=1500, total_diff=action[3])
         simulate_for_duration(1.0)
         #self.world.parameterized_pour(offset=offset, desired_height=desired_height)
 

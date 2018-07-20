@@ -27,8 +27,7 @@ class Learner:
         self.good_reward = 50
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
-        #self.action_mean = [0.4, 0.7, 0.2]
-        self.action_mean = [-0.2, 1.4]
+        self.action_mean = [-0.2,0.8,1.4, 2.51]
 
         self.rollout_size = 1
         kernel = C(5.0, (1e-3, 1e3)) * RBF(3, (1e-2, 1e2))
@@ -132,19 +131,16 @@ class Learner:
  
         
                 
-    def collect_batch(self, action_mean, avg_l_fn, avg_r_fn):
+    def collect_batch(self, action, avg_l_fn, avg_r_fn):
         rewards = np.zeros(self.rollout_size)
         time_since_last_reset = 0
         ep_times = []
         for i in range(self.rollout_size):
             #get current state
-            best_action = self.select_action(action_mean)
             #predict best action
           
-            _, reward, episode_over, _ = self.env.step(best_action)
-
+            _, reward, episode_over, _ = self.env.step(action)
             #then collect reward
-            
             rewards[i] = reward
             if i > 2 and episode_over:
                 ep_times.append(time_since_last_reset)
@@ -271,8 +267,8 @@ def parse_args(args):
     return delta, name, visualize
 
 def uniform_random_sample(n=1):
-    lower = [-0.2,0.9,0.9, 1555]
-    upper = [0.1,0.4,1.4, 1605]
+    lower = [-0.15,0.62,1.4, 2.51]
+    upper = [-0.15,0.62,1.4, 2.51]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]
