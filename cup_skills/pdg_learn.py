@@ -64,7 +64,12 @@ class Learner:
         end_sigma=0.01
         k = -np.log(end_sigma/c)*(1/N) 
         action_set = uniform_random_sample(N)
-        scores, stdevs = self.gp.predict(action_set, return_std = True)
+        obs_vec = obs[0]*np.ones((N,1))
+        for i in range(1,len(obs)):
+            new_obs = obs[i]*np.ones((N,1))
+            obs_vec = np.hstack([obs_vec, new_obs])
+        samples = np.hstack([action_set, obs_vec])
+        scores, stdevs = self.gp.predict(samples, return_std = True)
         best_score_i = np.argmax(scores)
         best_action = action_set[best_score_i, :]
         return best_action, scores[best_score_i]
@@ -158,15 +163,15 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 100
+        numsteps = 500
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        samples = None #np.load("dataset/samples.npy")
-        rewards = None #np.load("dataset/rewards.npy")
+        samples = np.load("dataset/samples.npy")
+        rewards = np.load("dataset/rewards.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
@@ -192,7 +197,7 @@ class Learner:
                 sample = np.hstack([self.action_mean, obs])
                 samples = np.vstack([samples,sample])
 
-            min_samples = 20
+            min_samples = 1
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
                 self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
@@ -204,8 +209,8 @@ class Learner:
                 print("Params:", self.action_mean)
 
         print("Ending params: ", self.action_mean)
-        np.save("dataset/samples.npy",samples)
-        np.save("dataset/rewards.npy",rewards)
+        np.save("dataset/samples_2.npy",samples)
+        np.save("dataset/rewards_2.npy",rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 
