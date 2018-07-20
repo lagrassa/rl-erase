@@ -23,7 +23,7 @@ class PouringWorld():
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
-        #self.cup_name = "cup_1.urdf"
+        self.cup_name = "cup_1.urdf"
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, self.cupStartPos, self.cupStartOrientation, [0,0,1])
@@ -94,11 +94,13 @@ class PouringWorld():
        
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True, new_bead_mass=1.1)
-    pw.lift_cup(desired_height=0.8)
-    pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
+    pw = PouringWorld(visualize=True, real_init = True)
+    pw.lift_cup(desired_height=0.62)
+    #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
+    pw.pour(offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51)
+
     pdb.set_trace()
-    pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
+    #pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
 
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
     #actions = np.array([-6.74658884e-01, -3.99184460e-01, -1.97149862e-01, -1.17733128e-01,-1.99983150e+03])
