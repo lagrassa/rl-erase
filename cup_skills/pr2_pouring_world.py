@@ -100,7 +100,7 @@ class PouringWorld():
             moving_joints = []
             moving_confs = []
             for i in range(len(joints)):
-                if joints[i] not in moving_joints:
+                if joints[i] not in gripper_joints:
                     moving_confs.append(confs[i])
                     moving_joints.append(joints[i])
             
@@ -207,8 +207,8 @@ class PouringWorld():
             pdb.set_trace()
           
     def close_gripper(self, close_num=0.2):
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=1000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=1000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetPosition=close_num)
         simulate_for_duration(0.5)
 
     def grasp_cup(self):
@@ -222,9 +222,10 @@ class PouringWorld():
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         set_point(2L, (actualPos[0]-0.02, actualPos[1]-0.01, actualPos[2]))
         #self.move_gripper_to_cup(self.base_world.cupID)
-        pdb.set_trace()
         self.close_gripper(0.25)
         self.lift_cup(0.1)
+        pdb.set_trace()
+        
         
 
         #close gripper around cup
