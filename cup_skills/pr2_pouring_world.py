@@ -14,7 +14,7 @@ from utils import set_base_values, set_point, joint_from_name, set_joint_positio
     joint_controller, joint_controller_hold, dump_world, get_link_name, wait_for_interrupt, \
     get_links, get_joint_parent_frame, euler_from_quat, get_joint_inertial_pose, get_joint_info, \
     get_link_pose, VisualShapeData, get_visual_data, get_link_parent, link_from_name, sub_inverse_kinematics,\
-    get_link_ancestors, get_link_children, get_link_descendants, get_joint_positions, get_movable_joints, inverse_kinematics 
+    get_link_ancestors, get_link_children, get_link_descendants, get_joint_positions, get_movable_joints, inverse_kinematics, create_marker
 
 ARM_JOINT_NAMES = {
    'left': ['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint',
@@ -107,7 +107,6 @@ class PouringWorld():
             heavy_joints = [self.torso_joint]
             heavy_confs = [height_stable]
             #remove finger joints
-            print(moving_joints)
             jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs)
             try:
                 jc.next()
@@ -142,7 +141,7 @@ class PouringWorld():
         set_joint_positions(pr2, right_joints, starting_joint_angles)
         set_joint_position(pr2, self.torso_joint, self.torso_height)
         simulate_for_duration(0.5)
-        start_pos = (-0.12, -0.13, 0.72)
+        start_pos = (-0.22, -0.19, 0.72)
         start_orn = p.getQuaternionFromEuler((0,0,0.5)) 
         self.move_ee_to_point(start_pos, start_orn, timeout=10, threshold=0.05)
        
@@ -193,18 +192,21 @@ class PouringWorld():
         cup_pose = p.getBasePositionAndOrientation(cup)[0]
         start_orn = p.getQuaternionFromEuler((0,0,0.5)) 
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        diff = np.subtract(cup_pose, actualPos)
+        goal_pos = (cup_pose[1]+0.02, cup_pose[1]+0.01, actualPos[2])
+        pdb.set_trace()
+        
+        diff = np.subtract(goal_pos, actualPos)
         total_dist = np.linalg.norm(diff)
-        dy = cup_pose[1] - actualPos[1] 
-        dx = cup_pose[0] - actualPos[0] 
-        numsteps = 4
+        dy = goal_pos[1] - actualPos[1] 
+        dx = goal_pos[0] - actualPos[0] 
+        numsteps = 10
         dist = total_dist/numsteps
         theta = np.arctan2(dy, dx)
-        for i in range(numsteps):
+        for i in range(numsteps-4):
             new_pose = (actualPos[0] + dist*np.cos(theta), actualPos[1]+dist*np.sin(theta), actualPos[2]) 
+            create_marker(radius=0.005, point=new_pose)
             self.move_ee_to_point(new_pose, start_orn, threshold=0.005)
             actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-            pdb.set_trace()
           
     def close_gripper(self, close_num=0.2):
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetPosition=close_num)
@@ -220,8 +222,7 @@ class PouringWorld():
         self.open_gripper(0.55)
         #move gripper to cup
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        set_point(2L, (actualPos[0]-0.02, actualPos[1]-0.01, actualPos[2]))
-        #self.move_gripper_to_cup(self.base_world.cupID)
+        self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(0.25)
         self.lift_cup(0.1)
         pdb.set_trace()
