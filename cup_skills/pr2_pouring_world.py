@@ -42,7 +42,7 @@ class PouringWorld():
     def setup(self):
         #create constraint and a second cup
         self.cupStartPos = (0,-0.4,0.708)
-        self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
+        self.cupStartOrientation = p.getQuaternionFromEuler([0.5,0,0]) 
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
@@ -92,13 +92,21 @@ class PouringWorld():
         height_stable  = self.torso_height
         result = sub_inverse_kinematics(self.pr2, left_root, self.ee_index, (pos, orn))
         if result is not None:
-            confs, joints = result
+            try:
+                confs, joints = result
+            except:
+                pdb.set_trace()
             confs  = confs
             joints =  joints
             heavy_joints = [self.torso_joint]
             heavy_confs = [height_stable]
+            print(joints)
             jc = joint_controller(self.pr2, joints, confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs)
             try:
+                jc.next()
+                simulate_for_duration(0.2)
+                jc.next()
+                simulate_for_duration(0.2)
                 jc.next()
             except StopIteration:
                 print("Stop iteration error")
@@ -111,20 +119,6 @@ class PouringWorld():
         #set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
                 
 
-    def move_cup(self, new_loc, new_euler=None, duration=0.7, teleport=False, force = 1000):
-        if new_euler is None:
-            new_orn = p.getBasePositionAndOrientation(self.base_world.cupID)[1]
-        else:
-            new_orn = p.getQuaternionFromEuler(new_euler)
-        if teleport:
-            set_point(self.base_world.cupID, new_loc)
-            for bead in self.base_world.droplets:
-                #original_loc 
-                loc = p.getBasePositionAndOrientation(bead)[0]
-                new_loc = np.array(loc)+np.array(new_loc)
-                set_point(bead, new_loc)
-         
-        simulate_for_duration(duration)
 
     """Moves the robot arms to a reasonable configuration for the task"""
     def put_arms_in_useful_configuration(self, pr2):
@@ -141,9 +135,9 @@ class PouringWorld():
         set_joint_positions(pr2, right_joints, starting_joint_angles)
         set_joint_position(pr2, self.torso_joint, self.torso_height)
         simulate_for_duration(0.5)
-        start_pos = (-0.1, -0.13, 0.69)
+        start_pos = (-0.12, -0.13, 0.72)
         start_orn = p.getQuaternionFromEuler((0,0,0.5)) 
-        self.move_ee_to_point(start_pos, start_orn, timeout=30)
+        self.move_ee_to_point(start_pos, start_orn, timeout=10, threshold=0.05)
        
     
     #reactive pouring controller 
@@ -183,10 +177,9 @@ class PouringWorld():
         new_pose[2] += desired_height
         self.move_ee_to_point(new_pose, gripper_orn)
 
-    def open_gripper(self):
-        open_num = 0.5
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=900,positionGain=0.3,velocityGain=1, targetPosition=open_num)
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=900,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+    def open_gripper(self, open_num=0.5):
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
         simulate_for_duration(0.5)
 
     def move_gripper_to_cup(self, cup):
@@ -194,25 +187,37 @@ class PouringWorld():
         start_orn = p.getQuaternionFromEuler((0,0,0.5)) 
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         diff = np.subtract(cup_pose, actualPos)
-        new_pose = list(cup_pose)
-        new_pose[0:2] += diff[0:2]
-        self.move_ee_to_point(new_pose, start_orn)
-
+        total_dist = np.linalg.norm(diff)
+        dy = cup_pose[1] - actualPos[1] 
+        dx = cup_pose[0] - actualPos[0] 
+        numsteps = 4
+        dist = total_dist/numsteps
+        theta = np.arctan2(dy, dx)
+        for i in range(numsteps):
+            new_pose = (actualPos[0] + dist*np.cos(theta), actualPos[1]+dist*np.sin(theta), actualPos[2]) 
+            self.move_ee_to_point(new_pose, start_orn, threshold=0.005)
+            actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
+            pdb.set_trace()
+          
     def close_gripper(self, close_num=0.2):
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=900,positionGain=0.3,velocityGain=1, targetPosition=close_num)
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=900,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=2000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=2000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
         simulate_for_duration(0.5)
 
     def grasp_cup(self):
         #grasp the cup in base world
         #open gripper
+       
         self.put_arms_in_useful_configuration(self.pr2)
 
-        self.open_gripper()
+        self.open_gripper(0.55)
         #move gripper to cup
-        self.move_gripper_to_cup(self.base_world.cupID)
-        self.close_gripper(0.2)
-        self.lift_cup(0.05)
+        actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
+        set_point(2L, (actualPos[0]-0.02, actualPos[1]-0.01, actualPos[2]))
+        #self.move_gripper_to_cup(self.base_world.cupID)
+        pdb.set_trace()
+        self.close_gripper(0.25)
+        self.lift_cup(0.1)
         
 
         #close gripper around cup
@@ -229,7 +234,6 @@ if __name__ == "__main__":
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     #pw.pour(offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51)
 
-    pdb.set_trace()
     #pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
 
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
