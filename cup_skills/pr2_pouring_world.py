@@ -96,12 +96,19 @@ class PouringWorld():
                 confs, joints = result
             except:
                 pdb.set_trace()
-            confs  = confs
-            joints =  joints
+            gripper_joints = (57, 59)
+            moving_joints = []
+            moving_confs = []
+            for i in range(len(joints)):
+                if joints[i] not in moving_joints:
+                    moving_confs.append(confs[i])
+                    moving_joints.append(joints[i])
+            
             heavy_joints = [self.torso_joint]
             heavy_confs = [height_stable]
-            print(joints)
-            jc = joint_controller(self.pr2, joints, confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs)
+            #remove finger joints
+            print(moving_joints)
+            jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs)
             try:
                 jc.next()
                 simulate_for_duration(0.2)
@@ -200,8 +207,8 @@ class PouringWorld():
             pdb.set_trace()
           
     def close_gripper(self, close_num=0.2):
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=2000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=2000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=1000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=1000,positionGain=0.3,velocityGain=1, targetPosition=close_num)
         simulate_for_duration(0.5)
 
     def grasp_cup(self):
