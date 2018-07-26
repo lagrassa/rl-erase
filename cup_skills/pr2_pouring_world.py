@@ -60,7 +60,8 @@ class PouringWorld():
         
     def observe_cup(self):
         return np.array(self.cup_to_dims[self.cup_name])
-    def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 2):
+
+    def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 10):
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         diff = np.array(actualPos)-pos
         num_attempts = 0
@@ -107,16 +108,13 @@ class PouringWorld():
             heavy_joints = [self.torso_joint]
             heavy_confs = [height_stable]
             #remove finger joints
-            print(moving_joints)
             jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs)
-            try:
-                jc.next()
-                simulate_for_duration(0.2)
-                jc.next()
-                simulate_for_duration(0.2)
-                jc.next()
-            except StopIteration:
-                print("Stop iteration error")
+            for i in range(6):
+		try:
+		    jc.next()
+		    simulate_for_duration(0.8)
+		except StopIteration:
+                    break;
 
 
     def reset(self, real_init=False, new_bead_mass=None):
@@ -225,15 +223,23 @@ class PouringWorld():
         self.open_gripper(0.55)
         #move gripper to cup
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        set_point(2L, (actualPos[0]-0.01, actualPos[1]-0.035, actualPos[2]-0.02))
+        set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.035, actualPos[2]-0.02))
         #self.move_gripper_to_cup(self.base_world.cupID)
-        self.close_gripper(0.38)
-        self.lift_cup(0.05)
-        pdb.set_trace()
-        
-        
+        self.close_gripper(0.35)
 
-        #close gripper around cup
+    #turn the wrist link
+    def turn_cup(self, amount, duration):
+        current_pos = p.getJointState(self.pr2, 50)[0]        
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=400,positionGain=0.3,velocityGain=1, targetVelocity=amount)
+        simulate_for_duration(duration)
+
+        
+        
+    def pour_pr2(self):
+        self.grasp_cup()
+        self.lift_cup(0.05)
+        self.turn_cup(0.3)
+
 
 
 
@@ -242,7 +248,7 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.grasp_cup()
+    pw.pour_pr2()
     #pw.lift_cup(desired_height=0.62)
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     #pw.pour(offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51)
