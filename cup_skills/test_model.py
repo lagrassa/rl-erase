@@ -15,10 +15,6 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQ
 
 #kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-3, 1e3))
 kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))+WhiteKernel(5.0)
-#kernel = C(25.0, (1e-3, 1e3)) * RBF(1, (1e-1, 1e1))+RationalQuadratic(alpha=0.1, length_scale=0.957)
-#kernel = Matern(nu=2.5, length_scale = 0.1)
-
-#kernel = C(50, (1e-3, 10e1)) * RBF(1)
 
 gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, alpha=12)
 #gp = GaussianProcess(theta0=0.1, nugget = 0.1) this works pretty well
@@ -29,7 +25,11 @@ nn.add(Dense(1, activation="linear"))
 opt = Adam(lr=0.01)
 nn.compile(loss="mse", optimizer=opt)
 
-
+#Needs to be vel, total, offset, or height
+def fit_and_test_one_dim(var):
+    samples_file = np.load("dataset/samples_vary_+"+var+".npy")
+    rewards_file = np.load("dataset/rewards_vary_+"+var+".npy")
+    
 
 samples = np.load("dataset/samples_1_biger.npy")[:,:-2]
 rewards = np.load("dataset/rewards_1_biger.npy")
@@ -118,8 +118,8 @@ def test_noise(use_nn=False):
 
 
 def uniform_random_sample():
-    lower = [-0.2,0,0.4, 1300]
-    upper = [0.2,0.8,4,1600]
+    lower = [-0.2,0,0.4, 2.51]
+    upper = [0.2,0.8,4,2.51]
     sample = []
     for i in range(len(lower)):
         sample.append((upper[i] - lower[i]) * random()+ lower[i])
