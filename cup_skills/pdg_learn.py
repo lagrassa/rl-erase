@@ -27,7 +27,7 @@ class Learner:
         self.good_reward = 50
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
-        self.action_mean = [-0.2,0.8,1.4, 2.51]
+        self.action_mean = [0.3, 300, 300]
 
         self.rollout_size = 1
         kernel = C(5.0, (1e-3, 1e3)) * RBF(3, (1e-2, 1e2))
@@ -166,8 +166,8 @@ class Learner:
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        samples = np.load("dataset/samples.npy")
-        rewards = np.load("dataset/rewards.npy")
+        samples = None #np.load("dataset/samples.npy")
+        rewards = None #np.load("dataset/rewards.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
@@ -267,8 +267,8 @@ def parse_args(args):
     return delta, name, visualize
 
 def uniform_random_sample(n=1):
-    lower = [-0.15,0.62,1.4, 2.51]
-    upper = [-0.15,0.62,1.4, 2.51]
+    lower = [0.1,90,150]
+    upper = [0.40,900,600]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]
@@ -297,7 +297,7 @@ def fit_and_evaluate_nn(nn, samples, rewards):
     return score 
         
 def main():
-     nb_actions = 4; 
+     nb_actions = 3; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_length = env.observe_state().shape[0]

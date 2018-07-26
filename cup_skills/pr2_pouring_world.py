@@ -70,7 +70,6 @@ class PouringWorld():
             self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
             actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
             diff = np.array(actualPos)-pos
-            print("diff", np.linalg.norm(diff))
             num_attempts += 1
 
         if num_attempts > timeout:
@@ -182,9 +181,7 @@ class PouringWorld():
         #desired_height = other_cup_pos[2]+desired_height
         new_pose = list(gripper_pose)
         new_pose[2] += desired_height
-        print("starting move ee to point")
         self.move_ee_to_point(new_pose, gripper_orn, force=force)
-        print("finishing move ee to point")
 
     def open_gripper(self, open_num=0.5):
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
