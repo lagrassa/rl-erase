@@ -194,19 +194,18 @@ class CupWorld():
 		blacken(self.planeId)
             if table:
                 self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
-                p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99)
+                p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
                 self.cupStartPos = (-0.04,-0.10, 0.708)
             else:
 	        self.cupStartPos = (0,0,0)
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             self.cup_name = "cup_small.urdf"
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.5)
+	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.5)
+                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
                 blacken(self.cupID)
-            p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99)
-          
+            p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
                 if new_world:
 	            self.drop_beads_in_cup(offset=cup_offset)
