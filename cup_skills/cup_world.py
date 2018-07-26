@@ -17,10 +17,10 @@ new_world = True
 
  
 class CupWorld():
-    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None):
+    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 55
+        self.num_droplets = 1
         self.radius = k*0.015
         if real_init:
             try:
@@ -31,7 +31,7 @@ class CupWorld():
             except:
                 pdb.set_trace()
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass)
+        self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass, table=table)
         if beads:
             self.total_bead_mass = self.num_droplets*p.getDynamicsInfo(self.droplets[0], -1)[0]#variable beads would be bad, this is faster 
         
@@ -178,7 +178,7 @@ class CupWorld():
         self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
 
-    def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None):
+    def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
@@ -192,16 +192,20 @@ class CupWorld():
 	    else:
 		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
 		blacken(self.planeId)
-
-	    self.cupStartPos = (0,0,0)
+            if table:
+                self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
+                p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
+                self.cupStartPos = (-0.04,-0.10, 0.708)
+            else:
+	        self.cupStartPos = (0,0,0)
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             self.cup_name = "cup_small.urdf"
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
+	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5.0)
+                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
                 blacken(self.cupID)
-          
+            p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
                 if new_world:
 	            self.drop_beads_in_cup(offset=cup_offset)
@@ -213,7 +217,7 @@ class CupWorld():
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
-            p.setTimeStep(1/300.)
+            p.setTimeStep(1/1200.)
             self.real_init = False
         else:
             self.real_init = True
@@ -288,7 +292,7 @@ def parse_tuple(input_tuple):
         
 
 if __name__ == "__main__":
-    world = CupWorld(visualize=True)
+    world = CupWorld(visualize=True, table=True)
     pdb.set_trace()
     world.reset()
     pdb.set_trace()

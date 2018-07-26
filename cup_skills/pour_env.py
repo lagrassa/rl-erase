@@ -3,7 +3,7 @@ import random
 from reward import reward_func, entropy
 import numpy as np
 from utils import simulate_for_duration
-from pouring_world import PouringWorld
+from pr2_pouring_world import PouringWorld
 import logging
 logger = logging.getLogger(__name__)
 actions = [[6,0],[0,6],[-6,0],[0,-6]]
@@ -40,14 +40,10 @@ class PourEnv():
         
 
     def progress_state(self, action=300):
-        offset = action[0]
-        desired_height = action[1]
-        velocity = action[2]
-        total_diff = action[3]
-        self.world.lift_cup(desired_height=desired_height)
-        self.world.pour(offset=offset, velocity=velocity, force=1500, total_diff=action[3])
-        simulate_for_duration(1.0)
-        #self.world.parameterized_pour(offset=offset, desired_height=desired_height)
+        close_num = action[0]
+        close_force = action[1]
+        lift_force = action[2]
+        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force)
 
     """
     does an annoying amount of functionality
@@ -143,7 +139,9 @@ class PourEnv():
         if self.world.base_world.cup_knocked_over(cup=self.world.target_cup):
             return -30
         #fun enough, world_state should now be a tuple
-        rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
+        #rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
+        rew = self.world.test_grasp()
+        
         self.counter +=1
         return rew
 
