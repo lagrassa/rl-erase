@@ -30,8 +30,8 @@ class Learner:
         self.action_mean = [0.3, 300, 300]
 
         self.rollout_size = 1
-        kernel = C(5.0, (1e-3, 1e3)) * RBF(3, (1e-2, 1e2))
-        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, alpha=10)
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
+        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, alpha=0.1)
         """
         self.model = Sequential()
         self.model.add(Dense(8, input_dim=self.input_length, activation="relu"))
@@ -58,9 +58,10 @@ class Learner:
 
     """selects the best action and the corresponding score"""
     def select_best_action(self, action_mean, obs):
-        N = 20
+        N = 700
         c = 2
         end_sigma=0.01
+        l = 0.5
         k = -np.log(end_sigma/c)*(1/N) 
         action_set = uniform_random_sample(N)
         obs_vec = obs[0]*np.ones((N,1))
@@ -69,6 +70,7 @@ class Learner:
             obs_vec = np.hstack([obs_vec, new_obs])
         samples = np.hstack([action_set, obs_vec])
         scores, stdevs = self.gp.predict(samples, return_std = True)
+        scores += l*stdevs
         best_score_i = np.argmax(scores)
         best_action = action_set[best_score_i, :]
         return best_action, scores[best_score_i]
@@ -159,7 +161,7 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 500
+        numsteps = 700
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -196,7 +198,7 @@ class Learner:
             min_samples = 1
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
-                self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
+                #self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
@@ -205,8 +207,8 @@ class Learner:
                 print("Params:", self.action_mean)
 
         print("Ending params: ", self.action_mean)
-        np.save("dataset/samples_2.npy",samples)
-        np.save("dataset/rewards_2.npy",rewards)
+        np.save("dataset/samples.npy",samples)
+        np.save("dataset/rewards.npy",rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 

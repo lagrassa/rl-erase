@@ -220,16 +220,9 @@ class CupWorld():
             p.setTimeStep(1/1200.)
             self.real_init = False
         else:
-            try:
-                print("tring to restore state")
-                p.restoreState(self.bullet_id)
-                print("Woo hoo! Successfully restored state")
-            except:
-                #set_pose(self.cupID, (self.cupStartPos, self.cupStartOrientation))
-                #self.custom_restore_beads(teleport=True)
-                self.real_init = True
-                p.resetSimulation()
-                self.setup(new_bead_mass=new_bead_mass)
+            self.real_init = True
+            p.resetSimulation()
+            self.setup(new_bead_mass=new_bead_mass)
     def cup_knocked_over(self, cup=None):
         if cup is None:
             cup = self.cupID

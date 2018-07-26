@@ -16,10 +16,6 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQ
 
 #kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-3, 1e3))
 kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
-#kernel = C(25.0, (1e-3, 1e3)) * RBF(1, (1e-1, 1e1))+RationalQuadratic(alpha=0.1, length_scale=0.957)
-#kernel = Matern(nu=2.5, length_scale = 0.1)
-
-#kernel = C(50, (1e-3, 10e1)) * RBF(1)
 
 gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=8, alpha=10)
 #gp = GaussianProcess(theta0=0.1, nugget = 0.1) this works pretty well
@@ -259,8 +255,8 @@ def test_noise(use_nn=False):
 
 
 def uniform_random_sample():
-    lower = [-0.2,0,0.4, 1300]
-    upper = [0.2,0.8,4,1600]
+    lower = [-0.2,0,0.4, 2.51]
+    upper = [0.2,0.8,4,2.51]
     sample = []
     for i in range(len(lower)):
         sample.append((upper[i] - lower[i]) * random()+ lower[i])
