@@ -30,6 +30,47 @@ nn.add(Dense(1, activation="linear"))
 opt = Adam(lr=0.01)
 nn.compile(loss="mse", optimizer=opt)
 
+def num_params_v_fit():
+    lls = []
+    fits = []
+    num_params = 6
+    samples = np.load("dataset/samples_1_biger.npy")
+    rewards = np.load("dataset/rewards_1_biger.npy")
+    x = np.linspace(1,num_params, num_params)
+    for i in range(1,num_params+1):
+        fit, ll = fit_and_test_n_dim(samples, rewards, i)
+        lls.append(ll)
+        fits.append(fit)
+    plt.title("Log marginal likelihood over number of parameters")
+    plt.xlabel("Number of parameters")
+    plt.ylabel("Log likelihood")
+    plt.plot(x, lls)
+    plt.show()
+    
+    plt.title("Mean squared error over number of parameters")
+    plt.xlabel("Number of parameters")
+    plt.ylabel("MSE")
+    plt.plot(x,fits)
+    plt.show()
+        
+        
+    
+def fit_and_test_n_dim(samples, rewards, n):
+    gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))+WhiteKernel(5.0)
+    gp = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=0.1)
+    num_training = 100
+    relevant_samples_training = samples[:num_training,:n ]
+    relevant_rewards_training = rewards[:num_training]
+    relevant_samples_test = samples[num_training:,:n ]
+    relevant_rewards_test = rewards[num_training:]
+    gp.fit(relevant_samples_training, relevant_rewards_training)
+    ll = gp.log_marginal_likelihood()
+    predictions = gp.predict(relevant_samples_test)    
+    se = (predictions-relevant_rewards_test)**2
+    mse = np.mean(se)
+    return mse, ll
+
+
 #Needs to be vel, total, offset, or height
 def fit_and_test_one_dim(var):
     samples_file = np.load("dataset/samples_vary_"+var+".npy")
@@ -264,8 +305,6 @@ plt.show()
 #for name in ["offset", "height", "total", "vel"]:
 #    fit_and_test_one_dim(name)
 
-exp_list =  ["offset_height", "offset_vel", "offset_total", "height_vel", "height_total", "vel_total"]
-for name in exp_list:
-    fit_and_test_two_dim(name)
        
+num_params_v_fit()
 
