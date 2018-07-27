@@ -174,13 +174,14 @@ class PouringWorld():
     def world_state(self):
         return self.base_world.world_state() 
     
-    def lift_cup(self, desired_height=0.7, force=1600):
+    def shift_cup(self, desired_height=0.7, offset=-0.2, force=1600):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
         gripper_pose, gripper_orn =  p.getLinkState(self.pr2, self.ee_index)[0:2]
         #desired_height = other_cup_pos[2]+desired_height
-        new_pose = list(gripper_pose)
+        new_pose = list(other_cup_pos)
         new_pose[2] += desired_height
+        new_pose[1] += offset
         self.move_ee_to_point(new_pose, gripper_orn, force=force)
 
     def open_gripper(self, open_num=0.5):
@@ -245,9 +246,9 @@ class PouringWorld():
      
 
 
-    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=300):
+    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=300, offset = -0.2, height = 0.08):
         self.grasp_cup(close_num = close_num, close_force=close_force)
-        self.lift_cup(0.05, force=lift_force)
+        self.shift_cup(desired_height=height,offset=offset,  force=lift_force)
         #self.turn_cup(0.3)
 
 
