@@ -43,7 +43,9 @@ class PourEnv():
         close_num = action[0]
         close_force = action[1]
         lift_force = action[2]
-        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force)
+        offset = action[3]
+        height = action[4]
+        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, offset=offset, height=height)
 
     """
     does an annoying amount of functionality
