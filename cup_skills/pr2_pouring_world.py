@@ -8,7 +8,7 @@ from pr2_utils import TOP_HOLDING_LEFT_ARM, \
 
 
 import reward
-from utils import set_point
+from utils import set_point, create_marker, call_ik_fast, joint_from_name
 from utils import set_base_values, set_point, joint_from_name, set_joint_position, simulate_for_duration, \
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, input, \
     joint_controller, joint_controller_hold, dump_world, get_link_name, wait_for_interrupt, \
@@ -41,14 +41,6 @@ class PouringWorld():
 
     def setup(self):
         #create constraint and a second cup
-        self.cupStartPos = (0,-0.4,0.708)
-        self.cupStartOrientation = p.getQuaternionFromEuler([0.5,0,0]) 
-        #pick random cup
-
-        self.cup_name = np.random.choice(self.cup_to_dims.keys())
-        self.cup_name = "cup_1.urdf"
-        cup_file = "urdf/cup/"+self.cup_name
-        self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.2)
 
         pr2_start_orientation = p.getQuaternionFromEuler([0,0,0])
         pr2_start_pose = [-.80*k,0,0]
@@ -59,15 +51,14 @@ class PouringWorld():
         self.bullet_id = p.saveState()
         
     def observe_cup(self):
-        return np.array(self.cup_to_dims[self.cup_name])
+        return [] #np.array(self.cup_to_dims[self.cup_name])
 
-    def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 5, force=300):
+    def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 5, force=300, teleport=False):
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         diff = np.array(actualPos)-pos
         num_attempts = 0
         while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
-            #self.plot_point(pos)
-            self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain)
+            self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain, teleport=teleport)
             actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
             diff = np.array(actualPos)-pos
             num_attempts += 1
@@ -79,7 +70,7 @@ class PouringWorld():
     """ 
     helper function, see move_ee_to_point
     """
-    def _move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.03, velGain=1, force=500):
+    def _move_arm_closer_to_point(self, pos, orn = None, damper=0.1, posGain = 0.03, velGain=1, force=500, teleport=False):
         ikSolver = 0
         if orn is None:
             orn = p.getQuaternionFromEuler([0,-np.pi,0])
@@ -87,34 +78,46 @@ class PouringWorld():
         current_conf = get_joint_positions(self.pr2, self.movable_joints)
         left_joints = [joint_from_name(self.pr2, name) for name in ARM_JOINT_NAMES['left']]
 
-        arm_joints = get_arm_joints(self.pr2, 'right')
         left_root = 42
         right_root = 65
         height_stable  = self.torso_height
-        result = sub_inverse_kinematics(self.pr2, left_root, self.ee_index, (pos, orn))
-        if result is not None:
-            try:
-                confs, joints = result
-            except:
-                pdb.set_trace()
-            gripper_joints = (57, 59, 58, 60)
-            moving_joints = []
-            moving_confs = []
-            for i in range(len(joints)):
-                if joints[i] not in gripper_joints:
-                    moving_confs.append(confs[i])
-                    moving_joints.append(joints[i])
-            
-            heavy_joints = [self.torso_joint]
-            heavy_confs = [height_stable]
-            #remove finger joints
-            jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs, force=force)
-            for i in range(4):
+        create_marker(0.01, point=pos, color=(1,1,0,0.8))
+        ik_fast_sol = call_ik_fast(self.pr2, pos, orn)
+        conf, joints = sub_inverse_kinematics(self.pr2, left_root, self.ee_index, (pos, orn))
+        arm_joint_names = ['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint',
+                        'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
+        arm_joints = [joint_from_name(self.pr2, name) for name in arm_joint_names]
+         
+	gripper_joints = (57, 59, 58, 60)
+	moving_joints = []
+	moving_confs = []
+        for i in range(len(joints)):
+	    if joints[i] not in gripper_joints:
+		moving_confs.append(conf[i])
+		moving_joints.append(joints[i])
+	
+	heavy_joints =[]# [self.torso_joint]
+	heavy_confs = []#[height_stable]
+	if not teleport:
+	    #remove finger joints
+	    for i in range(len(moving_joints)):
+		p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=300, targetVelocity=0)
+	    simulate_for_duration(1.0)
+	    """
+	    jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs, force=force)
+	    print("starting JC")
+	    for i in range(4):
 		try:
 		    jc.next()
-		    simulate_for_duration(0.4)
+		    simulate_for_duration(0.2)
 		except StopIteration:
-                    break;
+		    break;
+	    print("ending JC")
+	    """
+	else:
+	    set_joint_positions(self.pr2, moving_joints, moving_confs)
+	    set_joint_positions(self.pr2, arm_joints, ik_fast_sol)
+	    #set_joint_positions(self.pr2, heavy_joints, heavy_confs)
 
 
     def reset(self, real_init=False, new_bead_mass=None):
@@ -140,31 +143,12 @@ class PouringWorld():
         set_joint_positions(pr2, right_joints, starting_joint_angles)
         set_joint_position(pr2, self.torso_joint, self.torso_height)
         simulate_for_duration(0.2)
-        start_pos = (-0.12, -0.13, 0.70)
+        start_pos = (-0.12, -0.13, 0.68)
 
         start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
         self.move_ee_to_point(start_pos, start_orn, timeout=10, threshold=0.05)
        
     
-    #reactive pouring controller 
-    #goes to the closest lip of the cup and decreases the pitch until the beads fall out into the right place
-    def pour(self, offset=0.02, velocity=0.9, force=1500, total_diff = 4*np.pi/5.0):
-        #step_size and dt come from the angular velocity it takes to make a change of 3pi/4, can set later
-
-        pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
-        start_point = (pourer_pos[0], pourer_pos[1]+offset, pourer_pos[2])
-        self.move_cup(start_point,  duration=2,force=force) 
-        start_pos, start_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
-        #then start decreasing the roll, pitch or yaw(whatever seems appropriate)
-        current_orn = list(p.getEulerFromQuaternion(start_orn))
-        numsteps = 25.0
-        step_size = total_diff/numsteps; #hard to set otherwise
-        dt = step_size/velocity
-        for i in range(int(numsteps)):
-            current_orn[0] += step_size
-            self.move_cup(start_pos, current_orn, duration=dt, force=force)
-        simulate_for_duration(1.2) #rest time, can be tuned
-
     def pourer_state(self):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         target_pos, target_orn = p.getBasePositionAndOrientation(self.target_cup)
@@ -174,15 +158,20 @@ class PouringWorld():
     def world_state(self):
         return self.base_world.world_state() 
     
-    def shift_cup(self, desired_height=0.7, offset=-0.2, force=1600):
+    def shift_cup(self, desired_height=0.7, side_offset=0, forward_offset=0, force=1600):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
         gripper_pose, gripper_orn =  p.getLinkState(self.pr2, self.ee_index)[0:2]
         #desired_height = other_cup_pos[2]+desired_height
-        new_pose = list(other_cup_pos)
+        new_pose = list(pourer_pos)
         new_pose[2] += desired_height
-        new_pose[1] += offset
-        self.move_ee_to_point(new_pose, gripper_orn, force=force)
+        new_pose[1] += side_offset
+        #always up after
+        self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
+        pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
+        new_pose = list(pourer_pos)
+        new_pose[0] += forward_offset
+        self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
 
     def open_gripper(self, open_num=0.5):
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
@@ -218,43 +207,57 @@ class PouringWorld():
         #open gripper
        
         self.put_arms_in_useful_configuration(self.pr2)
-
         self.open_gripper(0.55)
         #move gripper to cup
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.035, actualPos[2]-0.02))
+        set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
+        simulate_for_duration(0.2)
+        self.base_world.drop_beads_in_cup()
         #self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force)
 
     #turn the wrist link
     def turn_cup(self, amount, duration):
         current_pos = p.getJointState(self.pr2, 50)[0]        
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=400,positionGain=0.3,velocityGain=1, targetVelocity=amount)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetVelocity=amount)
         simulate_for_duration(duration)
 
     #assumes is already grasping
     def test_grasp(self):
         diff = 0.03
-        for i in range(35):
+        for i in range(65):
             cup_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
             gripper_pos =  p.getLinkState(self.pr2, self.ee_index)[0] 
             if gripper_pos[2]-cup_pos[2] >= diff:
                 return i
             simulate_for_duration(0.15)
+            if i == 10 or i == 20:
+                self.shift_cup(desired_height=0.1)
         print("Woo hoo! got to the end!")
         return i 
      
 
 
-    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=300, offset = -0.2, height = 0.08):
+    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = -0.2, forward_offset=0, height = 0.08, vel=5):
         self.grasp_cup(close_num = close_num, close_force=close_force)
-        self.shift_cup(desired_height=height,offset=offset,  force=lift_force)
-        #self.turn_cup(0.3)
+        self.spawn_cup()
+        self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
+        self.turn_cup(vel, 7)
+
+    def spawn_cup(self):
+        self.cupStartPos = (0.05,-0.10,0.63)
+        self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
+        #pick random cup
+        self.cup_name = np.random.choice(self.cup_to_dims.keys())
+        self.cup_name = "cup_4.urdf"
+        cup_file = "urdf/cup/"+self.cup_name
+        self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.5)
+        #self.target_cup = p.loadURDF("/home/lagrassa/git/pcakages/bullet3/data/dinnerware/cup/cup_small.urdf",self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.5)
+        #p.changeDynamics(self.target_cup, -1, mass=40000)
 
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.3, close_force=300, lift_force=300)
-    print(pw.test_grasp())
+    pw.pour_pr2(close_num=0.333, close_force=290, lift_force=400, side_offset=0.1, height=0.1, forward_offset=0.1, vel=5)
     
     

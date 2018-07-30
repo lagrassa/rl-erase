@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import math
 import pdb
 import os
@@ -14,6 +13,8 @@ from collections import defaultdict, deque, namedtuple
 from itertools import product, combinations, count
 
 from transformations import quaternion_from_matrix
+from transformation_finder import apply_transformation
+from pr2_ik import arm_ik, LEFT_JOINT_LIMITS, RIGHT_JOINT_LIMITS
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))
@@ -973,15 +974,17 @@ def create_capsule(radius, height, mass=STATIC_MASS, color=(0, 0, 1, 1)):
     return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
                              baseVisualShapeIndex=visual_id, physicsClientId=CLIENT) # basePosition | baseOrientation
 
-def create_sphere(radius, mass=STATIC_MASS, color=(0, 0, 1, 1)):
-    # mass = 0  => static
-    collision_id = p.createCollisionShape(p.GEOM_SPHERE, radius=radius, physicsClientId=CLIENT)
-    if (color is None) or not has_gui():
-        visual_id = -1
+def create_sphere(radius, mass=0, color=(0,0,1,1), pos = None):
+    urdf_r = 0.01
+    scale_factor = radius/urdf_r 
+    if color == (1,0,0,1):
+        filename = 'urdf/sphere/red_sphere.urdf'
+    else: 
+        filename = 'urdf/sphere/blue_sphere.urdf'
+    if pos is None:
+        return p.loadURDF(filename, globalScaling=scale_factor)
     else:
-        visual_id = p.createVisualShape(p.GEOM_SPHERE, radius=radius, rgbaColor=color, physicsClientId=CLIENT)
-    return p.createMultiBody(baseMass=mass, baseCollisionShapeIndex=collision_id,
-                             baseVisualShapeIndex=visual_id, physicsClientId=CLIENT) # basePosition | baseOrientation
+        return p.loadURDF(filename, globalScaling=scale_factor, basePosition = pos)
 
 def create_marker(radius, mass=STATIC_MASS, color=(0, 0, 1, 1), point = (0,0,0)):
     # mass = 0  => static
@@ -1796,7 +1799,7 @@ def weaken(body):
         p.setJointMotorControl2(bodyIndex=body,jointIndex=i,controlMode=p.POSITION_CONTROL,targetPosition=0,force=0,positionGain=0.3,velocityGain=1, targetVelocity=0)
 
 
-def control_joints(body, joints, positions, heavy_joints=[], heavy_confs=[], force_scale = 300):
+def control_joints(body, joints, positions, heavy_joints=[], heavy_confs=[], force_scale = 1200):
     # TODO: the whole PR2 seems to jitter
     #kp = 1.0
     #kv = 0.3
@@ -1811,9 +1814,11 @@ def control_joints(body, joints, positions, heavy_joints=[], heavy_confs=[], for
     """
     for i in range(len(joints)):
         p.setJointMotorControl2(bodyIndex=body,jointIndex=joints[i],controlMode=p.POSITION_CONTROL,targetPosition=positions[i],force=force_scale, targetVelocity=0)
+    """
     for i in range(len(heavy_joints)):
         p.setJointMotorControl2(bodyIndex=body,jointIndex=heavy_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=heavy_confs[i],force=5000,positionGain=0.3,velocityGain=1, targetVelocity=0)
     
+    """
     simulate_for_duration(0.1)
     return 
 
@@ -1887,7 +1892,26 @@ def workspace_trajectory(robot, link, start_point, direction, quat, step_size=0.
 
 #####################################
 
-def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selected_links_input=None, max_iterations=300, tolerance=1e-3):
+def call_ik_fast(robot, target_pose, target_quat):
+    target_quat = list(target_quat)
+    # this code has quaternions in [x,y,z,w] for some reason
+    # the solver uses [w, x, y, z] like everyone else
+    target_quat = [target_quat[3]] + target_quat[:3]
+    torso_joint = joint_from_name(robot, 'torso_lift_joint')
+    torso = get_joint_position(robot, torso_joint)
+    # This is needed because the .dae file the C++ IK was generated with didn't include the force sensor extension
+    adjustment = [-0.0356, 0, 0] # add -0.0356 in whatever the orientation is
+    adjustment = apply_transformation([adjustment, [1, 0, 0, 0]], quat=target_quat)
+    adjustment = adjustment[0]
+    target_pose = apply_transformation([target_pose, target_quat], pos=adjustment)
+    target_pos = target_pose[0]
+    target_quat = target_pose[1]
+
+    # print(arm, target_pos, target_quat, torso)
+    sol = arm_ik('r', target_pos, target_quat, torso)
+    return sol
+
+def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selected_links_input=None, max_iterations=15, tolerance=1e-3):
     # TODO: fix stationary joints
     # TODO: pass in set of movable joints and take least common ancestor
     # TODO: update with most recent bullet updates
@@ -1903,6 +1927,7 @@ def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selecte
     sub_robot = clone_body(robot, links=selected_links, visual=False, collision=False) # TODO: joint limits
     ll = [get_joint_limits(sub_robot, j)[0] for j in range(p.getNumJoints(sub_robot))]
     ul = [get_joint_limits(sub_robot, j)[1] for j in range(p.getNumJoints(sub_robot))]
+    jr = np.subtract(ul, ll)
 
     (target_point, target_quat) = target_pose
     sub_movable_joints = get_movable_joints(sub_robot)
@@ -1911,9 +1936,11 @@ def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selecte
         sub_kinematic_conf = p.calculateInverseKinematics(sub_robot, selected_target_link,
                                                           target_point, target_quat,
                                                           physicsClientId=CLIENT, 
-                                                          #currentPosition = current_conf,
+                                                          #restPoses = current_conf,
+                                                          #jointRanges = jr,
                                                           residualThreshold=tolerance,
                                                           maxNumIterations=max_iterations,
+          
                                                           lowerLimits=ll, upperLimits=ul)
         """
         if (sub_kinematic_conf is None) or any(map(math.isnan, sub_kinematic_conf)):
@@ -1934,7 +1961,6 @@ def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selecte
 
     #else:
     #    remove_body(sub_robot)
-
     remove_body(sub_robot)
     
     joint_controller(robot, selected_movable_joints, sub_kinematic_conf, max_time=100)

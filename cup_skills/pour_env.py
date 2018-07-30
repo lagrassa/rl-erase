@@ -28,7 +28,7 @@ class PourEnv():
         if real_init:
             self.world = PouringWorld(visualize=visualize, real_init=real_init)
         self.world_state = self.world.world_state() 
-        self.robot_state = self.world.pourer_state()
+        self.robot_state = []# self.world.pourer_state()
         self.n = self.world_state[0].shape[1]*self.world_state[0].shape[0]
         self.counter = 0;
         self.replay_counter = 0;
@@ -43,9 +43,11 @@ class PourEnv():
         close_num = action[0]
         close_force = action[1]
         lift_force = action[2]
-        offset = action[3]
-        height = action[4]
-        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, offset=offset, height=height)
+        side_offset = action[3]
+        forward_offset = action[4]
+        height = action[5]
+        vel = action[6]
+        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, side_offset=side_offset, forward_offset=forward_offset, height=height, vel = vel)
 
     """
     does an annoying amount of functionality
@@ -141,15 +143,15 @@ class PourEnv():
         if self.world.base_world.cup_knocked_over(cup=self.world.target_cup):
             return -30
         #fun enough, world_state should now be a tuple
-        #rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
-        rew = self.world.test_grasp()
+        rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
+        #rew = self.world.test_grasp()
         
         self.counter +=1
         return rew
 
     def reset(self, new_bead_mass=None):
         self.__init__(visualize=self.visualize, real_init=False)
-        self.world.reset(new_bead_mass = new_bead_mass)
+        self.world.reset()
         return self.create_state()
         
 
