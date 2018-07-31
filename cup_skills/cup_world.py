@@ -20,8 +20,9 @@ class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 1
-        self.radius = k*0.015
+        self.num_droplets = 20
+        self.radius = k*0.005
+        self.table=table
         if real_init:
             try:
 		if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
@@ -33,7 +34,8 @@ class CupWorld():
 	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass, table=table)
         if beads:
-            self.total_bead_mass = self.num_droplets*p.getDynamicsInfo(self.droplets[0], -1)[0]#variable beads would be bad, this is faster 
+            pass
+            #self.total_bead_mass = self.num_droplets*p.getDynamicsInfo(self.droplets[0], -1)[0]#variable beads would be bad, this is faster 
         
 
     def toggle_real_time(self):
@@ -70,13 +72,15 @@ class CupWorld():
         if cup is None:
             cup = self.cupID
         aabbMin, aabbMax = p.getAABB(cup)
-        overlapping_objects = p.getOverlappingObjects(aabbMin, aabbMax)
+        overlapping_objects = [obj for obj in p.getOverlappingObjects(aabbMin, aabbMax) if obj[1] == -1]
+        #If the last coordinate is not -1, then it can't be a bead so get rid of that
+        
         if overlapping_objects is None:
             num_in = 0
         else:
             num_in = len(overlapping_objects)
-        total = 7+self.num_droplets #idk where the 11 is from, but it's always there. I'm guessing gripper, plane and cup, now it's 7
         total =  self.num_droplets
+        pdb.set_trace() 
         return num_in/total
 
     def distance_from_cup(self, otherObj, otherLinkIndex):
@@ -135,7 +139,7 @@ class CupWorld():
 
 
     def reset(self, new_bead_mass = None):
-        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass)
+        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass, table=self.table)
     
 
     def create_beads(self, color = (0,0,1,1), offset=(0,0,0)):
@@ -148,22 +152,24 @@ class CupWorld():
        upper = np.array(upper) - buffer*np.ones(len(upper))
        limits = zip(lower, upper)
        x_range, y_range = limits[:2]
-       z = upper[2] + 0.1
+       z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
+       bead_mass = 0.14
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
 	   set_point(droplet, Point(x, y, z))
+           p.changeDynamics(droplet, -1, mass=bead_mass)
 
        for i, droplet in enumerate(droplets):
 	   x, y = np.random.normal(0, 1e-3, 2)
-	   set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)+offset[2]))
+	   set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
        return droplets
-
-    def drop_beads_in_cup(self, offset=(0,0,0)):
+    def drop_beads_in_cup(self):
+        offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-	time_to_fall = k*self.num_droplets*0.03
+	time_to_fall = k*self.num_droplets*0.3
 	colors = [(0,0,1,1)]
 	for color in colors:
 	    new_drops = self.create_beads(color = color, offset=offset)
@@ -176,6 +182,7 @@ class CupWorld():
             
 	simulate_for_duration(time_to_fall, dt= 0.001)
         self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
+        self.custom_save_beads()
 
 
     def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
@@ -194,7 +201,8 @@ class CupWorld():
 		blacken(self.planeId)
             if table:
                 self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
-                p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
+                #p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
+                self.cupStartPos = (-0.04,-0.10, 0.708)
                 self.cupStartPos = (-0.04,-0.10, 0.708)
             else:
 	        self.cupStartPos = (0,0,0)
@@ -208,9 +216,7 @@ class CupWorld():
             p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
                 if new_world:
-	            self.drop_beads_in_cup(offset=cup_offset)
                     self.bullet_id = p.saveState()
-                    self.custom_save_beads()
                 else:
                     self.custom_restore_beads()
                 if new_bead_mass is not None:
