@@ -80,7 +80,6 @@ class CupWorld():
         else:
             num_in = len(overlapping_objects)
         total =  self.num_droplets
-        pdb.set_trace() 
         return num_in/total
 
     def distance_from_cup(self, otherObj, otherLinkIndex):
