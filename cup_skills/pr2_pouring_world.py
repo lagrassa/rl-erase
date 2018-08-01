@@ -202,20 +202,43 @@ class PouringWorld():
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=58,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=60,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         simulate_for_duration(0.5)
-
-    def grasp_cup(self, close_num=0.35, close_force = 300 ):
+    #grasp_depth = how far into the cup to go based on the gripper location, positive is past the cup
+#grasp_height = how high above table to grasp
+    def grasp_cup(self, close_num=0.35, close_force = 300 , teleport=False, grasp_height=0.1, grasp_depth=0.05):
         #grasp the cup in base world
         #open gripper
        
         self.put_arms_in_useful_configuration(self.pr2)
         self.open_gripper(0.55)
         #move gripper to cup
+        set_point(2L, (-0.17,0,0.6544))
+        pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
+        if teleport:
+            set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
+        else:
+            grasp_point = self.point_past_gripper(grasp_height, grasp_depth)
+            start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
+            self.move_ee_to_point(grasp_point, start_orn, timeout=10, threshold=0.02)
+            
+            
         simulate_for_duration(0.2)
         self.base_world.drop_beads_in_cup()
         #self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force)
+
+    def point_past_gripper(self, grasp_height, grasp_depth):
+        pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
+        actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
+	grasp_height_world =  pourer_pos[2]+ grasp_height
+	#direction of 
+	dx = actualPos[1]-pourer_pos[1]
+	dy = actualPos[0]-pourer_pos[0]
+	theta = np.arctan2(dy, dx) 
+	far_point = (pourer_pos[0]-grasp_depth*np.sin(theta), pourer_pos[1]-grasp_depth*np.cos(theta), grasp_height_world)
+	create_marker(0.01, color=(1,0,1,0.6), point=far_point)
+        return far_point
+        
 
     #turn the wrist link
     def turn_cup(self, amount, duration):
@@ -239,9 +262,9 @@ class PouringWorld():
      
 
 
-    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = -0.2, forward_offset=0, height = 0.08, vel=5):
+    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = -0.2, forward_offset=0, height = 0.08, vel=5, grasp_height=0.1, grasp_depth=0.04):
         #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_pr2_demo.mp4")
-        self.grasp_cup(close_num = close_num, close_force=close_force)
+        self.grasp_cup(close_num = close_num, close_force=close_force, grasp_height=grasp_height, grasp_depth=grasp_depth)
         self.spawn_cup()
         self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
         self.turn_cup(vel, 3)
@@ -261,6 +284,6 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.333, close_force=600, lift_force=400, side_offset=0.05, height=0.1, forward_offset=0.35, vel=9)
+    pw.pour_pr2(close_num=0.333, close_force=600, lift_force=400, side_offset=0.05, height=0.1, forward_offset=0.35, vel=9, grasp_height=0.02, grasp_depth=0.05)
     
     
