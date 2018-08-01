@@ -153,7 +153,7 @@ class CupWorld():
        x_range, y_range = limits[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 0.14
+       bead_mass = 2.2# 0.75
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
@@ -227,7 +227,7 @@ class CupWorld():
         else:
             self.real_init = True
             p.resetSimulation()
-            self.setup(new_bead_mass=new_bead_mass)
+            self.setup(new_bead_mass=new_bead_mass, table = self.table)
     def cup_knocked_over(self, cup=None):
         if cup is None:
             cup = self.cupID

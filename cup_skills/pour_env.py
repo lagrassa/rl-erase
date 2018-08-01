@@ -10,6 +10,7 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 #RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
+GRASP_ONLY = True
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
@@ -42,12 +43,16 @@ class PourEnv():
     def progress_state(self, action=300):
         close_num = action[0]
         close_force = action[1]
-        lift_force = action[2]
-        side_offset = action[3]
-        forward_offset = action[4]
-        height = action[5]
-        vel = action[6]
-        self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, side_offset=side_offset, forward_offset=forward_offset, height=height, vel = vel)
+        if GRASP_ONLY:
+            self.world.grasp_cup(close_num=close_num, close_force=close_force)
+        else:
+            lift_force = action[2]
+	    side_offset = action[3]
+	    forward_offset = action[4]
+	    height = action[5]
+	    vel = action[6]
+        
+            self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, side_offset=side_offset, forward_offset=forward_offset, height=height, vel = vel)
 
     """
     does an annoying amount of functionality
@@ -140,11 +145,15 @@ class PourEnv():
        
 
     def _get_reward(self):
-        if self.world.base_world.cup_knocked_over(cup=self.world.target_cup):
-            return -30
         #fun enough, world_state should now be a tuple
-        rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
-        #rew = self.world.test_grasp()
+        if not GRASP_ONLY:
+            rew =  reward_func(None, self.world.base_world.ratio_beads_in(cup=self.world.target_cup))
+        else:
+            self.world.spawn_cup()
+            rew = self.world.test_grasp()
+
+        if self.world.base_world.cup_knocked_over(cup=self.world.target_cup): #this has to be after the cup is spawned
+            return -30
         
         self.counter +=1
         return rew
