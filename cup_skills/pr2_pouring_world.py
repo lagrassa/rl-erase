@@ -34,6 +34,7 @@ class PouringWorld():
         self.torso_joint =  15
         self.torso_height = k*0.3
         self.ee_index = 54#  60
+        self.target_cup = None
         if real_init:
             self.setup()
         else:
@@ -81,7 +82,7 @@ class PouringWorld():
         left_root = 42
         right_root = 65
         height_stable  = self.torso_height
-        create_marker(0.01, point=pos, color=(1,1,0,0.8))
+        #create_marker(0.01, point=pos, color=(1,1,0,0.8))
         conf, joints = sub_inverse_kinematics(self.pr2, left_root, self.ee_index, (pos, orn))
         arm_joint_names = ['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint',
                         'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
@@ -223,13 +224,13 @@ class PouringWorld():
 
     #assumes is already grasping
     def test_grasp(self):
-        diff = 0.03
+        diff = 0.05
         for i in range(65):
             cup_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
             gripper_pos =  p.getLinkState(self.pr2, self.ee_index)[0] 
             if gripper_pos[2]-cup_pos[2] >= diff:
                 return i
-            simulate_for_duration(0.15)
+            simulate_for_duration(0.08)
             if i == 10 or i == 20:
                 self.shift_cup(desired_height=0.1)
         print("Woo hoo! got to the end!")
@@ -238,10 +239,12 @@ class PouringWorld():
 
 
     def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = -0.2, forward_offset=0, height = 0.08, vel=5):
+        #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_pr2_demo.mp4")
         self.grasp_cup(close_num = close_num, close_force=close_force)
         self.spawn_cup()
         self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
-        self.turn_cup(vel, 7)
+        self.turn_cup(vel, 3)
+        simulate_for_duration(3.0)
 
     def spawn_cup(self):
         self.cupStartPos = (0.05,-0.10,0.63)
@@ -257,6 +260,6 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.333, close_force=290, lift_force=400, side_offset=0.1, height=0.1, forward_offset=0.1, vel=5)
+    pw.pour_pr2(close_num=0.333, close_force=600, lift_force=400, side_offset=0.05, height=0.1, forward_offset=0.35, vel=9)
     
     
