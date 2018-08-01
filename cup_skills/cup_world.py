@@ -153,7 +153,7 @@ class CupWorld():
        x_range, y_range = limits[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 2.2# 0.75
+       bead_mass = 3.2# 0.75
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
