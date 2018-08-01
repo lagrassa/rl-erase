@@ -8,7 +8,7 @@ from pr2_utils import TOP_HOLDING_LEFT_ARM, \
 
 
 import reward
-from utils import set_point, create_marker, call_ik_fast, joint_from_name
+from utils import set_point, create_marker,  joint_from_name
 from utils import set_base_values, set_point, joint_from_name, set_joint_position, simulate_for_duration, \
     set_joint_positions, add_data_path, connect, plan_base_motion, plan_joint_motion, enable_gravity, input, \
     joint_controller, joint_controller_hold, dump_world, get_link_name, wait_for_interrupt, \
@@ -82,7 +82,6 @@ class PouringWorld():
         right_root = 65
         height_stable  = self.torso_height
         create_marker(0.01, point=pos, color=(1,1,0,0.8))
-        ik_fast_sol = call_ik_fast(self.pr2, pos, orn)
         conf, joints = sub_inverse_kinematics(self.pr2, left_root, self.ee_index, (pos, orn))
         arm_joint_names = ['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint',
                         'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
