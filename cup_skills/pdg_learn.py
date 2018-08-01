@@ -74,7 +74,10 @@ class Learner:
             samples = action_set
  
         scores, stdevs = self.gp.predict(samples, return_std = True)
-        scores += l*stdevs
+        if len(scores.shape) > 1:
+            scores += l*stdevs.reshape(stdevs.shape[0], 1)
+        else:
+            scores += l*stdevs
         best_score_i = np.argmax(scores)
         best_action = action_set[best_score_i, :]
         return best_action, scores[best_score_i]
@@ -186,7 +189,7 @@ class Learner:
             if random() < self.eps_greedy:
                 big_sigma = 2
             else:
-                self.action_mean, score = self.select_best_action(self.action_mean, obs)
+                self.action_mean, _ = self.select_best_action(self.action_mean, obs)
 
             rewards_up = self.collect_batch(self.action_mean, avg_l_fn, avg_r_fn) #collect batch using this policy
             print("rewards", rewards_up)
@@ -202,7 +205,7 @@ class Learner:
             min_samples = 1
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
-                #self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
+                self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
 		average_length_file = open(avg_l_fn,"a")
 		average_length_file.write(str(score)+",")
 		average_length_file.close()
@@ -293,7 +296,7 @@ def fit_and_evaluate(gp, actions, rewards):
 def custom_score(gp, actions, rewards):
     predictions = gp.predict(actions)
     squared_differences = (predictions-rewards.reshape(predictions.shape))**2
-    return sum(squared_differences)**0.5/squared_differences.shape[0]
+    return sum(squared_differences)/squared_differences.shape[0]
     
 
 
