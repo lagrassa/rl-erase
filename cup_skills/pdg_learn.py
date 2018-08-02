@@ -169,15 +169,14 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn, exp_name="EXP"):
-        numsteps = 300
+        numsteps = 3
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
         lr = 0.05
         eps = 1e-8
         gti = np.zeros((self.nb_actions,1))
-        samples = None #np.load("dataset/samples.npy")
-        rewards = None #np.load("dataset/rewards.npy")
+        samples, rewards= load_datasets(exp_name)#np.load("dataset/samples.npy")
         #self.model.load_weights("1fca5a_100weights.h5f") #uncomment if you want to start from scratch
         for i in range(numsteps):
             print("on step", i)
@@ -310,7 +309,29 @@ def fit_and_evaluate_nn(nn, samples, rewards):
     score = nn.evaluate(samples, rewards)
     nn.fit(samples, rewards, epochs = 100, batch_size = int(samples.shape[0]/5.0))
     return score 
-        
+#samples, rewards returned if there are some, None if there are none with that name
+def load_datasets(exp_name):
+    files = os.listdir('dataset')
+    filenames = []
+    samples = None
+    rewards = None
+    for f in files:
+        if exp_name in f and "rewards" in f:
+            filenames.append(f)      
+    for fname in filenames:
+        root = fname[len("rewards"):]
+        samples_set = np.load("dataset/"+"samples"+root)
+        rewards_set = np.load("dataset/"+"rewards"+root)
+        if samples is None:
+            samples = samples_set 
+            rewards = rewards_set
+        else:
+            samples = np.vstack([samples, samples_set])
+            rewards = np.vstack([rewards, rewards_set])
+    if samples is None:
+        print("Warning: did not find any datasets with the experiment name, resorting to training from scratch")
+    return samples, rewards
+
 def main():
      nb_actions = 8; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
