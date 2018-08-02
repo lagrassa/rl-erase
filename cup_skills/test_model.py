@@ -5,6 +5,7 @@ from sklearn.gaussian_process import GaussianProcess
 import numpy as np
 import pdb
 from mpl_toolkits.mplot3d import Axes3D
+from pdg_learn import load_datasets
 import matplotlib.pyplot as plt
 plt.rcParams['font.size'] = 18
 from keras.models import Sequential
@@ -14,17 +15,8 @@ from keras import regularizers
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQuadratic, ExpSineSquared, Matern, WhiteKernel
 
-#kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-3, 1e3))
-kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
 
-gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=8, alpha=10)
 #gp = GaussianProcess(theta0=0.1, nugget = 0.1) this works pretty well
-
-nn = Sequential()
-nn.add(Dense(2, input_dim=2, activation="linear"))
-nn.add(Dense(1, activation="linear"))
-opt = Adam(lr=0.01)
-nn.compile(loss="mse", optimizer=opt)
 
 def num_params_v_fit():
     lls = []
@@ -37,31 +29,49 @@ def num_params_v_fit():
         fit, ll = fit_and_test_n_dim(samples, rewards, i)
         lls.append(ll)
         fits.append(fit)
+    plot_fit_and_ll(x, fits, lls)
+
+def plot_fit_and_ll(x, fits, lls):
     plt.title("Log marginal likelihood over number of parameters")
     plt.xlabel("Number of parameters")
     plt.ylabel("Log likelihood")
-    plt.plot(x, lls)
+    plt.scatter(x, lls)
     plt.show()
     
     plt.title("Mean squared error over number of parameters")
     plt.xlabel("Number of parameters")
     plt.ylabel("MSE")
-    plt.plot(x,fits)
+    plt.scatter(x,fits)
     plt.show()
         
         
     
-def fit_and_test_n_dim(samples, rewards, n):
-    gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))+WhiteKernel(5.0)
-    gp = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=0.1)
-    num_training = 100
+def fit_and_test_n_dim(samples, rewards, n, alpha=0.1, length_scale=0.1, use_nn = False):
+    if use_nn:
+	nn = Sequential()
+	nn.add(Dense(32, input_shape=(8,), activation="relu"))
+	nn.add(Dense(64,  activation="relu"))
+	nn.add(Dense(1, activation="sigmoid"))
+	opt = Adam(lr=0.01)
+	nn.compile(loss="mse", optimizer=opt)
+    else:
+	gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(length_scale, (1e-2, 1e2))
+	gp = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=alpha)
+    num_training = 1800
     relevant_samples_training = samples[:num_training,:n ]
     relevant_rewards_training = rewards[:num_training]
     relevant_samples_test = samples[num_training:,:n ]
     relevant_rewards_test = rewards[num_training:]
-    gp.fit(relevant_samples_training, relevant_rewards_training)
-    ll = gp.log_marginal_likelihood()
-    predictions = gp.predict(relevant_samples_test)    
+    if use_nn:
+        nn.fit(relevant_samples_training, relevant_rewards_training, epochs=3800, batch_size=50)
+        ll = 0 
+        predictions = nn.predict_on_batch(relevant_samples_test)
+    else:
+        print("before fitting")
+	gp.fit(relevant_samples_training, relevant_rewards_training)
+        print("after fitting")
+	ll = gp.log_marginal_likelihood()
+	predictions = gp.predict(relevant_samples_test)    
     se = (predictions-relevant_rewards_test)**2
     mse = np.mean(se)
     return mse, ll
@@ -113,18 +123,6 @@ def fit_and_test_two_dim(var):
  
 
 
-samples = np.load("dataset/samples_1_two_params.npy")
-rewards = np.load("dataset/rewards_1_two_params.npy")
-#samples = np.load("dataset/samples_1_two_spread_params.npy")
-#rewards = np.load("dataset/rewards_1_two_spread_params.npy")
-
-samples_test = np.load("dataset/samples_1_two_big_test.npy")
-rewards_test = np.load("dataset/rewards_1_two_big_test.npy")
-samples_test = np.load("dataset/samples_1_test.npy")[:,:-2]
-rewards_test = np.load("dataset/rewards_1_test.npy")
-gp.fit(samples, rewards)
-#nn.fit(samples, rewards, epochs =3, batch_size = 20)
-#print("Log likelihood", gp.log_marginal_likelihood())
 
 def plot_samples_and_rewards(samples, rewards):
     fig = plt.figure()
@@ -149,7 +147,7 @@ def plot_samples_and_rewards(samples, rewards):
     ax.set_ylabel('velocity')
     ax.set_zlabel('reward')
 
-def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=gp, column_index=0, label=""):
+def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=None, column_index=0, label=""):
     prediction_points = np.array([pt[0] for pt in predictions[0]])
     stds = np.array([pt for pt in predictions[1]])
     fig = plt.figure()
@@ -171,7 +169,7 @@ def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=gp, column_ind
     ax.set_zlabel('Reward')
     plt.show()
 
-def plot_samples_and_rewards_1D(samples, rewards, predictions, gp=gp, column_index=0, label=""):
+def plot_samples_and_rewards_1D(samples, rewards, predictions, gp=None, column_index=0, label=""):
     offset_samples = samples[:]
     prediction_points = np.array([pt[0] for pt in predictions[0]])
     stds = np.array([pt for pt in predictions[1]])
@@ -300,7 +298,28 @@ plt.show()
 #Needs to be vel, total, offset, or height
 #for name in ["offset", "height", "total", "vel"]:
 #    fit_and_test_one_dim(name)
+def hyperparam_opt():
+    samples, rewards = load_datasets("gp_learn_pour_and_grasp")
+    lls, fits = [], []
+    alphs = np.linspace(0, 10, 50)
+    for alp in alphs:
+	fit, ll = fit_and_test_n_dim(samples, rewards, 8, alpha=1, length_scale= alp)
+	fits.append(fit)
+	lls.append(ll)
 
-       
-num_params_v_fit()
+def clean_rewards(rewards):
+    cleaned_rewards = np.zeros(rewards.shape)
+    for i in range(rewards.shape[0]):
+        if rewards[i] == -30:
+            cleaned_rewards[i] = 0
+        else:
+            cleaned_rewards[i] = rewards[i]
+    return cleaned_rewards
+samples, rewards = load_datasets("gp_learn_pour_and_grasp")
+rewards = clean_rewards(rewards)
+fit, ll = fit_and_test_n_dim(samples, rewards, 8,use_nn =False)
+print("Fit", fit)
+    
+    
+    
 
