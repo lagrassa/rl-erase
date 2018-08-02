@@ -62,7 +62,7 @@ class Learner:
         N = 700
         c = 2
         end_sigma=0.01
-        l = 0.5
+        l = 0.01
         k = -np.log(end_sigma/c)*(1/N) 
         action_set = uniform_random_sample(N)
         if len(obs) > 1:
@@ -169,7 +169,7 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 5000
+        numsteps = 5
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -201,7 +201,10 @@ class Learner:
             else:
                 rewards = np.vstack([rewards, rewards_up])
                 sample = np.hstack([self.action_mean, obs])
-                samples = np.vstack([samples,sample])
+                try:
+                    samples = np.vstack([samples,sample])
+                except:
+                    pdb.set_trace()
 
             min_samples = 1
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
