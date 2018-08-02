@@ -168,8 +168,8 @@ class Learner:
         return rewards
             
 
-    def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 5000
+    def train(self, delta, avg_l_fn,avg_r_fn, exp_name="EXP"):
+        numsteps = 300
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -203,7 +203,7 @@ class Learner:
                 sample = np.hstack([self.action_mean, obs])
                 samples = np.vstack([samples,sample])
 
-            min_samples = 1
+            min_samples = 40
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
                 self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
@@ -215,8 +215,8 @@ class Learner:
                 print("Params:", self.action_mean)
 
         print("Ending params: ", self.action_mean)
-        np.save("dataset/samples.npy",samples)
-        np.save("dataset/rewards.npy",rewards)
+        np.save("dataset/samples"+exp_name+".npy",samples)
+        np.save("dataset/rewards"+exp_name+".npy",rewards)
 
     def test_model(self,filename):
         #do 10 rollouts, 
@@ -327,7 +327,7 @@ def main():
              os.remove(myfile)
 
      #l.plot_param_v_reward()
-     l.train(delta, avg_l_fn, avg_r_fn)
+     l.train(delta, avg_l_fn, avg_r_fn, exp_name=EXP_NAME)
 
 if __name__=="__main__":
      main()
