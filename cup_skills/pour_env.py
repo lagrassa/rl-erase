@@ -10,7 +10,7 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 #RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
-GRASP_ONLY = True
+GRASP_ONLY = False
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
@@ -47,12 +47,12 @@ class PourEnv():
             self.world.grasp_cup(close_num=close_num, close_force=close_force)
         else:
             lift_force = action[2]
-	    side_offset = action[3]
-	    forward_offset = action[4]
-	    height = action[5]
-	    vel = action[6]
-        
-            self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, side_offset=side_offset, forward_offset=forward_offset, height=height, vel = vel)
+	    forward_offset = action[3]
+	    height = action[4]
+	    vel = action[5]
+	    grasp_height = action[6]
+	    grasp_depth = action[7]
+            self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, forward_offset=forward_offset, height=height, vel = vel, grasp_height=grasp_height, grasp_depth = grasp_depth)
 
     """
     does an annoying amount of functionality

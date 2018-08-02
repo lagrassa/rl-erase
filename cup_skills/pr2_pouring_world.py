@@ -58,8 +58,9 @@ class PouringWorld():
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         diff = np.array(actualPos)-pos
         num_attempts = 0
+        create_marker(0.005, point=pos)
         while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
-            self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain, teleport=teleport)
+            self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain, teleport=teleport, force=force)
             actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
             diff = np.array(actualPos)-pos
             num_attempts += 1
@@ -101,7 +102,7 @@ class PouringWorld():
 	if not teleport:
 	    #remove finger joints
 	    for i in range(len(moving_joints)):
-		p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=300, targetVelocity=0)
+		p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=force, targetVelocity=0)
 	    simulate_for_duration(1.0)
 	    """
 	    jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs, force=force)
@@ -171,6 +172,7 @@ class PouringWorld():
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         new_pose = list(pourer_pos)
         new_pose[0] += forward_offset
+        new_pose[2] += desired_height
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
 
     def open_gripper(self, open_num=0.5):
@@ -201,25 +203,48 @@ class PouringWorld():
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=58,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=60,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         simulate_for_duration(0.5)
-
-    def grasp_cup(self, close_num=0.35, close_force = 300 ):
+    #grasp_depth = how far into the cup to go based on the gripper location, positive is past the cup
+#grasp_height = how high above table to grasp
+    def grasp_cup(self, close_num=0.35, close_force = 300 , teleport=False, grasp_height=0.1, grasp_depth=0.05, lift_force=1000):
         #grasp the cup in base world
         #open gripper
        
         self.put_arms_in_useful_configuration(self.pr2)
         self.open_gripper(0.55)
         #move gripper to cup
+        set_point(2L, (-0.17,0,0.6544))
+        pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
-        set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
+        if teleport:
+            set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
+        else:
+            grasp_point = self.point_past_gripper(grasp_height, grasp_depth)
+            start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
+            self.move_ee_to_point(grasp_point, start_orn, timeout=10, threshold=0.02, force=lift_force)
+            
+            
         simulate_for_duration(0.2)
         self.base_world.drop_beads_in_cup()
         #self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force)
 
+    def point_past_gripper(self, grasp_height, grasp_depth):
+        pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
+        actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
+	grasp_height_world =  pourer_pos[2]+ grasp_height
+	#direction of 
+	dx = actualPos[1]-pourer_pos[1]
+	dy = actualPos[0]-pourer_pos[0]
+	theta = np.arctan2(dy, dx) 
+	far_point = (pourer_pos[0]-grasp_depth*np.sin(theta), pourer_pos[1]-grasp_depth*np.cos(theta), grasp_height_world)
+	create_marker(0.01, color=(1,0,1,0.6), point=far_point)
+        return far_point
+        
+
     #turn the wrist link
     def turn_cup(self, amount, duration):
         current_pos = p.getJointState(self.pr2, 50)[0]        
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetVelocity=amount)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetVelocity=-1*amount)
         simulate_for_duration(duration)
 
     #assumes is already grasping
@@ -238,16 +263,17 @@ class PouringWorld():
      
 
 
-    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = -0.2, forward_offset=0, height = 0.08, vel=5):
+    def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = 0, forward_offset=0, height = 0.08, vel=5, grasp_height=0.1, grasp_depth=0.04):
         #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_pr2_demo.mp4")
-        self.grasp_cup(close_num = close_num, close_force=close_force)
+        self.grasp_cup(close_num = close_num, close_force=close_force, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
         self.spawn_cup()
         self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
-        self.turn_cup(vel, 3)
+        self.turn_cup(vel, 2)
         simulate_for_duration(3.0)
 
     def spawn_cup(self):
-        self.cupStartPos = (0.05,-0.10,0.63)
+        #self.cupStartPos = (0.05,-0.10,0.63)
+        self.cupStartPos = (-0.3,0,0.63)
         self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
         #pick random cup
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
@@ -260,6 +286,6 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.333, close_force=600, lift_force=400, side_offset=0.05, height=0.1, forward_offset=0.35, vel=9)
+    pw.pour_pr2(close_num=0.333, close_force=400, lift_force=350, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.02, grasp_depth=0.05)
     
     

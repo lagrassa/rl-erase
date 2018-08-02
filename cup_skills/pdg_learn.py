@@ -27,7 +27,8 @@ class Learner:
         self.good_reward = 50
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
-        self.action_mean = [0.3, 300] #, 300, 0, 0,0.07, 4.5]
+        self.action_mean = [0.3, 300, 300, -0.1,0.07, 2.5, 0.03, 0.05]
+
 
         self.rollout_size = 1
         kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
@@ -168,7 +169,7 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn):
-        numsteps = 200
+        numsteps = 5000
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -276,8 +277,9 @@ def parse_args(args):
     return delta, name, visualize
 
 def uniform_random_sample(n=1):
-    lower = [0.1,90] #, 150, -0.2, -0.1, 0.01, 0.3]
-    upper = [0.40,900] #, 600, 0.2, 0.1, 0.1, 9]
+    #close_num, close_force, lift_force, forward_offset, height, vel, grasp_height, grasp_depth
+    lower = [0.1,90, 150, -0.3, 0, 0.1, 0, 0]
+    upper = [0.40,900, 900, 0, 0.13, 4, 0.09, 0.08]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]
@@ -310,7 +312,7 @@ def fit_and_evaluate_nn(nn, samples, rewards):
     return score 
         
 def main():
-     nb_actions = 5; 
+     nb_actions = 8; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
      state_length = 0# env.observe_state().shape[0]
