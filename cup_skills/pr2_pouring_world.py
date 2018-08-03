@@ -58,7 +58,7 @@ class PouringWorld():
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
         diff = np.array(actualPos)-pos
         num_attempts = 0
-        create_marker(0.005, point=pos)
+        create_marker(0.003, point=pos, color=(1,1,0,0.5))
         while(np.linalg.norm(diff) >= threshold and num_attempts <= timeout):
             self._move_arm_closer_to_point(pos, orn=orn, damper=damper, posGain=posGain, velGain=velGain, teleport=teleport, force=force)
             actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
@@ -170,9 +170,10 @@ class PouringWorld():
         #always up after
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
+        gripper_pose, gripper_orn =  p.getLinkState(self.pr2, self.ee_index)[0:2]
         new_pose = list(pourer_pos)
         new_pose[0] += forward_offset
-        new_pose[2] += desired_height
+        new_pose[2] =gripper_pose[2]
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
 
     def open_gripper(self, open_num=0.5):
@@ -212,9 +213,9 @@ class PouringWorld():
         self.put_arms_in_useful_configuration(self.pr2)
         self.open_gripper(0.55)
         #move gripper to cup
-        set_point(2L, (-0.17,0,0.6544))
         pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
+        self.base_world.drop_beads_in_cup()
         if teleport:
             set_point(self.base_world.cupID, (actualPos[0]-0.01, actualPos[1]-0.02, actualPos[2]-0.04))
         else:
@@ -224,7 +225,6 @@ class PouringWorld():
             
             
         simulate_for_duration(0.2)
-        self.base_world.drop_beads_in_cup()
         #self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force)
 
@@ -237,7 +237,7 @@ class PouringWorld():
 	dy = actualPos[0]-pourer_pos[0]
 	theta = np.arctan2(dy, dx) 
 	far_point = (pourer_pos[0]-grasp_depth*np.sin(theta), pourer_pos[1]-grasp_depth*np.cos(theta), grasp_height_world)
-	create_marker(0.01, color=(1,0,1,0.6), point=far_point)
+	create_marker(0.01, color=(1,0,1,0.9), point=far_point)
         return far_point
         
 
@@ -267,6 +267,7 @@ class PouringWorld():
         #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_pr2_demo.mp4")
         self.grasp_cup(close_num = close_num, close_force=close_force, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
         self.spawn_cup()
+        pdb.set_trace()
         self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
         self.turn_cup(vel, 2)
         simulate_for_duration(3.0)
@@ -286,6 +287,6 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.333, close_force=400, lift_force=350, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.02, grasp_depth=0.05)
+    pw.pour_pr2(close_num=0.333, close_force=400, lift_force=350, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
     
     

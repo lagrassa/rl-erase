@@ -10,7 +10,7 @@ actions = [[6,0],[0,6],[-6,0],[0,-6]]
 #RENDER =False 
 
 MAX_AIMLESS_WANDERING = 100
-GRASP_ONLY = False
+GRASP_ONLY = True
 P_REPLAY = 0.0000 #with this probability, go back to a state you've done before, and just do that again until self.replay counter
 #overflows
 LENGTH_REPLAY = 15
@@ -38,21 +38,20 @@ class PourEnv():
         self.saved_robot_state = []
         self.saved_world_state = []
 
-        
-
     def progress_state(self, action=300):
         close_num = action[0]
         close_force = action[1]
+        lift_force = action[2]
+	grasp_height = action[3]
+	grasp_depth = action[4]
         if GRASP_ONLY:
-            self.world.grasp_cup(close_num=close_num, close_force=close_force)
+            self.world.grasp_cup(close_num=close_num, close_force = close_force, teleport=False, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
         else:
-            lift_force = action[2]
-	    forward_offset = action[3]
-	    height = action[4]
-	    vel = action[5]
-	    grasp_height = action[6]
-	    grasp_depth = action[7]
+	    forward_offset = action[5]
+	    height = action[6]
+	    vel = action[7]
             self.world.pour_pr2(close_num=close_num, close_force=close_force, lift_force=lift_force, forward_offset=forward_offset, height=height, vel = vel, grasp_height=grasp_height, grasp_depth = grasp_depth)
+
 
     """
     does an annoying amount of functionality
@@ -151,9 +150,6 @@ class PourEnv():
         else:
             self.world.spawn_cup()
             rew = self.world.test_grasp()
-
-        if self.world.base_world.cup_knocked_over(cup=self.world.target_cup): #this has to be after the cup is spawned
-            return -30
         
         self.counter +=1
         return rew

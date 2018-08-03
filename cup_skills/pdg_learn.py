@@ -27,7 +27,7 @@ class Learner:
         self.good_reward = 50
         self.bad_reward = 35
         self.exceptional_actions = [(-0.08, 0.6, 0.9, 1500), (-0.11, 0.3, 1.3, 1505)] # initialize these with 2-3 good parameters sets, preferably diverse. 
-        self.action_mean = [0.3, 300, 300, -0.1,0.07, 2.5, 0.03, 0.05]
+        self.action_mean = [0.3, 400, 350, 0.04, 0.07]
 
 
         self.rollout_size = 1
@@ -62,7 +62,7 @@ class Learner:
         N = 700
         c = 2
         end_sigma=0.01
-        l = 0.01
+        l = 1
         k = -np.log(end_sigma/c)*(1/N) 
         action_set = uniform_random_sample(N)
         if len(obs) > 1:
@@ -169,7 +169,7 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn, exp_name="EXP"):
-        numsteps = 300
+        numsteps = 50
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -280,8 +280,8 @@ def parse_args(args):
 
 def uniform_random_sample(n=1):
     #close_num, close_force, lift_force, forward_offset, height, vel, grasp_height, grasp_depth
-    lower = [0.1,90, 150, -0.3, 0, 0.1, 0, 0]
-    upper = [0.40,900, 900, 0, 0.13, 4, 0.09, 0.08]
+    lower = [0.29,90, 150, 0, 0]
+    upper = [0.40,900, 900, 0.07, 0.07]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]

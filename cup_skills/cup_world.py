@@ -153,7 +153,7 @@ class CupWorld():
        x_range, y_range = limits[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 3.2# 0.75
+       bead_mass = 1.5# 0.75
        for droplet in droplets:
 	   x = np.random.uniform(*x_range)
 	   y = np.random.uniform(*y_range)
@@ -168,7 +168,7 @@ class CupWorld():
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-	time_to_fall = k*self.num_droplets*0.3
+	time_to_fall = k*self.num_droplets*0.1
 	colors = [(0,0,1,1)]
 	for color in colors:
 	    new_drops = self.create_beads(color = color, offset=offset)
@@ -202,7 +202,7 @@ class CupWorld():
                 self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
                 #p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
                 self.cupStartPos = (-0.04,-0.10, 0.708)
-                self.cupStartPos = (-0.04,-0.10, 0.708)
+                self.cupStartPos = (-0.17,0,0.6544)
             else:
 	        self.cupStartPos = (0,0,0)
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
