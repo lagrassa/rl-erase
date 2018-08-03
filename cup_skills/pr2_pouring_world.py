@@ -48,11 +48,25 @@ class PouringWorld():
 
         self.pr2 = p.loadURDF("urdf/pr2_description/pr2.urdf", pr2_start_pose, pr2_start_orientation, useFixedBase=True, globalScaling = k )
         self.movable_joints = get_movable_joints(self.pr2)
+	self.gripper_joints = (57, 59, 58, 60)
+        for joint in self.gripper_joints:
+            p.enableJointForceTorqueSensor(self.pr2, joint, enableSensor=1)
 
         self.bullet_id = p.saveState()
         
     def observe_cup(self):
         return [] #np.array(self.cup_to_dims[self.cup_name])
+
+    def gripper_forces(self):
+        #magnitude of gripper forces
+        all_forces = []
+        for gripper in self.gripper_joints:
+            forces = p.getJointState(self.pr2, gripper)[2]
+            assert(len(forces)== 6)
+            mag = np.linalg.norm(forces)
+            all_forces.append(mag)
+            #can average force of all the grippers
+        return np.mean(all_forces)
 
     def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 5, force=300, teleport=False):
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
@@ -90,6 +104,7 @@ class PouringWorld():
         arm_joints = [joint_from_name(self.pr2, name) for name in arm_joint_names]
          
 	gripper_joints = (57, 59, 58, 60)
+
 	moving_joints = []
 	moving_confs = []
         for i in range(len(joints)):
@@ -206,7 +221,7 @@ class PouringWorld():
         simulate_for_duration(0.5)
     #grasp_depth = how far into the cup to go based on the gripper location, positive is past the cup
 #grasp_height = how high above table to grasp
-    def grasp_cup(self, close_num=0.35, close_force = 300 , teleport=False, grasp_height=0.1, grasp_depth=0.05, lift_force=1000):
+    def grasp_cup(self, close_num=0.35, close_force = 300 , teleport=False, grasp_height=0.1, grasp_depth=0.05, lift_force=1000, finger_close_num=0.5):
         #grasp the cup in base world
         #open gripper
        
@@ -221,12 +236,16 @@ class PouringWorld():
         else:
             grasp_point = self.point_past_gripper(grasp_height, grasp_depth)
             start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
-            self.move_ee_to_point(grasp_point, start_orn, timeout=10, threshold=0.02, force=lift_force)
+            self.move_ee_to_point(grasp_point, start_orn, timeout=10, threshold=0.01, force=lift_force)
             
             
         simulate_for_duration(0.2)
         #self.move_gripper_to_cup(self.base_world.cupID)
-        self.close_gripper(close_num=close_num, force=close_force)
+        self.close_gripper(close_num=close_num, force=close_force, finger_close_num=finger_close_num)
+        print(self.gripper_forces())
+        pdb.set_trace() 
+ 
+         
 
     def point_past_gripper(self, grasp_height, grasp_depth):
         pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
@@ -287,6 +306,9 @@ class PouringWorld():
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
-    pw.pour_pr2(close_num=0.333, close_force=400, lift_force=350, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
+    #pw.pour_pr2(close_num=0.333, close_force=663, lift_force=328, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
+    pw.grasp_cup(close_num=0.28, close_force=700, lift_force=328, grasp_height=0.03, grasp_depth=0.06, finger_close_num=0.5)
+    pw.spawn_cup()
+    pw.test_grasp()
     
     
