@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+import pdb
 import numpy as np
 from geometry_msgs.msg import Point
 from gdm_arm_controller.uber_controller import UberController
@@ -16,6 +17,7 @@ away_joint_angles =[-0.05432422644661594, 0.030680913165869468, -2.1242569028018
 
 class Robot:
     def __init__(self):
+        print("robot init")
         self.arm = 'r'
         self.pourer_pos = (0.5, -0.01, 0.7595)
         self.go_to_start()
@@ -53,7 +55,7 @@ class Robot:
         return far_point
 
     def update_pourer_pos(self, data):
-        self.pourer_pos = None #TODO update based on data
+        self.pourer_pos = self.pourer_pos #TODO update based on data
  
     def grasp_cup(self):
         #move to good grasping point 
@@ -65,6 +67,7 @@ class Robot:
         
         #close gripper
         gripper = Gripper()
+        gripper.grip_msg.position = 0.045
         gripper.grip()
 
 
