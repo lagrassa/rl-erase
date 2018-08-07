@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import rospy
 import pdb
 import numpy as np
@@ -36,13 +37,11 @@ class Robot:
     def get_grasp(self, cup_pos):
         #grasp it from the right side, at a sort of 90 degree angle flat
         gripper_pos, gripper_quat = uc.return_cartesian_pose(self.arm, 'base_link')
-        print("gripper_pos", gripper_pos)
-        print("gripper_quat", gripper_quat)
         #good values - ('gripper_pos', [0.4885209624088133, -0.1602965161312774, 0.7629772575114466])
         # ('gripper_quat', [-0.07005178434662307, -0.0861961500917268, 0.7512909881160719, 0.6505573167637076])
 
         grasp_height = 0.03
-        grasp_depth = 0.08
+        grasp_depth = 0.01
         pos = self.point_past_gripper(grasp_height, grasp_depth, cup_pos, gripper_pos)
         return pos, gripper_quat
 
@@ -61,38 +60,53 @@ class Robot:
         #move to good grasping point 
         grasp_time = 3.0
         frame = 'base_link'
+        gripper = Gripper()
+        gripper.grip(amount=0.09)
         if self.pourer_pos is not None:
             pos,quat = self.get_grasp(self.pourer_pos)
-            uc.cmd_ik_interpolated(self.arm, (pos, quat), grasp_time, frame, blocking = True, use_cart=True, num_steps = 30)
+            uc.cmd_ik_interpolated(self.arm, (pos, quat), grasp_time, frame, blocking = True, use_cart=False, num_steps = 15)
         
         #close gripper
-        gripper = Gripper()
-        gripper.grip_msg.position = 0.045
-        gripper.grip()
+        gripper.grip(amount=0.075)
 
 
     def shift_cup(self, dx=0, dy=0, dz = 0):
         shift_time = 1.0
         gripper_pos, gripper_quat = uc.return_cartesian_pose(self.arm, 'base_link')
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
-        uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=True, num_steps = 30)
+        uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        gripper.grip(amount=0.075)
     
         
 
 
     def pour_cup(self):
-        #get joint state of right turning joint
-        #add to joint state
-        pass
+        #get joint state of right turning joint, add to joint state, do a few times
+        current_joint_pos = uc.get_joint_positions(self.arm)
+        total_angle = 3*np.pi/4.0
+        numsteps = 8
+        angles = []
+        total_time = 2
+        times = np.linspace(0, total_time, numsteps)
+        for i in range(numsteps):
+            new_joint_pos = current_joint_pos[:]
+            new_joint_pos[-1] += total_angle/numsteps
+            current_joint_pos = new_joint_pos[:]
+            angles.append(new_joint_pos)
+        uc.command_joint_trajectory(self.arm, angles, times, blocking=True)
+        
+         
+        
 
 if __name__ == "__main__":
     robot = Robot()
     
     for i in range(numsteps):
 	#go to start
+	robot.pour_cup()
+
 	robot.grasp_cup()
 	robot.shift_cup(dz = 0.08)
-	robot.pour_cup()
 
         
     
