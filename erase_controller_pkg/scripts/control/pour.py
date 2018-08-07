@@ -40,7 +40,7 @@ class Robot:
         #good values - ('gripper_pos', [0.4885209624088133, -0.1602965161312774, 0.7629772575114466])
         # ('gripper_quat', [-0.07005178434662307, -0.0861961500917268, 0.7512909881160719, 0.6505573167637076])
 
-        grasp_height = 0.03
+        grasp_height = -0.05
         grasp_depth = 0.01
         pos = self.point_past_gripper(grasp_height, grasp_depth, cup_pos, gripper_pos)
         return pos, gripper_quat
@@ -61,13 +61,15 @@ class Robot:
         grasp_time = 3.0
         frame = 'base_link'
         gripper = Gripper()
-        gripper.grip(amount=0.09)
+        rospy.sleep(0.5)
+        gripper.grip(amount=0.09, times = 40)
+     
         if self.pourer_pos is not None:
             pos,quat = self.get_grasp(self.pourer_pos)
-            uc.cmd_ik_interpolated(self.arm, (pos, quat), grasp_time, frame, blocking = True, use_cart=False, num_steps = 15)
+            uc.cmd_ik_interpolated(self.arm, (pos, quat), grasp_time, frame, blocking = True, use_cart=False, num_steps = 5)
         
         #close gripper
-        gripper.grip(amount=0.075)
+        gripper.grip(amount=0.045)
 
 
     def shift_cup(self, dx=0, dy=0, dz = 0):
@@ -75,7 +77,6 @@ class Robot:
         gripper_pos, gripper_quat = uc.return_cartesian_pose(self.arm, 'base_link')
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
         uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
-        gripper.grip(amount=0.075)
     
         
 
@@ -100,13 +101,12 @@ class Robot:
 
 if __name__ == "__main__":
     robot = Robot()
-    
+    numsteps = 1    
     for i in range(numsteps):
-	#go to start
-	robot.pour_cup()
-
+        robot.go_to_start()        
 	robot.grasp_cup()
 	robot.shift_cup(dz = 0.08)
+	robot.pour_cup()
 
         
     
