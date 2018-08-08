@@ -31,8 +31,8 @@ class Learner:
 
 
         self.rollout_size = 1
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
-        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, alpha=0.1)
+        kernel = C(0.01, (1e-3, 1e3)) * RBF(0.6, (1e-2, 1e2))
+        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, alpha=1e-1)
         """
         self.model = Sequential()
         self.model.add(Dense(8, input_dim=self.input_length, activation="relu"))
