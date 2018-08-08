@@ -169,7 +169,7 @@ class Learner:
             
 
     def train(self, delta, avg_l_fn,avg_r_fn, exp_name="EXP"):
-        numsteps = 20
+        numsteps = 5
         SAVE_INTERVAL = 11
         PRINT_INTERVAL=5
         LESS_EPS_INTERVAL = 5
@@ -205,7 +205,7 @@ class Learner:
                 except:
                     pdb.set_trace()
 
-            min_samples = 40
+            min_samples = 5
             if len(samples.shape) > 1 and samples.shape[0] > min_samples:
                 #score = fit_and_evaluate(self.model, samples, rewards)
                 self.gp, score = fit_and_evaluate(self.gp, samples, rewards)
