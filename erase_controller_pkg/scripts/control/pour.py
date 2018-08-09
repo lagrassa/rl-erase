@@ -2,10 +2,17 @@
 from __future__ import division
 import rospy
 import pdb
+import cv2
 import numpy as np
 from geometry_msgs.msg import Point
+
 from gdm_arm_controller.uber_controller import UberController
+from image_geometry import PinholeCameraModel
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from grip import Gripper
+from sensor_msgs.msg import Image, CameraInfo
+from cv_bridge import CvBridge
+
 
 CONSISTENT_STATE = True 
 
@@ -14,7 +21,11 @@ class RealPouringWorld:
         print("robot init")
         self.arm = 'r'
         self.pourer_pos = (0.5, -0.01, 0.7595)
+        self.target_pos = (0.8, -0.01, 0.7595)
+        self.depth_image = None
+        self.bridge = CvBridge()
         self.uc = UberController()
+        self.cam = get_cam() 
         self.uc.command_torso(0.2, blocking=True, timeout=3)
         self.go_to_start()
 
@@ -98,16 +109,93 @@ class RealPouringWorld:
         self.shift_cup(dz = height_up)
         self.shift_cup(dx = distance_behind)
         self.pour_cup(vel=speed)
+
+    def grasp_cup_overhead(self, grasp_height=0.05):
+        #detect point to grasp and grasp it
+        point_to_grasp = self.find_overhead_grasp_point(self.pourer_pos, self.target_pos)
+        gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+        above_point = list(point_to_grasp)
+        above_point += 0.08
+        #go to just above point
+        self.uc.cmd_ik_interpolated(self.arm, (above_point, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        self.gripper.grip(0.19)
+        #and descend onto point        
+        self.uc.cmd_ik_interpolated(self.arm, (point_to_grasp, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        self.gripper.grip(0.03)
+        #and descend onto point        
+
+    def find_overhead_grasp_point(self,pourer_pose, target_pose):
+        #get depth image and find grasp point
+        #TODO create object that does this
+        pourer_point =  self.cam.project3dToPixel(pourer_pose)
+        target_point =  self.cam.project3dToPixel(target_pose)
+        #draw ray from camera_point to target_point until reaching a substantially higher depth than the middle
+        depth_image_ros = rospy.wait_for_message("/head_mount_kinect/depth_registered/image", Image, timeout=2)
+        depth_image = self.bridge.imgmsg_to_cv2(depth_image_ros, "8UC1")
+        cv2.imshow("image", 255*depth_image)
+        cv2.waitKey(0)
+        #mask to get all points above a certain threshold
+        #find point that minimizes distance between camera_point and targeT_point
+        lower = 0 
+        upper = 100
+        _, threshold = cv2.threshold(depth_image, lower, upper, cv2.THRESH_BINARY)
+        min_point = None
+        min_val = np.inf
+        for i in range(depth_image.shape[0]):
+            for j in range(depth_image.shape[1]):
+                if threshold[i,j]  == upper: #todo fix the type of this
+                    total_dist = distance((i,j), pourer_point)+distance((i,j), target_point)
+                    if total_dist < min_val:
+                        print("this ever updates")
+                        min_point = (i,j)
+                        min_val = total_dist
+        grasp_point = self.cam_pixel_to_3D(min_point) 
+        return min_point
+    def cam_pixel_to_3D(pixel):
+
+        ray = self.cam.projectPixelTo3dRay()
+
+
+    def pour_cup_overhead(vel= 2):
+        gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+        print(current_joint_pos, "joint positions")
+        numsteps = 8
+        angles = []
+        total_time = 0.7
+        total_angle = vel*total_time#3*np.pi/4.0
+        shift_time = total_time / numsteps
+        angle_diff = total_angle / numsteps
+        new_gripper_quat = gripper_quat[:]
+        for i in range(numsteps):
+            #TODO update new_gripper_quat
+            new_gripper_euler = euler_from_quaternion(new_gripper_quat)
+            new_gripper_euler[2] += angle_diff
+            new_gripper_quat = quaternion_from_euler(new_gripper_euler)
+            self.uc.cmd_ik_interpolated(self.arm, (gripper_pos, new_gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+    
         
+    def pour_parameterized_overhead(self,distance_behind=None, height_up=None, speed=None, grasp_height=None):         
+        #self.go_to_start()        
+        self.grasp_cup_overhead(grasp_height=grasp_height)
+        self.shift_cup(dz = height_up)
+        self.shift_cup(dx = distance_behind)
+        self.pour_cup_overhead(vel=speed)
+def get_cam():
+    model = PinholeCameraModel()
+    camera_info = rospy.wait_for_message( "/head_mount_kinect/rgb/camera_info", CameraInfo)
+    model.fromCameraInfo(camera_info)
+    return model
+    
+def distance(point1, point2):
+    return np.linalg.norm(np.subtract(point1, point2))
 
 if __name__ == "__main__":
     rospy.init_node("make_pour")
     robot = RealPouringWorld()
     numsteps = 1    
     for i in range(numsteps):
-        robot.pour_parameterized(distance_behind = 0.08, height_up = 0.08, speed=1.1, grasp_height=-0.05)
+        robot.pour_parameterized_overhead(distance_behind = 0.08, height_up = 0.08, speed=1.1, grasp_height=-0.05)
 
-        
     
 
 
