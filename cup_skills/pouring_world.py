@@ -8,13 +8,39 @@ from utils import set_point
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=True, real_init=False, new_bead_mass=None):
+    def __init__(self, visualize=False, real_init=True, new_bead_mass=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
+        lower =  [0.5, -0.17, 1.1, 1450, 2.4]
+        upper = [0.65, -0.12, 1.5, 1550, 2.6]
+        self.x_range = np.array([lower, upper])
+        self.nb_actions = len(lower)
+        self.task_lengthscale = np.ones(self.nb_actions)*0.4
+        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 100, 0.01], [0.3, 0.15, 0.5, 1000, 0.2]])
+        self.context_idx = []
+        self.param_idx = [0,1,2,3, 4]
+        self.dx = len(self.x_range[0])
+        self.do_gui = False
+
         if real_init:
             self.setup()
         else:
             p.restoreState(self.bullet_id)
+
+    def check_legal(self, x):
+        return True
+
+    def sampled_x(self, n):
+        i = 0
+        N = 300
+        while i < n:
+            x = np.random.uniform(self.x_range[0], self.x_range[1])
+            legal = self.check_legal(x)
+            if legal:
+                i += 1
+                yield x
+            else:
+                assert(False)
 
     def setup(self):
         #create constraint and a second cup
@@ -23,9 +49,9 @@ class PouringWorld():
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
-        self.cup_name = "cup_1.urdf"
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
+        self.base_world.drop_beads_in_cup()
         self.cid = p.createConstraint(self.base_world.cupID, -1, -1, -1, p.JOINT_FIXED, self.cupStartPos, self.cupStartOrientation, [0,0,1])
         self.bullet_id = p.saveState()
         
@@ -88,6 +114,18 @@ class PouringWorld():
         other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
         #desired_height = other_cup_pos[2]+desired_height
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
+
+    def __call__(self, x, image_name=None):
+        height, offset, velocity, force, total_diff = x
+        self.lift_cup(desired_height=height)
+        self.pour(offset=offset, velocity=velocity, force=force, total_diff = total_diff)
+        #returns ratio of beads in cup over the acceptable number
+        acceptable = 0.9
+        beads_in_cup = self.base_world.ratio_beads_in() 
+        self.reset()
+        return beads_in_cup - acceptable
+
+    
 
 
     
