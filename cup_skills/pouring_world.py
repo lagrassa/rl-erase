@@ -11,14 +11,14 @@ class PouringWorld():
     def __init__(self, visualize=False, real_init=True, new_bead_mass=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
-        lower =  [0.5, -0.17, 1.1, 1450, 2.4]
-        upper = [0.65, -0.12, 1.5, 1550, 2.6]
+        lower =  [0.4, -0.2, -0.2, 0.8, 0.9,0]
+        upper = [0.65, 0.2, 0.2, 2, 3.1,np.pi]
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
         self.task_lengthscale = np.ones(self.nb_actions)*0.4
-        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 100, 0.01], [0.3, 0.15, 0.5, 1000, 0.2]])
+        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.01,0.01], [0.3, 0.15, 0.5, 0.5, 0.2,0.3]])
         self.context_idx = []
-        self.param_idx = [0,1,2,3, 4]
+        self.param_idx = [0,1,2,3, 4, 5]
         self.dx = len(self.x_range[0])
         self.do_gui = False
 
@@ -83,11 +83,11 @@ class PouringWorld():
     
     #reactive pouring controller 
     #goes to the closest lip of the cup and decreases the pitch until the beads fall out into the right place
-    def pour(self, offset=0.02, velocity=0.9, force=1500, total_diff = 4*np.pi/5.0):
+    def pour(self, x_offset=0.05, y_offset=0.02, velocity=0.9, force=1500, total_diff = 4*np.pi/5.0, yaw = 0):
         #step_size and dt come from the angular velocity it takes to make a change of 3pi/4, can set later
 
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
-        start_point = (pourer_pos[0], pourer_pos[1]+offset, pourer_pos[2])
+        start_point = (pourer_pos[0]+x_offset, pourer_pos[1]+y_offset, pourer_pos[2])
         self.move_cup(start_point,  duration=2,force=force) 
         start_pos, start_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         #then start decreasing the roll, pitch or yaw(whatever seems appropriate)
@@ -95,6 +95,7 @@ class PouringWorld():
         numsteps = 25.0
         step_size = total_diff/numsteps; #hard to set otherwise
         dt = step_size/velocity
+        current_orn[2] = yaw
         for i in range(int(numsteps)):
             current_orn[0] += step_size
             self.move_cup(start_pos, current_orn, duration=dt, force=force)
@@ -116,12 +117,12 @@ class PouringWorld():
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
     def __call__(self, x, image_name=None):
-        height, offset, velocity, force, total_diff = x
+        height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.lift_cup(desired_height=height)
-        self.pour(offset=offset, velocity=velocity, force=force, total_diff = total_diff)
+        self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
         acceptable = 0.9
-        beads_in_cup = self.base_world.ratio_beads_in() 
+        beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup) 
         self.reset()
         return beads_in_cup - acceptable
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
     pw.lift_cup(desired_height=0.62)
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
-    pw.pour(offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51)
+    pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)
 
     pdb.set_trace()
     #pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
