@@ -17,11 +17,15 @@ new_world = True
 
  
 class CupWorld():
-    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
+    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False, for_pr2 = False):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 20
-        self.radius = k*0.005
+        self.num_droplets = 22
+        if for_pr2:
+            self.radius = k*0.011
+        else:
+            self.radius = k*0.021
+            
         self.table=table
         if real_init:
             try:
@@ -31,8 +35,12 @@ class CupWorld():
 		    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
             except:
                 pdb.set_trace()
-	p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-        self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass, table=table)
+	    p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+        if for_pr2:
+            cup_factor = 1.5
+        else:
+            cup_factor = 5
+        self.setup(beads=True, cup_offset=cup_offset, new_bead_mass = new_bead_mass, table=table,cup_factor = cup_factor)
         if beads:
             pass
             #self.total_bead_mass = self.num_droplets*p.getDynamicsInfo(self.droplets[0], -1)[0]#variable beads would be bad, this is faster 
@@ -164,27 +172,28 @@ class CupWorld():
 	   x, y = np.random.normal(0, 1e-3, 2)
 	   set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
        return droplets
+
     def drop_beads_in_cup(self):
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-	time_to_fall = k*self.num_droplets*0.1
-	colors = [(0,0,1,1)]
-	for color in colors:
-	    new_drops = self.create_beads(color = color, offset=offset)
+        time_to_fall = k*self.num_droplets*0.1
+        colors = [(0,0,1,1)]
+        for color in colors:
+            new_drops = self.create_beads(color = color, offset=offset)
             self.droplets += new_drops 
             self.droplet_colors += self.num_droplets*[color]
             assert(len(self.droplet_colors) == len(self.droplets))
             
-            if not self.is_real_time:
-	        simulate_for_duration(time_to_fall, dt= 0.001)
-            
-	simulate_for_duration(time_to_fall, dt= 0.001)
-        self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
+        if not self.is_real_time:
+            simulate_for_duration(time_to_fall, dt= 0.001)
+                
+        simulate_for_duration(time_to_fall, dt= 0.001)
+        #self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
         self.custom_save_beads()
 
 
-    def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False):
+    def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False, cup_factor=5):
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
@@ -208,9 +217,9 @@ class CupWorld():
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             self.cup_name = "cup_small.urdf"
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
+	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
 	    else:
-                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*1.3)
+                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
                 blacken(self.cupID)
             p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
@@ -222,7 +231,8 @@ class CupWorld():
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
-            p.setTimeStep(1/1200.)
+            #p.setTimeStep(1/1200.)
+            p.setTimeStep(1/100.)
             self.real_init = False
         else:
             self.real_init = True

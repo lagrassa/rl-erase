@@ -11,8 +11,9 @@ class PouringWorld():
     def __init__(self, visualize=False, real_init=True, new_bead_mass=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
-        lower =  [0.4, -0.2, -0.2, 0.8, 0.9,0]
-        upper = [0.65, 0.2, 0.2, 2, 3.1,np.pi]
+        lower =  [0.5, -0.1, -0.1, 0.8, 0,np.pi/2]
+        upper = [0.75, 0.1, 0.1, 2, 3.12,np.pi]
+        #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
         self.task_lengthscale = np.ones(self.nb_actions)*0.4
@@ -49,6 +50,7 @@ class PouringWorld():
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
+        self.cup_name = 'cup_4.urdf' #just for now
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.base_world.drop_beads_in_cup()
@@ -87,7 +89,8 @@ class PouringWorld():
         #step_size and dt come from the angular velocity it takes to make a change of 3pi/4, can set later
 
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
-        start_point = (pourer_pos[0]+x_offset, pourer_pos[1]+y_offset, pourer_pos[2])
+        target_pos, _ = p.getBasePositionAndOrientation(self.target_cup)
+        start_point = (target_pos[0]+x_offset, target_pos[1]+y_offset, pourer_pos[2])
         self.move_cup(start_point,  duration=2,force=force) 
         start_pos, start_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
         #then start decreasing the roll, pitch or yaw(whatever seems appropriate)
