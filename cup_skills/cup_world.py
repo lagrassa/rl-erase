@@ -72,7 +72,10 @@ class CupWorld():
         if cup is None:
             cup = self.cupID
         aabbMin, aabbMax = p.getAABB(cup)
-        overlapping_objects = [obj for obj in p.getOverlappingObjects(aabbMin, aabbMax) if obj[1] == -1]
+        all_overlapping =  p.getOverlappingObjects(aabbMin, aabbMax) 
+        if all_overlapping is None:
+            return 0
+        overlapping_objects = [obj for obj in all_overlapping if obj[1] == -1]
         #If the last coordinate is not -1, then it can't be a bead so get rid of that
         
         if overlapping_objects is None:
@@ -222,7 +225,8 @@ class CupWorld():
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
-            p.setTimeStep(1/1200.)
+            #p.setTimeStep(1/1200.)
+            #to be fast
             self.real_init = False
         else:
             self.real_init = True
