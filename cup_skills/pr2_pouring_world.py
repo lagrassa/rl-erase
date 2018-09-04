@@ -66,7 +66,7 @@ class PouringWorld():
             mag = np.linalg.norm(forces)
             all_forces.append(mag)
             #can average force of all the grippers
-        return np.mean(all_forces)
+        return np.array((np.mean(all_forces),))
 
     def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 5, force=300, teleport=False):
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
@@ -243,7 +243,6 @@ class PouringWorld():
         #self.move_gripper_to_cup(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force, finger_close_num=finger_close_num)
         print(self.gripper_forces())
-        pdb.set_trace() 
  
          
 
@@ -305,7 +304,7 @@ class PouringWorld():
 
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True)
+    pw = PouringWorld(visualize=False, real_init = True)
     #pw.pour_pr2(close_num=0.333, close_force=663, lift_force=328, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
     pw.grasp_cup(close_num=0.28, close_force=700, lift_force=328, grasp_height=0.03, grasp_depth=0.06, finger_close_num=0.5)
     pw.spawn_cup()
