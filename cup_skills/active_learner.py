@@ -62,7 +62,12 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters):
     yy = np.zeros(0)
     # Start active queries
     for i in range(iters):
-        active_learner.retrain(xq, yq)
+        try:
+            active_learner.retrain(xq, yq)
+        except:
+            print("Could not retrain")
+            pdb.set_trace() 
+
         xq = active_learner.query(context)
         yq = func(xq)
         xx = np.vstack((xx, xq))

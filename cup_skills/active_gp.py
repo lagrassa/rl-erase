@@ -31,6 +31,7 @@ class ActiveGP(ActiveLearner):
         if inity.ndim == 1:
             inity = inity[:, None]
         self.xx = initx
+        self.yvals = []
         self.yy = inity
         assert(initx.ndim == 2 and inity.ndim == 2)
         self.func = func
@@ -228,6 +229,9 @@ class ActiveGP(ActiveLearner):
         if newx is not None and newy is not None:
             self.xx = np.vstack((self.xx, newx))
             self.yy = np.vstack((self.yy, newy))
+            self.yvals.append(newy)
+        print("yvals", self.yvals)
+        np.save("yvals.npy", self.yvals)
         lengthscale = (self.func.x_range[1] - self.func.x_range[0]) * 0.05
         k = gpy.kern.Matern52(self.func.x_range.shape[1], ARD=True, lengthscale=lengthscale)
         self.model = gpy.models.GPRegression(self.xx, self.yy, k)
@@ -250,7 +254,6 @@ class ActiveGP(ActiveLearner):
         '''
         x0, x0context = helper.find_closest_positive_context_param(
             context, self.xx, self.yy, self.func.param_idx, self.func.context_idx)
-        self.model = self.model
 
         def ac_f(x):
             if x.ndim == 1:

@@ -43,9 +43,9 @@ class PourEnv():
         close_force = action[1]
         lift_force = action[2]
 	grasp_height = action[3]
-	grasp_depth = action[4]
+	finger_close_num = action[4]
         if GRASP_ONLY:
-            self.world.grasp_cup(close_num=close_num, close_force = close_force, teleport=False, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
+            self.world.grasp_cup(close_num=close_num, close_force = close_force, teleport=False, grasp_height=grasp_height, grasp_depth=0.04, lift_force=lift_force, finger_close_num=finger_close_num)
         else:
 	    forward_offset = action[5]
 	    height = action[6]
@@ -93,7 +93,7 @@ class PourEnv():
         return False
 
     def observe_state(self):
-        return self.world.observe_cup()
+        return self.world.gripper_forces()
 
     def create_state(self):
         robot_state = self.robot_state

@@ -65,7 +65,7 @@ class Learner:
         l = 1
         k = -np.log(end_sigma/c)*(1/N) 
         action_set = uniform_random_sample(N)
-        if len(obs) > 1:
+        if len(obs) >= 1:
 	    obs_vec = obs[0]*np.ones((N,1))
 	    for i in range(1,len(obs)):
 		new_obs = obs[i]*np.ones((N,1))
@@ -280,8 +280,8 @@ def parse_args(args):
 
 def uniform_random_sample(n=1):
     #close_num, close_force, lift_force, forward_offset, height, vel, grasp_height, grasp_depth
-    lower = [0.29,90, 150, 0, 0]
-    upper = [0.40,900, 900, 0.07, 0.07]
+    lower = [0.33,697, 326, 0.029, 0.1]#[0.29,435, 117, 0.005, 0.014]
+    upper = [0.33, 697, 326, 0.029, 0.9]#[0.358,876, 830, 0.0540, 0.07]
     sample = np.zeros((n,len(lower)))
     for i in range(len(lower)):
         sample[:,i] = (upper[i] - lower[i]) * np.random.rand(n)+ lower[i]
@@ -336,10 +336,10 @@ def load_datasets(exp_name):
     return samples, rewards
 
 def main():
-     nb_actions = 8; 
+     nb_actions = 5; 
      delta, exp_name, visualize = parse_args(sys.argv[1:])
      env = PourEnv(visualize=visualize)
-     state_length = 0# env.observe_state().shape[0]
+     state_length = env.observe_state().shape[0]
      input_length = state_length+nb_actions
      l = Learner(env,nb_actions, input_length )
      #sets up logging
