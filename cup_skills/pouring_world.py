@@ -14,7 +14,7 @@ class PouringWorld():
         lower =  [0.5, -0.1, -0.1, 0.8, 0,np.pi/2]
         upper = [0.75, 0.1, 0.1, 2, 3.12,np.pi]
         lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
-        upper = [0.75, 0.3, 0.3, 2, 0,np.pi]
+        upper = [0.75, 0.3, 0.3, 2, 3.14,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
