@@ -6,7 +6,7 @@ import helper as helper
 from active_learner import run_ActiveLearner
 
 
-def gen_data(expid, exp, n_data, save_fnm):
+def gen_data(expid, func, n_data, save_fnm):
     '''
     Generate initial data for a function associated the experiment.
     Args:
@@ -17,7 +17,6 @@ def gen_data(expid, exp, n_data, save_fnm):
         saved.
     '''
     print('Generating data...')
-    func = helper.get_func_from_exp(exp)
     xx, yy = helper.gen_data(func, n_data)
     pickle.dump((xx, yy), open(save_fnm, 'wb'))
 
@@ -51,11 +50,11 @@ def run_exp(expid, exp, method, n_init_data, iters):
         os.mkdir(dirnm)
     init_fnm = os.path.join(
             dirnm, '{}_init_data_{}.pk'.format(exp, expid))
-    gen_data(expid, exp, n_init_data, init_fnm)
+    func = helper.get_func_from_exp(exp)
+    gen_data(expid, func, n_init_data, init_fnm)
 
     initx, inity = pickle.load(open(init_fnm, 'rb'))
 
-    func = helper.get_func_from_exp(exp)
 
     active_learner = helper.get_learner_from_method(method, initx, inity, func)
 
@@ -95,7 +94,7 @@ def main():
     exp = 'pour'
     method = 'gp_lse'
     expid = 0
-    n_init_data = 10
+    n_init_data = 2
     iters = 50
     run_exp(expid, exp, method, n_init_data, iters)
     sample_exp(expid, exp, method)

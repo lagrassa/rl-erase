@@ -13,6 +13,8 @@ class PouringWorld():
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         lower =  [0.5, -0.1, -0.1, 0.8, 0,np.pi/2]
         upper = [0.75, 0.1, 0.1, 2, 3.12,np.pi]
+        lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
+        upper = [0.75, 0.3, 0.3, 2, 0,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
@@ -141,7 +143,6 @@ if __name__ == "__main__":
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)
 
-    pdb.set_trace()
     #pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
 
     pw.base_world.ratio_beads_in(cup=pw.target_cup)
