@@ -29,9 +29,11 @@ k = 1
 
 class PouringWorld():
     def __init__(self, visualize=True, real_init=False, new_bead_mass=None):
-        self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass, table=True)
+        self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass, table=True, for_pr2=True)
+        self.cup_constraint = None
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         self.torso_joint =  15
+        self.constraint_force = 200
         self.torso_height = k*0.3
         self.ee_index = 54#  60
         self.target_cup = None
@@ -48,7 +50,7 @@ class PouringWorld():
 
         self.pr2 = p.loadURDF("urdf/pr2_description/pr2.urdf", pr2_start_pose, pr2_start_orientation, useFixedBase=True, globalScaling = k )
         self.movable_joints = get_movable_joints(self.pr2)
-	self.gripper_joints = (57, 59, 58, 60)
+        self.gripper_joints = (57, 59, 58, 60)
         for joint in self.gripper_joints:
             p.enableJointForceTorqueSensor(self.pr2, joint, enableSensor=1)
 
@@ -67,6 +69,18 @@ class PouringWorld():
             all_forces.append(mag)
             #can average force of all the grippers
         return np.mean(all_forces)
+
+    ''' returns the change in force to apply to shift the force in the right direction'''
+    def pid_controller(self):
+        kp = 0.08
+        des = 4000
+        print(self.gripper_forces(), "current gripper forces") 
+        error = des - self.gripper_forces()
+        
+        print("error", error)
+        return kp*error
+        
+        
 
     def move_ee_to_point(self, pos, orn = None, damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 5, force=300, teleport=False):
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
@@ -103,44 +117,42 @@ class PouringWorld():
                         'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint']
         arm_joints = [joint_from_name(self.pr2, name) for name in arm_joint_names]
          
-	gripper_joints = (57, 59, 58, 60)
+        gripper_joints = (57, 59, 58, 60)
 
-	moving_joints = []
-	moving_confs = []
+        moving_joints = []
+        moving_confs = []
         for i in range(len(joints)):
-	    if joints[i] not in gripper_joints:
-		moving_confs.append(conf[i])
-		moving_joints.append(joints[i])
-	
-	heavy_joints =[]# [self.torso_joint]
-	heavy_confs = []#[height_stable]
-	if not teleport:
-	    #remove finger joints
-	    for i in range(len(moving_joints)):
-		p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=force, targetVelocity=0)
-	    simulate_for_duration(1.0)
-	    """
-	    jc = joint_controller(self.pr2, moving_joints, moving_confs, heavy_joints = heavy_joints, heavy_confs=heavy_confs, force=force)
-	    print("starting JC")
-	    for i in range(4):
-		try:
-		    jc.next()
-		    simulate_for_duration(0.2)
-		except StopIteration:
-		    break;
-	    print("ending JC")
-	    """
-	else:
-	    set_joint_positions(self.pr2, moving_joints, moving_confs)
-	    set_joint_positions(self.pr2, arm_joints, ik_fast_sol)
-	    #set_joint_positions(self.pr2, heavy_joints, heavy_confs)
+            if joints[i] not in gripper_joints:
+                moving_confs.append(conf[i])
+                moving_joints.append(joints[i])
+        
+        heavy_joints =[]# [self.torso_joint]
+        heavy_confs = []#[height_stable]
+        if not teleport:
+            if self.cup_constraint is not None: #needs to be small so cup constraint can be update
+                num_steps = 10
+            else:
+                num_steps = 1
+            for _ in range(num_steps):
+                for i in range(len(moving_joints)):
+                    p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=force, targetVelocity=0)
+                    simulate_for_duration(0.35/num_steps)
+                    if self.cup_constraint is not None:
+                        left_tip_pos = p.getLinkState(self.pr2, 58)[4]
+                        right_tip_pos = p.getLinkState(self.pr2, 60)[4]
+                        new_loc = np.average(np.vstack([left_tip_pos, right_tip_pos]),axis=0) #the average of the left and right grippers....
+                        new_loc[2] += 0.05 #hold the cup a little higher
+                        new_orn = orn
+                        p.changeConstraint(self.cup_constraint, new_loc, new_orn, maxForce = self.constraint_force)
+        else:
+            set_joint_positions(self.pr2, moving_joints, moving_confs)
+            #set_joint_positions(self.pr2, heavy_joints, heavy_confs)
 
 
     def reset(self, real_init=False, new_bead_mass=None):
   
         self.base_world.reset(new_bead_mass=new_bead_mass)
         self.setup()      
-        #set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
                 
 
 
@@ -158,11 +170,19 @@ class PouringWorld():
 
         set_joint_positions(pr2, right_joints, starting_joint_angles)
         set_joint_position(pr2, self.torso_joint, self.torso_height)
+        force = 100
+        open_num = 0.5
+        finger_close_num=0.5
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=58,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=60,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
+
         simulate_for_duration(0.2)
         start_pos = (-0.12, -0.13, 0.68)
 
         start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
-        self.move_ee_to_point(start_pos, start_orn, timeout=10, threshold=0.05)
+        self.move_ee_to_point(start_pos, start_orn, timeout=5, threshold=0.05)
        
     
     def pourer_state(self):
@@ -191,9 +211,11 @@ class PouringWorld():
         new_pose[2] =gripper_pose[2]
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
 
-    def open_gripper(self, open_num=0.5):
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
-        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=100,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+    def open_gripper(self, open_num=0.5, finger_close_num=0.5, force=100):
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=59,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=57,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=open_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=58,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
+        p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=60,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         simulate_for_duration(0.5)
 
     def move_gripper_to_cup(self, cup):
@@ -219,6 +241,7 @@ class PouringWorld():
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=58,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=60,controlMode=p.POSITION_CONTROL,force=force,positionGain=0.3,velocityGain=1, targetPosition=finger_close_num)
         simulate_for_duration(0.5)
+
     #grasp_depth = how far into the cup to go based on the gripper location, positive is past the cup
 #grasp_height = how high above table to grasp
     def grasp_cup(self, close_num=0.35, close_force = 300 , teleport=False, grasp_height=0.1, grasp_depth=0.05, lift_force=1000, finger_close_num=0.5):
@@ -226,7 +249,7 @@ class PouringWorld():
         #open gripper
        
         self.put_arms_in_useful_configuration(self.pr2)
-        self.open_gripper(0.55)
+        self.open_gripper(open_num=0.8)
         #move gripper to cup
         pourer_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
         actualPos =  p.getLinkState(self.pr2, self.ee_index)[0]
@@ -236,14 +259,19 @@ class PouringWorld():
         else:
             grasp_point = self.point_past_gripper(grasp_height, grasp_depth)
             start_orn = p.getQuaternionFromEuler((0,0,3.14/2.0)) 
-            self.move_ee_to_point(grasp_point, start_orn, timeout=10, threshold=0.01, force=lift_force)
+            self.move_ee_to_point(grasp_point, start_orn, timeout=2, threshold=0.01, force=lift_force)
             
             
         simulate_for_duration(0.2)
-        #self.move_gripper_to_cup(self.base_world.cupID)
+        self.attach(self.base_world.cupID)
         self.close_gripper(close_num=close_num, force=close_force, finger_close_num=finger_close_num)
         print(self.gripper_forces())
-        pdb.set_trace() 
+
+    def attach(self, body):
+        pos, orn = p.getBasePositionAndOrientation(body) 
+        self.cup_constraint = p.createConstraint(body, -1, -1, -1, p.JOINT_FIXED,pos, orn, [0,0,1])
+        p.changeConstraint(self.cup_constraint, pos, orn, maxForce = self.constraint_force)
+        simulate_for_duration(0.1)
  
          
 
@@ -266,17 +294,47 @@ class PouringWorld():
         p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=50,controlMode=p.VELOCITY_CONTROL,force=800,positionGain=0.3,velocityGain=1, targetVelocity=-1*amount)
         simulate_for_duration(duration)
 
+    '''Generates a trajectory of orientations to turn cup
+    assumes the cup is at the correct yaw for the pour
+    '''
+    def turn_cup_traj(self, amount):
+        num_steps = 10
+        euler_orn = p.getLinkState(self.pr2, 58)[5] #orientation in world coordinates
+        traj = []
+        current_orn = euler_orn[:]
+        for _ in range(num_steps):
+            current_orn[0] += amount/num_steps
+            traj.append(current_orn[:])
+        return traj
+
+    def turn_cup_general(self, amount, velocity):
+        traj = self.turn_cup_traj(amount)
+        whole_duration = amount / velocity
+        step_duration = whole_duration/len(traj)
+        gripper_pos = p.getLinkState(self.pr2, 58)[4] #world coordinates pose
+        for i in range(len(traj)):
+            self.move_ee_to_point(gripper_pos, orn = traj[i], damper=0.01, posGain=0.3, velGain =1, threshold = 0.03, timeout = 3, force=300, teleport=False)
+            
+
     #assumes is already grasping
-    def test_grasp(self):
+    def test_grasp(self, close_force, close_num):
         diff = 0.05
+        empty_hand = 50
         for i in range(65):
             cup_pos = p.getBasePositionAndOrientation(self.base_world.cupID)[0]
             gripper_pos =  p.getLinkState(self.pr2, self.ee_index)[0] 
-            if gripper_pos[2]-cup_pos[2] >= diff:
+            #self.close_gripper(close_num=close_num, force=close_force)
+            """
+            pid_diff = self.pid_controller()
+            close_force += pid_diff
+            print("close force", close_force)
+            if self.gripper_forces() < empty_hand:
                 return i
+            print("Gripper force",self.gripper_forces())
+            """
             simulate_for_duration(0.08)
             if i == 10 or i == 20:
-                self.shift_cup(desired_height=0.1)
+                self.shift_cup(desired_height=0.1, force=300)
         print("Woo hoo! got to the end!")
         return i 
      
@@ -285,8 +343,7 @@ class PouringWorld():
     def pour_pr2(self, close_num=0.35, close_force=300, lift_force=1600, side_offset = 0, forward_offset=0, height = 0.08, vel=5, grasp_height=0.1, grasp_depth=0.04):
         #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_pr2_demo.mp4")
         self.grasp_cup(close_num = close_num, close_force=close_force, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
-        self.spawn_cup()
-        pdb.set_trace()
+        #self.spawn_cup()
         self.shift_cup(desired_height=height,side_offset=side_offset, forward_offset=forward_offset,force=lift_force)
         self.turn_cup(vel, 2)
         simulate_for_duration(3.0)
@@ -307,8 +364,10 @@ class PouringWorld():
 if __name__ == "__main__":
     pw = PouringWorld(visualize=True, real_init = True)
     #pw.pour_pr2(close_num=0.333, close_force=663, lift_force=328, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
-    pw.grasp_cup(close_num=0.28, close_force=700, lift_force=328, grasp_height=0.03, grasp_depth=0.06, finger_close_num=0.5)
+    data = [3.30000000e-01, 6.97000000e+02, 3.26000000e+02, 2.90000000e-02,7.66003498e-01, 0.00000000e+00]
+    pw.grasp_cup(close_num=0.45, close_force=20, lift_force=228, grasp_height=0.03, grasp_depth=0.02, finger_close_num=0.5)
+    #pw.grasp_cup(close_num=data[0], close_force=data[1], lift_force=data[2], grasp_height=data[3], grasp_depth=data[4], finger_close_num=data[5])
     pw.spawn_cup()
-    pw.test_grasp()
+    print("Test result", pw.test_grasp(700, 0.35))
     
     

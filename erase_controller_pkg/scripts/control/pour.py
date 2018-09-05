@@ -99,11 +99,13 @@ class RealPouringWorld:
         self.gripper.grip(amount=0.055)
 
 
-    def shift_cup(self, dx=0, dy=0, dz = 0):
-        shift_time = 1.0
+    def shift_cup(self, dx=0, dy=0, dz = 0, yaw=None):
+        shift_time = 2.0
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
-        print("Gripper pos", gripper_pos)
-        print("Gripper quat", gripper_quat)
+        if yaw is not None:
+            gripper_euler = euler_from_quaternion(gripper_quat)
+            gripper_euler[1] = yaw
+            gripper_quat = quaternion_from_euler(gripper_euler)
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
         self.uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
@@ -130,9 +132,9 @@ class RealPouringWorld:
         self.shift_cup(dx = distance_behind)
         self.pour_cup(vel=speed)
 
-    def grasp_cup_overhead(self, grasp_height=0.05):
+    def grasp_cup_general(self, grasp_height=0.05):
         #detect point to grasp and grasp it
-        point_to_grasp = self.find_overhead_grasp_point(self.pourer_pos, self.target_pos)
+        point_to_grasp = self.find_general_grasp_point(self.pourer_pos, self.target_pos)
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
         above_point = list(point_to_grasp)
         above_point += 0.08
@@ -144,7 +146,7 @@ class RealPouringWorld:
         self.gripper.grip(0.03)
         #and descend onto point        
 
-    def find_overhead_grasp_point(self,pourer_pose, target_pose):
+    def find_general_grasp_point(self,pourer_pose, target_pose):
         #get depth image and find grasp point
         #TODO create object that does this
         pourer_point =  self.cam.project3dToPixel(pourer_pose)
@@ -176,7 +178,7 @@ class RealPouringWorld:
         ray = self.cam.projectPixelTo3dRay()
 
 
-    def pour_cup_overhead(vel= 2):
+    def pour_cup_general(vel= 2):
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
         print(current_joint_pos, "joint positions")
         numsteps = 8
@@ -193,13 +195,13 @@ class RealPouringWorld:
             new_gripper_quat = quaternion_from_euler(new_gripper_euler)
             self.uc.cmd_ik_interpolated(self.arm, (gripper_pos, new_gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
-        
-    def pour_parameterized_overhead(self,distance_behind=None, height_up=None, speed=None, grasp_height=None):         
+    def pour_parameterized_general(self,x_offset=None, y_offset=None, yaw=None, height_up=None, speed=None, grasp_height=None):         
         #self.go_to_start()        
-        self.grasp_cup_overhead(grasp_height=grasp_height)
+        self.grasp_cup(grasp_height=grasp_height)
         self.shift_cup(dz = height_up)
-        self.shift_cup(dx = distance_behind)
-        self.pour_cup_overhead(vel=speed)
+        self.shift_cup(dx = x_offset, dy = y_offset, yaw=yaw)
+        self.pour_cup_general(vel=speed)
+
 def get_cam():
     model = PinholeCameraModel()
     camera_info = rospy.wait_for_message( "/head_mount_kinect/rgb/camera_info", CameraInfo)
@@ -213,12 +215,8 @@ if __name__ == "__main__":
     rospy.init_node("make_pour")
     robot = RealPouringWorld()
     numsteps = 1    
-    #for i in range(numsteps):
-    #    robot.pour_parameterized(distance_behind = 0.08, height_up = 0.08, speed=1.1, grasp_height=-0.05)
-    #robot.change_quat([-0.058737177878718634, -0.05419292433474669, 0.7176272969945209, 0.691826664342471])
-    #robot.change_quat([-0.06, -0.05, 0.7, 0.7])
-    #robot.change_quat([0, 0, 0.5, 0.5])
-    robot.change_pos([0.5683699250221252, -0.02943132072687149, 0.8251620292663574])
+    for i in range(numsteps):
+        robot.pour_parameterized_general(x_offset = 0.08, y_offset= 0,height_up = 0.08, speed=1.1, grasp_height=-0.05, yaw = 0)
 
     
 
