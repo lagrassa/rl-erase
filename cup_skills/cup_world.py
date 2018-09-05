@@ -20,9 +20,9 @@ class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False, for_pr2 = False):
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 22
+        self.num_droplets = 20
         if for_pr2:
-            self.radius = k*0.011
+            self.radius = k*0.005
         else:
             self.radius = k*0.021
             
@@ -235,7 +235,7 @@ class CupWorld():
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             #to be realistic
             #p.setTimeStep(1/1200.)
-            p.setTimeStep(1/100.) #faster
+            p.setTimeStep(1/200.)
             self.real_init = False
         else:
             self.real_init = True
