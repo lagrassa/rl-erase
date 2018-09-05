@@ -19,21 +19,29 @@ CONSISTENT_STATE = True
 class RealPouringWorld:
     def __init__(self):
         print("robot init")
-        self.arm = 'r'
+        self.arm = 'l'
         self.pourer_pos = (0.5, -0.01, 0.7595)
         self.target_pos = (0.8, -0.01, 0.7595)
         self.depth_image = None
         self.bridge = CvBridge()
         self.uc = UberController()
-        self.cam = get_cam() 
-        self.uc.command_torso(0.2, blocking=True, timeout=3)
-        self.go_to_start()
+        #self.cam = get_cam() 
+        """
+        for i in range(400): 
+	    gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+	    print("Gripper euler", np.round(euler_from_quaternion(gripper_quat),2))
+	    print("Gripper quat", gripper_quat)
+            rospy.sleep(0.2)
+        """
+        #self.uc.command_torso(0.2, blocking=True, timeout=3)
+        #self.go_to_start()
 
     def go_to_start(self):
 	self.uc.start_joint(self.arm)
 	start_joint_angles = [-0.8831416801644028, 0.3696527700454193, -1.5865871699836482, -1.5688534061015482, 5.913809583083913, -0.9149799482346365, 39.09787903807846]
         #start_joint_angles = [-0.8367968810618476, 0.34334374895993397, -1.7849460902031975, -1.7724010263067882, -0.21665115067563817, 0.5939860593928067, 8.826634896625851]
 	self.uc.command_joint_pose(self.arm,start_joint_angles, time=3, blocking=True)
+        print("Commanded joint pose")
 	rospy.sleep(1)
     def world_state(self):
         return []
@@ -43,7 +51,17 @@ class RealPouringWorld:
 	self.uc.command_joint_pose(self.arm,away_joint_angles, time=3, blocking=True)
 	rospy.sleep(2)
 
+    def change_pos(self, pos):
+        gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+        self.uc.cmd_ik_interpolated(self.arm, (pos, gripper_quat), 3.0, 'base_link', blocking = True, use_cart=False, num_steps = 3)
+
     ''' currently really only actually samples a pose, and uses the original quaternion''' 
+    def change_quat(self, quat):
+        gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+        print("gipper quat", gripper_quat)
+        pos = gripper_pos
+        self.uc.cmd_ik_interpolated(self.arm, (pos, quat), 3.0, 'base_link', blocking = True, use_cart=False, num_steps = 3)
+
     def get_grasp(self, cup_pos, grasp_height=0):
         #grasp it from the right side, at a sort of 90 degree angle flat
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
@@ -84,6 +102,8 @@ class RealPouringWorld:
     def shift_cup(self, dx=0, dy=0, dz = 0):
         shift_time = 1.0
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
+        print("Gripper pos", gripper_pos)
+        print("Gripper quat", gripper_quat)
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
         self.uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
@@ -169,7 +189,7 @@ class RealPouringWorld:
         for i in range(numsteps):
             #TODO update new_gripper_quat
             new_gripper_euler = euler_from_quaternion(new_gripper_quat)
-            new_gripper_euler[2] += angle_diff
+            new_gripper_euler[0] += angle_diff
             new_gripper_quat = quaternion_from_euler(new_gripper_euler)
             self.uc.cmd_ik_interpolated(self.arm, (gripper_pos, new_gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
@@ -193,8 +213,12 @@ if __name__ == "__main__":
     rospy.init_node("make_pour")
     robot = RealPouringWorld()
     numsteps = 1    
-    for i in range(numsteps):
-        robot.pour_parameterized_overhead(distance_behind = 0.08, height_up = 0.08, speed=1.1, grasp_height=-0.05)
+    #for i in range(numsteps):
+    #    robot.pour_parameterized(distance_behind = 0.08, height_up = 0.08, speed=1.1, grasp_height=-0.05)
+    #robot.change_quat([-0.058737177878718634, -0.05419292433474669, 0.7176272969945209, 0.691826664342471])
+    #robot.change_quat([-0.06, -0.05, 0.7, 0.7])
+    #robot.change_quat([0, 0, 0.5, 0.5])
+    robot.change_pos([0.5683699250221252, -0.02943132072687149, 0.8251620292663574])
 
     
 
