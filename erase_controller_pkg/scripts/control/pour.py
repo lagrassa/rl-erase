@@ -103,9 +103,9 @@ class RealPouringWorld:
         shift_time = 2.0
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
         if yaw is not None:
-            gripper_euler = euler_from_quaternion(gripper_quat)
-            gripper_euler[1] = yaw
-            gripper_quat = quaternion_from_euler(gripper_euler)
+            gripper_euler = list(euler_from_quaternion(gripper_quat))
+            gripper_euler[2] = yaw
+            gripper_quat = quaternion_from_euler(gripper_euler[0], gripper_euler[1], gripper_euler[2])
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
         self.uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
@@ -113,11 +113,12 @@ class RealPouringWorld:
         #get joint state of right turning joint, add to joint state, do a few times
         current_joint_pos = self.uc.get_joint_positions(self.arm)
         print(current_joint_pos, "joint positions")
-        numsteps = 8
+        numsteps = 2
         angles = []
         total_time = 0.7
         total_angle = vel*total_time#3*np.pi/4.0
         times = np.linspace(0, total_time, numsteps)
+        print("times", times)
         for i in range(numsteps):
             new_joint_pos = current_joint_pos[:]
             new_joint_pos[-1] += total_angle/numsteps
@@ -178,9 +179,8 @@ class RealPouringWorld:
         ray = self.cam.projectPixelTo3dRay()
 
 
-    def pour_cup_general(vel= 2):
+    def pour_cup_general(self, vel= 2):
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
-        print(current_joint_pos, "joint positions")
         numsteps = 8
         angles = []
         total_time = 0.7
@@ -190,17 +190,17 @@ class RealPouringWorld:
         new_gripper_quat = gripper_quat[:]
         for i in range(numsteps):
             #TODO update new_gripper_quat
-            new_gripper_euler = euler_from_quaternion(new_gripper_quat)
+            new_gripper_euler = list(euler_from_quaternion(new_gripper_quat))
             new_gripper_euler[0] += angle_diff
-            new_gripper_quat = quaternion_from_euler(new_gripper_euler)
+            new_gripper_quat = quaternion_from_euler(new_gripper_euler[0], new_gripper_euler[1], new_gripper_euler[2])
             self.uc.cmd_ik_interpolated(self.arm, (gripper_pos, new_gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
     
-    def pour_parameterized_general(self,x_offset=None, y_offset=None, yaw=None, height_up=None, speed=None, grasp_height=None):         
+    def pour_parameterized_general(self,x_offset=None, y_offset=None, yaw=None, height_up=None, vel=None, grasp_height=None):         
         #self.go_to_start()        
         self.grasp_cup(grasp_height=grasp_height)
         self.shift_cup(dz = height_up)
         self.shift_cup(dx = x_offset, dy = y_offset, yaw=yaw)
-        self.pour_cup_general(vel=speed)
+        self.pour_cup_general(vel=vel)
 
 def get_cam():
     model = PinholeCameraModel()
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     robot = RealPouringWorld()
     numsteps = 1    
     for i in range(numsteps):
-        robot.pour_parameterized_general(x_offset = 0.08, y_offset= 0,height_up = 0.08, speed=1.1, grasp_height=-0.05, yaw = 0)
+        robot.pour_parameterized_general(x_offset = 0.08, y_offset= 0,height_up = 0.08, vel=1.1, grasp_height=-0.05, yaw = 0)
 
     
 
