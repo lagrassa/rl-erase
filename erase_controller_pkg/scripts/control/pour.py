@@ -19,7 +19,7 @@ CONSISTENT_STATE = True
 class RealPouringWorld:
     def __init__(self):
         print("robot init")
-        self.arm = 'l'
+        self.arm = 'r'
         self.pourer_pos = (0.5, -0.01, 0.7595)
         self.target_pos = (0.8, -0.01, 0.7595)
         self.depth_image = None
