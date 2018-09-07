@@ -1911,7 +1911,7 @@ def call_ik_fast(robot, target_pose, target_quat):
     sol = arm_ik('r', target_pos, target_quat, torso)
     return sol
 
-def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selected_links_input=None, max_iterations=15, tolerance=1e-3):
+def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selected_links_input=None, max_iterations=2, tolerance=1e-3):
     # TODO: fix stationary joints
     # TODO: pass in set of movable joints and take least common ancestor
     # TODO: update with most recent bullet updates

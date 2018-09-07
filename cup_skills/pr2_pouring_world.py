@@ -136,14 +136,14 @@ class PouringWorld():
             for _ in range(num_steps):
                 for i in range(len(moving_joints)):
                     p.setJointMotorControl2(bodyIndex=self.pr2,jointIndex=moving_joints[i],controlMode=p.POSITION_CONTROL,targetPosition=moving_confs[i],force=force, targetVelocity=0)
-                    simulate_for_duration(0.35/num_steps)
                     if self.cup_constraint is not None:
                         left_tip_pos = p.getLinkState(self.pr2, 58)[4]
                         right_tip_pos = p.getLinkState(self.pr2, 60)[4]
                         new_loc = np.average(np.vstack([left_tip_pos, right_tip_pos]),axis=0) #the average of the left and right grippers....
-                        new_loc[2] += 0.05 #hold the cup a little higher
+                        new_loc[2] -= 0.02 #hold the cup a little higher
                         new_orn = orn
                         p.changeConstraint(self.cup_constraint, new_loc, new_orn, maxForce = self.constraint_force)
+                    simulate_for_duration(0.1/num_steps)
         else:
             set_joint_positions(self.pr2, moving_joints, moving_confs)
             #set_joint_positions(self.pr2, heavy_joints, heavy_confs)
@@ -199,15 +199,16 @@ class PouringWorld():
         other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
         gripper_pose, gripper_orn =  p.getLinkState(self.pr2, self.ee_index)[0:2]
         #desired_height = other_cup_pos[2]+desired_height
-        new_pose = list(pourer_pos)
+        new_pose = list(other_cup_pos)
         new_pose[2] += desired_height
-        new_pose[1] += side_offset
         #always up after
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
+        other_cup_pos, _=  p.getBasePositionAndOrientation(self.target_cup)
         gripper_pose, gripper_orn =  p.getLinkState(self.pr2, self.ee_index)[0:2]
-        new_pose = list(pourer_pos)
+        new_pose = list(other_cup_pos)
         new_pose[0] += forward_offset
+        new_pose[1] += side_offset
         new_pose[2] =gripper_pose[2]
         self.move_ee_to_point(new_pose, gripper_orn, force=force, teleport=False)
 
@@ -301,7 +302,7 @@ class PouringWorld():
         num_steps = 10
         euler_orn = p.getLinkState(self.pr2, 58)[5] #orientation in world coordinates
         traj = []
-        current_orn = euler_orn[:]
+        current_orn = list(euler_orn)
         for _ in range(num_steps):
             current_orn[0] += amount/num_steps
             traj.append(current_orn[:])
@@ -368,6 +369,7 @@ if __name__ == "__main__":
     pw.grasp_cup(close_num=0.45, close_force=20, lift_force=228, grasp_height=0.03, grasp_depth=0.02, finger_close_num=0.5)
     #pw.grasp_cup(close_num=data[0], close_force=data[1], lift_force=data[2], grasp_height=data[3], grasp_depth=data[4], finger_close_num=data[5])
     pw.spawn_cup()
-    print("Test result", pw.test_grasp(700, 0.35))
+    pw.shift_cup(desired_height=0.1, side_offset=0, forward_offset=0, force=1600)
+    pw.turn_cup_general(np.pi, 1.0)
     
     

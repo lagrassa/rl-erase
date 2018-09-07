@@ -42,8 +42,8 @@ class PourEnv():
         close_num = action[0]
         close_force = action[1]
         lift_force = action[2]
-	grasp_height = action[3]
-	grasp_depth = action[4]
+	    grasp_height = action[3]
+	    grasp_depth = action[4]
         if GRASP_ONLY:
             self.world.grasp_cup(close_num=close_num, close_force = close_force, teleport=False, grasp_height=grasp_height, grasp_depth=grasp_depth, lift_force=lift_force)
         else:

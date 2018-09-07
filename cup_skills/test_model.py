@@ -72,7 +72,9 @@ def fit_and_test_n_dim(samples, rewards, n, alpha=0.1, length_scale=0.1, use_nn 
         print("after fitting")
 	ll = gp.log_marginal_likelihood()
 	predictions = gp.predict(relevant_samples_test)    
+    
     se = (predictions-relevant_rewards_test)**2
+    
     mse = np.mean(se)
     return mse, ll
 
@@ -95,17 +97,12 @@ def fit_and_test_one_dim(var):
     plot_samples_and_rewards_1D(test_samples, test_rewards, predictions, gp=gp_1D, column_index = col_index, label=var)
 
 #var in form offset_height, offset_vel, offset_total
-def fit_and_test_two_dim(var):
-    samples_file = np.load("dataset/samples_vary_"+var+".npy")
-    rewards_file = np.load("dataset/rewards_vary_"+var+".npy")
-    relevant_dims = []
-    dim_names = var.split("_")
-    names = ["offset", "height", "vel", "total"]
-    dims = []
-    num_training = 95
-    for dim in dim_names:
-        col_index = names.index(dim)
-        dims.append(col_index)
+def fit_and_test_two_dim(var, samples_file = None, rewards_file = None):
+    if samples_file is None:
+        samples_file = np.load("dataset/samples_vary_"+var+".npy")
+        rewards_file = np.load("dataset/rewards_vary_"+var+".npy")
+    dims = [0,1]
+    num_training = 19
     assert(len(dims) == 2)
     training_samples = np.hstack([np.matrix(samples_file[:num_training,dims[0]]).T, 
                                   np.matrix(samples_file[:num_training,dims[1]]).T])
@@ -114,14 +111,17 @@ def fit_and_test_two_dim(var):
                                   np.matrix(samples_file[num_training:,dims[1]]).T])
     test_rewards = rewards_file[num_training:]
     
-    gp_kernel = C(0.01, (1e-3, 1e3)) * RBF(0.001, (1e-2, 1e2))
-    gp_2D = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=0.5)
+    gp_kernel = C(0.01, (1e-3, 1e3)) * RBF(0.6, (1e-2, 1e2))
+    gp_2D = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=1e-3)
     gp_2D.fit(training_samples, training_rewards)
     predictions = gp_2D.predict(test_samples, return_std=True)
-    plot_samples_and_rewards_2D(test_samples, test_rewards, predictions, gp=gp_2D, column_index = col_index, label=var)
-
- 
-
+    se = (predictions[0].reshape(test_rewards.shape)-test_rewards)**2
+    mse = np.mean(se)
+    print(np.round(predictions[0],2))
+    print("test samples", test_rewards)
+    pdb.set_trace()
+    print(mse, "mean squared error")
+    plot_samples_and_rewards_2D(test_samples, test_rewards, predictions, gp=gp_2D, label=var)
 
 
 def plot_samples_and_rewards(samples, rewards):
@@ -147,11 +147,12 @@ def plot_samples_and_rewards(samples, rewards):
     ax.set_ylabel('velocity')
     ax.set_zlabel('reward')
 
-def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=None, column_index=0, label=""):
+def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=None, label=""):
     prediction_points = np.array([pt[0] for pt in predictions[0]])
     stds = np.array([pt for pt in predictions[1]])
     fig = plt.figure()
     dims = label.split('_')
+    
     ax = fig.gca(projection='3d')
     ax = fig.add_subplot(111, projection='3d')
     samples_x = np.array([_.item() for _ in samples[:,0]])
@@ -232,9 +233,8 @@ def test(samples, use_nn=False):
         actual = rewards[i].item()
         error = (predicted-actual)**2
         total_error.append(error)
-    print(np.median(total_error)**0.5, "median error")
-    print(np.mean(total_error)**0.5, "mean error")
-    return np.median(total_error)**0.5, predictions
+    return np.median(total_error)**0.5
+
 
 
 def test_set(use_nn=False):
@@ -315,7 +315,9 @@ def clean_rewards(rewards):
         else:
             cleaned_rewards[i] = rewards[i]
     return cleaned_rewards
-samples, rewards = load_datasets("gp_learn_pour_and_grasp")
+
+samples, rewards = load_datasets("PR22D")
+fit_and_test_two_dim("forward distance_height", samples_file = samples, rewards_file = rewards)
 rewards = clean_rewards(rewards)
 fit, ll = fit_and_test_n_dim(samples, rewards, 8,use_nn =False)
 print("Fit", fit)
