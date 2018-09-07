@@ -60,18 +60,24 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters):
     # All the queries x and y
     xx = np.zeros((0, func.x_range.shape[1]))
     yy = np.zeros(0)
+    reward_list = []
     # Start active queries
     for i in range(iters):
         try:
             active_learner.retrain(xq, yq)
         except:
             print("Could not retrain")
-            pdb.set_trace() 
+            pass
 
         xq = active_learner.query(context)
         yq = func(xq)
         xx = np.vstack((xx, xq))
         yy = np.hstack((yy, yq))
+        sample = active_learner.sample_adaptive([])
+        reward = func(sample)
+        reward_list.append(reward)
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
 
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
+
+    np.save("rewards_1.npy", reward_list)

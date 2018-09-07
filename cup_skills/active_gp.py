@@ -1,6 +1,7 @@
 # Author: Zi Wang
 import numpy as np
 import GPy as gpy
+import pdb
 from scipy.stats import norm
 import helper
 from active_learner import ActiveLearner
@@ -84,7 +85,7 @@ class ActiveGP(ActiveLearner):
         self.best_beta = -y_star
         self.beta = norm.ppf(self.betalambda*norm.cdf(self.best_beta))
         if self.best_beta < 0:
-            raw_input('Warning! Cannot find any parameter to be super level set \
+            print('Warning! Cannot find any parameter to be super level set \
                    with more than 0.5 probability. Are you sure to continue?')
         if self.beta > self.best_beta:
             raise ValueError('Beta cannot be larger than best beta.')
