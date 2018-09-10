@@ -1,6 +1,7 @@
 # Author: Zi Wang
 import numpy as np
 import GPy as gpy
+import pdb
 from scipy.stats import norm
 import helper
 from active_learner import ActiveLearner
@@ -31,6 +32,7 @@ class ActiveGP(ActiveLearner):
         if inity.ndim == 1:
             inity = inity[:, None]
         self.xx = initx
+        self.yvals = []
         self.yy = inity
         assert(initx.ndim == 2 and inity.ndim == 2)
         self.func = func
@@ -56,18 +58,18 @@ class ActiveGP(ActiveLearner):
         x0, x0context = helper.find_closest_positive_context_param(
             context, self.xx, self.yy, self.func.param_idx, self.func.context_idx)
         self.model = self.model
-
+        total_context = helper.tuple_context_to_total_context(context)
         def ac_f(x):
             if x.ndim == 1:
                 x = x[None, :]
-            x = np.hstack((x, np.tile(context, (x.shape[0], 1))))
+            x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
             mu, var = self.model.predict(x)
             return (-mu)/np.sqrt(var)
 
         def ac_fg(x):
             if x.ndim == 1:
                 x = x[None, :]
-            x = np.hstack((x, np.tile(context, (x.shape[0], 1))))
+            x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
             mu, var = self.model.predict(x)
             dmdx, dvdx = self.model.predictive_gradients(x)
             dmdx = dmdx[0, :, 0]
@@ -83,11 +85,11 @@ class ActiveGP(ActiveLearner):
         self.best_beta = -y_star
         self.beta = norm.ppf(self.betalambda*norm.cdf(self.best_beta))
         if self.best_beta < 0:
-            raw_input('Warning! Cannot find any parameter to be super level set \
+            print('Warning! Cannot find any parameter to be super level set \
                    with more than 0.5 probability. Are you sure to continue?')
         if self.beta > self.best_beta:
             raise ValueError('Beta cannot be larger than best beta.')
-        return np.hstack((x_star, context))
+        return np.hstack((x_star, total_context))
 
     def gen_adaptive_samples(self, context, n=10000, m=50):
         '''
@@ -98,10 +100,11 @@ class ActiveGP(ActiveLearner):
             n: number of proposals per iteration.
             m: minimum number of samples to be generated.
         '''
+        total_context = helper.tuple_context_to_total_context(context)
         def ac_f(x):
             if x.ndim == 1:
                 x = x[None, :]
-            x = np.hstack((x, np.tile(context, (x.shape[0], 1))))
+            x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
             mu, var = self.model.predict(x)
             ret = (mu)/np.sqrt(var)
             return ret.T[0]
@@ -207,7 +210,8 @@ class ActiveGP(ActiveLearner):
             if len(self.good_samples) < 10:
                 self.gen_adaptive_samples(context)
             sid = helper.argmax_condvar(self.good_samples, self.sampled_xx[:, self.func.param_idx], self.task_lengthscale)
-            new_s = np.hstack((self.good_samples[sid], context))
+            total_context = helper.tuple_context_to_total_context(context)
+            new_s = np.hstack((self.good_samples[sid], total_context))
             self.good_samples = np.delete(self.good_samples, (sid), axis=0)
             self.sampled_xx = np.vstack((self.sampled_xx, new_s))
         return self.sampled_xx[-1]
@@ -228,8 +232,22 @@ class ActiveGP(ActiveLearner):
         if newx is not None and newy is not None:
             self.xx = np.vstack((self.xx, newx))
             self.yy = np.vstack((self.yy, newy))
+            self.yvals.append(newy)
+        print("yvals", self.yvals)
+        np.save("yvals.npy", self.yvals)
         lengthscale = (self.func.x_range[1] - self.func.x_range[0]) * 0.05
-        k = gpy.kern.Matern52(self.func.x_range.shape[1], ARD=True, lengthscale=lengthscale)
+        if len(self.func.discrete_contexts) > 0:
+            num_discrete = len(self.func.discrete_contexts[0])
+            for i in range(num_discrete):
+                only_that_param = [ctx[i] for ctx in self.func.discrete_contexts ]
+                min_param = min(only_that_param)
+                max_param = max(only_that_param)
+                lengthscale = np.hstack([lengthscale, (max_param-min_param)*0.05])
+
+        else:
+            num_discrete = 0
+ 
+        k = gpy.kern.Matern52(self.func.x_range.shape[1]+num_discrete, ARD=True, lengthscale=lengthscale)
         self.model = gpy.models.GPRegression(self.xx, self.yy, k)
         for i in range(self.func.dx):
             self.model.kern.lengthscale[i:i+1].constrain_bounded(self.func.lengthscale_bound[0][i],
@@ -250,16 +268,16 @@ class ActiveGP(ActiveLearner):
         '''
         x0, x0context = helper.find_closest_positive_context_param(
             context, self.xx, self.yy, self.func.param_idx, self.func.context_idx)
-        self.model = self.model
 
+        total_context = helper.tuple_context_to_total_context(context)
         def ac_f(x):
             if x.ndim == 1:
                 x = x[None, :]
-            x = np.hstack((x, np.tile(context, (x.shape[0], 1))))
+            x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
             mu, var = self.model.predict(x)
             return -1.96*np.sqrt(var) + np.abs(mu)
         x_star, _ = helper.global_minimize(
             ac_f, None, self.func.x_range[:, self.func.param_idx], 10000, x0)
         
-        return np.hstack((x_star, context))
+        return np.hstack((x_star, total_context))
 

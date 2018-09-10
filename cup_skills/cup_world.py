@@ -80,7 +80,10 @@ class CupWorld():
         if cup is None:
             cup = self.cupID
         aabbMin, aabbMax = p.getAABB(cup)
-        overlapping_objects = [obj for obj in p.getOverlappingObjects(aabbMin, aabbMax) if obj[1] == -1]
+        all_overlapping =  p.getOverlappingObjects(aabbMin, aabbMax) 
+        if all_overlapping is None:
+            return 0
+        overlapping_objects = [obj for obj in all_overlapping if obj[1] == -1]
         #If the last coordinate is not -1, then it can't be a bead so get rid of that
         
         if overlapping_objects is None:

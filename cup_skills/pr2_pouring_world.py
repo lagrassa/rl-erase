@@ -68,7 +68,7 @@ class PouringWorld():
             mag = np.linalg.norm(forces)
             all_forces.append(mag)
             #can average force of all the grippers
-        return np.mean(all_forces)
+        return np.array((np.mean(all_forces),))
 
     ''' returns the change in force to apply to shift the force in the right direction'''
     def pid_controller(self):
@@ -363,7 +363,7 @@ class PouringWorld():
 
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True)
+    pw = PouringWorld(visualize=False, real_init = True)
     #pw.pour_pr2(close_num=0.333, close_force=663, lift_force=328, height=0.09, forward_offset=-0.15, vel=3, grasp_height=0.04, grasp_depth=0.07)
     data = [3.30000000e-01, 6.97000000e+02, 3.26000000e+02, 2.90000000e-02,7.66003498e-01, 0.00000000e+00]
     pw.grasp_cup(close_num=0.45, close_force=20, lift_force=228, grasp_height=0.03, grasp_depth=0.02, finger_close_num=0.5)

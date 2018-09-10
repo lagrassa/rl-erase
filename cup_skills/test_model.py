@@ -1,6 +1,8 @@
 from sklearn.gaussian_process import GaussianProcessRegressor
 from random import random
 from matplotlib import cm
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from sklearn.gaussian_process import GaussianProcess
 import numpy as np
 import pdb
@@ -18,12 +20,10 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C, RationalQ
 
 #gp = GaussianProcess(theta0=0.1, nugget = 0.1) this works pretty well
 
-def num_params_v_fit():
+def num_params_v_fit(samples, rewards):
     lls = []
     fits = []
-    num_params = 6
-    samples = np.load("dataset/samples_1_biger.npy")
-    rewards = np.load("dataset/rewards_1_biger.npy")
+    num_params = 8
     x = np.linspace(1,num_params, num_params)
     for i in range(1,num_params+1):
         fit, ll = fit_and_test_n_dim(samples, rewards, i)
@@ -31,39 +31,39 @@ def num_params_v_fit():
         fits.append(fit)
     plot_fit_and_ll(x, fits, lls)
 
-def plot_fit_and_ll(x, fits, lls):
+def plot_fit_and_ll(x, fits, lls, label=""):
     plt.title("Log marginal likelihood over number of parameters")
     plt.xlabel("Number of parameters")
     plt.ylabel("Log likelihood")
     plt.scatter(x, lls)
     plt.show()
     
-    plt.title("Mean squared error over number of parameters")
-    plt.xlabel("Number of parameters")
+    plt.title("Mean squared error over " + label)
+    plt.xlabel(label)
     plt.ylabel("MSE")
     plt.scatter(x,fits)
     plt.show()
         
         
     
-def fit_and_test_n_dim(samples, rewards, n, alpha=0.1, length_scale=0.1, use_nn = False):
+def fit_and_test_n_dim(samples, rewards, n, alpha=0.1, length_scale=5, use_nn = False):
     if use_nn:
 	nn = Sequential()
-	nn.add(Dense(32, input_shape=(8,), activation="relu"))
-	nn.add(Dense(64,  activation="relu"))
-	nn.add(Dense(1, activation="sigmoid"))
+	nn.add(Dense(16, input_shape=(8,), activation="relu"))
+	nn.add(Dense(8,  activation="relu"))
+	nn.add(Dense(1, activation="linear"))
 	opt = Adam(lr=0.01)
 	nn.compile(loss="mse", optimizer=opt)
     else:
-	gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(length_scale, (1e-2, 1e2))
+	gp_kernel = C(12.0, (1e-3, 2e3)) * RBF(length_scale)
 	gp = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=alpha)
-    num_training = 1800
+    num_training = 300
     relevant_samples_training = samples[:num_training,:n ]
     relevant_rewards_training = rewards[:num_training]
     relevant_samples_test = samples[num_training:,:n ]
     relevant_rewards_test = rewards[num_training:]
     if use_nn:
-        nn.fit(relevant_samples_training, relevant_rewards_training, epochs=3800, batch_size=50)
+        nn.fit(relevant_samples_training, relevant_rewards_training, epochs=10000, batch_size=800)
         ll = 0 
         predictions = nn.predict_on_batch(relevant_samples_test)
     else:
@@ -76,6 +76,8 @@ def fit_and_test_n_dim(samples, rewards, n, alpha=0.1, length_scale=0.1, use_nn 
     se = (predictions-relevant_rewards_test)**2
     
     mse = np.mean(se)
+    plt.scatter(relevant_rewards_test, se)
+    plt.show()
     return mse, ll
 
 
@@ -85,7 +87,7 @@ def fit_and_test_one_dim(var):
     rewards_file = np.load("dataset/rewards_vary_"+var+".npy")
     names = ["offset", "height", "vel", "total"]
     col_index = names.index(var)
-    gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))+WhiteKernel(5.0)
+    gp_kernel = C(1.0, (1e-3, 1e3)) * RBF(0.1, (1e-2, 1e2))
     gp_1D = GaussianProcessRegressor(kernel=gp_kernel, n_restarts_optimizer=8, alpha=0.1)
     num_training = 75
     training_samples = samples_file[:num_training,col_index]
@@ -104,6 +106,7 @@ def fit_and_test_two_dim(var, samples_file = None, rewards_file = None):
     dims = [0,1]
     num_training = 19
     assert(len(dims) == 2)
+    num_training = 250
     training_samples = np.hstack([np.matrix(samples_file[:num_training,dims[0]]).T, 
                                   np.matrix(samples_file[:num_training,dims[1]]).T])
     training_rewards = rewards_file[:num_training]
@@ -151,8 +154,7 @@ def plot_samples_and_rewards_2D(samples, rewards, predictions, gp=None, label=""
     prediction_points = np.array([pt[0] for pt in predictions[0]])
     stds = np.array([pt for pt in predictions[1]])
     fig = plt.figure()
-    dims = label.split('_')
-    
+    dims = ["cup_force","lift_force"]
     ax = fig.gca(projection='3d')
     ax = fig.add_subplot(111, projection='3d')
     samples_x = np.array([_.item() for _ in samples[:,0]])
@@ -295,17 +297,32 @@ plt.ylabel("best score found")
 plt.title("Effect of number of samples on the best score")
 plt.show()
 """
+'''
 #Needs to be vel, total, offset, or height
 #for name in ["offset", "height", "total", "vel"]:
 #    fit_and_test_one_dim(name)
-def hyperparam_opt():
-    samples, rewards = load_datasets("gp_learn_pour_and_grasp")
+'''
+def hyperparam_opt(samples, rewards):
     lls, fits = [], []
-    alphs = np.linspace(0, 10, 50)
+    alphs = np.linspace(0, 10, 100)
     for alp in alphs:
-	fit, ll = fit_and_test_n_dim(samples, rewards, 8, alpha=1, length_scale= alp)
+	fit, ll = fit_and_test_n_dim(samples, rewards, 8, alpha=0.1, length_scale= alp)
 	fits.append(fit)
 	lls.append(ll)
+    plot_fit_and_ll(alphs, fits, lls, label="Optimize length scale")
+'''Returns only samples above a certain reward'''
+def samples_above_threshold(samples, rewards, threshold):
+    filtered_samples = None
+    filtered_rewards = None
+    for i in range(samples.shape[0]):
+        if rewards[i] >= threshold:
+            if filtered_samples is None:
+                filtered_samples = samples[i]
+                filtered_rewards = rewards[i]
+            else:
+                filtered_samples = np.vstack([filtered_samples, samples[i]])
+                filtered_rewards = np.vstack([filtered_rewards, rewards[i]])
+    return filtered_samples, filtered_rewards
 
 def clean_rewards(rewards):
     cleaned_rewards = np.zeros(rewards.shape)
@@ -323,5 +340,18 @@ fit, ll = fit_and_test_n_dim(samples, rewards, 8,use_nn =False)
 print("Fit", fit)
     
     
+#transforms the samples by a divisor so that the average sample is 1, then
+#returns what numbers to multiply by to get the originals back. Divide to get the normalized samples
+def normalize_samples(samples):
+    normalizers = np.mean(samples,axis=0)
+    return samples/normalizers, normalizers
     
+samples, rewards = load_datasets("gp_pour_close_num_only")
+samples_filt, rewards_filt = samples_above_threshold(samples, rewards, 50)
+pdb.set_trace()
+#num_params_v_fit(samples, rewards)
 
+normalized_samples, normalizers = normalize_samples(samples)
+#hyperparam_opt(normalized_samples, rewards)
+fit_and_test_two_dim()
+print("Fit", fit)

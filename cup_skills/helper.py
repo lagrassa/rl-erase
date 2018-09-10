@@ -1,5 +1,6 @@
 # Author: Zi Wang
 import numpy as np
+import pdb
 import scipy.optimize
 from sklearn.utils import shuffle
 import cPickle as pickle
@@ -53,7 +54,7 @@ def get_func_from_exp(exp):
     '''
     if exp == 'pour':
         from pouring_world import PouringWorld
-        func = PouringWorld()
+        func = PouringWorld(visualize=False)
     elif exp == 'scoop':
         from kitchen2d.scoop import Scoop
         func = Scoop()
@@ -203,9 +204,16 @@ def grid(n, x_range):
     return np.array(grids).T
 
 
-def global_minimize(f, fg, x_range, n, guesses, callback=None):
+def global_minimize(f, fg, x_range, n, guesses, callback=None, discrete_context = []):
     dx = x_range.shape[1]
     tx = np.random.uniform(x_range[0], x_range[1], (n, dx))
+    if len(discrete_context) > 0:
+        #add random discrete vals
+        discrete_contexts = np.zeros((n,len(discrete_context)))
+        for i in range(n):
+            discrete_contexts[i,:] = discrete_context
+        tx = np.hstack([tx, discrete_contexts])
+        
     tx = np.vstack((tx, guesses))
     ty = f(tx)
     x0 = tx[ty.argmin()]  # 2d array 1*dx
@@ -310,25 +318,50 @@ def gen_data(func, N, parallel=False):
     if parallel:
         from multiprocessing import Pool
         import multiprocessing
-        cpu_n = multiprocessing.cpu_count()
+        max_cpu = 10 #to not be a terrible person
+        cpu_n = min(multiprocessing.cpu_count(), max_cpu)
         p = Pool(cpu_n)
         y = np.array(p.map(func, X))
     else:
         y = np.array(map(func, X))
+    if len(func.discrete_contexts) > 0:
+        random_discrete_contexts = np.zeros((N,len(func.discrete_contexts[0])))
+        for i in range(N):
+            random_discrete_contexts[i,:] = func.discrete_contexts[np.random.randint(0,len(func.discrete_contexts))]
+        X = np.hstack([X,random_discrete_contexts])
     return X, y
 
 def gen_context(func, N=1):
     '''
-    Generate N random contexts associated with function func. 
+    Generate N random contexts associated with function func. Returns a tuple of (continuous_contexts, discrete_contexts) 
     '''
+    if len(func.discrete_contexts) > 0: #Only doing discrete contexts for right now, can be extended
+        #return N random samples
+        discrete_contexts = []
+        for i in range(N):
+            random_context =  func.discrete_contexts[np.random.randint(0,len(func.discrete_contexts))]
+            discrete_contexts.append(random_context)
+    else:
+        discrete_contexts = []
     xmin = func.x_range[0, func.context_idx]
     xmax = func.x_range[1, func.context_idx]
     if N == 1:
-        return np.random.uniform(xmin, xmax)
+        continuous_contexts =  np.random.uniform(xmin, xmax)
     else:
-        return np.random.uniform(xmin, xmax, (N, len(func.context_idx)))
+        continuous_contexts =  np.random.uniform(xmin, xmax, (N, len(func.context_idx)))
+    return (continuous_contexts, discrete_contexts)
 
 
+def tuple_context_to_total_context(context):
+    cont_context, discrete_context = context
+    discrete_context = discrete_context[0] #unpack one level
+    if len(cont_context) > 0 and len(discrete_context) == 0:
+        total_context = cont_context
+    elif len(cont_context) == 0 and len(discrete_context) > 0:
+        total_context = discrete_context
+    else:
+        total_context = np.hstack([cont_context, discrete_context])
+    return total_context
 def find_closest_positive_context_param(context, xx, yy, param_idx, context_idx):
     '''
     Find the closest data point (in terms of context distance) that has a positive label.
@@ -339,6 +372,7 @@ def find_closest_positive_context_param(context, xx, yy, param_idx, context_idx)
         param_idx: index of parameters in an input
         context_idx: index of contexts in an input
     '''
+    total_context = tuple_context_to_total_context(context)
     if yy.ndim == 2:
         yy = np.squeeze(yy)
     positive_idx = yy > 0
@@ -346,9 +380,19 @@ def find_closest_positive_context_param(context, xx, yy, param_idx, context_idx)
         return xx[0, param_idx], xx[0, context_idx]
     xx = xx[positive_idx]
     yy = yy[positive_idx]
-    distances = np.linalg.norm(xx[:, context_idx] - context, axis=1)
+    if len(context[1]) == 0:
+        num_discrete = 0
+    else:
+        num_discrete = len(context[1][0])
+    if len(context[1]) == 0:
+        distances = np.linalg.norm(xx[:, context_idx] - total_context, axis=1)
+    elif len(context[0]) == 0 and len(context[1]) > 0:
+        distances = np.linalg.norm(xx[:,-num_discrete:] - total_context, axis=1)
+    elif len(context[0]) > 0 and len(context[1]) > 0:
+        distances = np.linalg.norm(np.hstack([xx[:, context_idx], xx[:,-num_discrete:]]) - total_context, axis=1)
+
     idx = distances.argmin()
-    return xx[idx, param_idx], xx[idx, context_idx]
+    return xx[idx, param_idx], np.hstack([xx[idx, context_idx], xx[idx,-num_discrete:]])
 
 def gen_biased_data(func, pos_ratio, N):
     '''

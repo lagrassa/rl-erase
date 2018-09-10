@@ -11,16 +11,17 @@ class PouringWorld():
     def __init__(self, visualize=False, real_init=True, new_bead_mass=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
-        lower =  [0.5, -0.1, -0.1, 0.8, 0,np.pi/2]
-        upper = [0.75, 0.1, 0.1, 2, 3.12,np.pi]
         lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
         upper = [0.75, 0.3, 0.3, 2, 3.14,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
+        self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
         self.task_lengthscale = np.ones(self.nb_actions)*0.4
-        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.01,0.01], [0.3, 0.15, 0.5, 0.5, 0.2,0.3]])
+        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.01,0.01, 0.00000001], [0.3, 0.15, 0.5, 0.5, 0.2,0.3, 2]])
+     
         self.context_idx = []
+        
         self.param_idx = [0,1,2,3, 4, 5]
         self.dx = len(self.x_range[0])
         self.do_gui = False
@@ -52,7 +53,6 @@ class PouringWorld():
         #pick random cup
 
         self.cup_name = np.random.choice(self.cup_to_dims.keys())
-        self.cup_name = 'cup_4.urdf' #just for now
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.base_world.drop_beads_in_cup()
@@ -122,7 +122,7 @@ class PouringWorld():
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
     def __call__(self, x, image_name=None):
-        height, x_offset, y_offset, velocity, yaw, total_diff = x
+        height, x_offset, y_offset, velocity, yaw, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
@@ -138,7 +138,7 @@ class PouringWorld():
        
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True)
+    pw = PouringWorld(visualize=False, real_init = True)
     pw.lift_cup(desired_height=0.62)
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)

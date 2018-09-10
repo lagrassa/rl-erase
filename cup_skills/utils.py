@@ -13,8 +13,6 @@ from collections import defaultdict, deque, namedtuple
 from itertools import product, combinations, count
 
 from transformations import quaternion_from_matrix
-from transformation_finder import apply_transformation
-from pr2_ik import arm_ik, LEFT_JOINT_LIMITS, RIGHT_JOINT_LIMITS
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(directory, '../motion'))

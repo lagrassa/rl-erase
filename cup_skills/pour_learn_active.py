@@ -17,7 +17,7 @@ def gen_data(expid, func, n_data, save_fnm):
         saved.
     '''
     print('Generating data...')
-    xx, yy = helper.gen_data(func, n_data)
+    xx, yy = helper.gen_data(func, n_data, parallel=True)
     pickle.dump((xx, yy), open(save_fnm, 'wb'))
 
 def run_exp(expid, exp, method, n_init_data, iters):
@@ -94,8 +94,8 @@ def main():
     exp = 'pour'
     method = 'gp_lse'
     expid = 0
-    n_init_data = 2
-    iters = 50
+    n_init_data = 10
+    iters = 8
     run_exp(expid, exp, method, n_init_data, iters)
     sample_exp(expid, exp, method)
 
