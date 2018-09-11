@@ -6,7 +6,9 @@ import cv2
 import numpy as np
 from geometry_msgs.msg import Point
 
-from gdm_arm_controller.uber_controller import UberController
+from control_tools.ros_controller import ROS_Controller
+from plan_tools.execute_plan import follow_path
+from pr2_ik import arm_ik
 from image_geometry import PinholeCameraModel
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from grip import Gripper
@@ -24,7 +26,11 @@ class RealPouringWorld:
         self.target_pos = (0.8, -0.01, 0.7595)
         self.depth_image = None
         self.bridge = CvBridge()
-        self.uc = UberController()
+        #self.uc = UberController()
+        print("setting up uc")
+        self.uc =  ROS_Controller()
+        print("set up uc")
+
         #self.cam = get_cam() 
         """
         for i in range(400): 
@@ -43,6 +49,7 @@ class RealPouringWorld:
 	self.uc.command_joint_pose(self.arm,start_joint_angles, time=3, blocking=True)
         print("Commanded joint pose")
 	rospy.sleep(1)
+
     def world_state(self):
         return []
 
@@ -53,14 +60,14 @@ class RealPouringWorld:
 
     def change_pos(self, pos):
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
-        self.uc.cmd_ik_interpolated(self.arm, (pos, gripper_quat), 3.0, 'base_link', blocking = True, use_cart=False, num_steps = 3)
+        command_pose(self.uc, (pos, gripper_quat))
 
     ''' currently really only actually samples a pose, and uses the original quaternion''' 
     def change_quat(self, quat):
         gripper_pos, gripper_quat = self.uc.return_cartesian_pose(self.arm, 'base_link')
         print("gipper quat", gripper_quat)
         pos = gripper_pos
-        self.uc.cmd_ik_interpolated(self.arm, (pos, quat), 3.0, 'base_link', blocking = True, use_cart=False, num_steps = 3)
+        command_pose(self.uc, (pos, quat))
 
     def get_grasp(self, cup_pos, grasp_height=0):
         #grasp it from the right side, at a sort of 90 degree angle flat
@@ -93,7 +100,7 @@ class RealPouringWorld:
      
         if self.pourer_pos is not None:
             pos,quat = self.get_grasp(self.pourer_pos, grasp_height=grasp_height)
-            self.uc.cmd_ik_interpolated(self.arm, (pos, quat), grasp_time, frame, blocking = True, use_cart=False, num_steps = 5)
+            command_pose(self.uc, (pos, quat))
         
         #close self.gripper
         self.gripper.grip(amount=0.055)
@@ -105,9 +112,9 @@ class RealPouringWorld:
         if yaw is not None:
             gripper_euler = list(euler_from_quaternion(gripper_quat))
             gripper_euler[2] = yaw
-            gripper_quat = quaternion_from_euler(gripper_euler[0], gripper_euler[1], gripper_euler[2])
+            gripper_quat = list(quaternion_from_euler(gripper_euler[0], gripper_euler[1], gripper_euler[2]))
         new_pos = (gripper_pos[0]+dx, gripper_pos[1]+dy, gripper_pos[2]+dz)
-        self.uc.cmd_ik_interpolated(self.arm, (new_pos, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        command_pose(self.uc, (new_pos, gripper_quat))
     
     def pour_cup(self, vel = 2.0):
         #get joint state of right turning joint, add to joint state, do a few times
@@ -140,10 +147,10 @@ class RealPouringWorld:
         above_point = list(point_to_grasp)
         above_point += 0.08
         #go to just above point
-        self.uc.cmd_ik_interpolated(self.arm, (above_point, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        command_pose(self.uc, (above_point, gripper_quat))
         self.gripper.grip(0.19)
         #and descend onto point        
-        self.uc.cmd_ik_interpolated(self.arm, (point_to_grasp, gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+        command_pose(self.uc, (point_to_grasp, gripper_quat))
         self.gripper.grip(0.03)
         #and descend onto point        
 
@@ -192,16 +199,26 @@ class RealPouringWorld:
             #TODO update new_gripper_quat
             new_gripper_euler = list(euler_from_quaternion(new_gripper_quat))
             new_gripper_euler[0] += angle_diff
-            new_gripper_quat = quaternion_from_euler(new_gripper_euler[0], new_gripper_euler[1], new_gripper_euler[2])
-            self.uc.cmd_ik_interpolated(self.arm, (gripper_pos, new_gripper_quat), shift_time, 'base_link', blocking = True, use_cart=False, num_steps = 30)
+            new_gripper_quat = list(quaternion_from_euler(new_gripper_euler[0], new_gripper_euler[1], new_gripper_euler[2]))
+            command_pose(self.uc, (gripper_pos, new_gripper_quat))
+            
     
     def pour_parameterized_general(self,x_offset=None, y_offset=None, yaw=None, height_up=None, vel=None, grasp_height=None):         
         #self.go_to_start()        
         self.grasp_cup(grasp_height=grasp_height)
+        print("Grasp cup")
         self.shift_cup(dz = height_up)
         self.shift_cup(dx = x_offset, dy = y_offset, yaw=yaw)
+        print("pour cup")
         self.pour_cup_general(vel=vel)
-
+    
+def command_pose(uc, pose):
+    print("pose",pose)
+    angles =  arm_ik('r', pose[0], pose[1], uc.get_torso_position(), current=uc.get_arm_positions('r'))
+    times=[0,1]
+    uc.command_arm('r', angles,  True)
+    
+    
 def get_cam():
     model = PinholeCameraModel()
     camera_info = rospy.wait_for_message( "/head_mount_kinect/rgb/camera_info", CameraInfo)
@@ -211,11 +228,26 @@ def get_cam():
 def distance(point1, point2):
     return np.linalg.norm(np.subtract(point1, point2))
 
+def test_moving(robot):
+    times = [1,2]
+    gripper_pos, gripper_quat = robot.uc.return_cartesian_pose('r', 'base_link')
+    print(gripper_pos, "gripper pos")
+    pos_trajectory = [[[0.7, -0.3, 1], gripper_quat], [gripper_pos, gripper_quat]]
+    robot.uc.lift_torso()
+    arm_traj = [] 
+    for pose in pos_trajectory:
+        angles =  arm_ik('r', pose[0], pose[1], robot.uc.get_torso_position(), current=robot.uc.get_arm_positions('r'))
+        assert angles is not None
+        arm_traj.append(angles)
+    robot.uc.command_arm_trajectory('r', arm_traj, times, True)
+
 if __name__ == "__main__":
     rospy.init_node("make_pour")
     robot = RealPouringWorld()
+    robot.uc.lift_torso()
     numsteps = 1    
     for i in range(numsteps):
+        print("Before parameterized pour")
         robot.pour_parameterized_general(x_offset = 0.08, y_offset= 0,height_up = 0.08, vel=1.1, grasp_height=-0.05, yaw = 0)
 
     
