@@ -92,6 +92,7 @@ class ActiveGP(ActiveLearner):
         return np.hstack((x_star, total_context))
 
     def gen_adaptive_samples(self, context, n=10000, m=50):
+     
         '''
         Generate adaptive samples with rejection sampling, where the proposal 
         distribution is uniform and truncated Gaussian mixtures.
@@ -100,70 +101,78 @@ class ActiveGP(ActiveLearner):
             n: number of proposals per iteration.
             m: minimum number of samples to be generated.
         '''
-        total_context = helper.tuple_context_to_total_context(context)
-        def ac_f(x):
-            if x.ndim == 1:
-                x = x[None, :]
-            x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
-            mu, var = self.model.predict(x)
-            ret = (mu)/np.sqrt(var)
-            return ret.T[0]
-        dx = len(self.func.param_idx)
-        good_samples = np.zeros((0, dx))
-        prob = np.zeros(0)
-        t_start = time.time()
-        sampled_cnt = 0
+        try:
+	    total_context = helper.tuple_context_to_total_context(context)
+	    def ac_f(x):
+		if x.ndim == 1:
+		    x = x[None, :]
+		x = np.hstack((x, np.tile(total_context, (x.shape[0], 1))))
+		mu, var = self.model.predict(x)
+		ret = (mu)/np.sqrt(var)
+		return ret.T[0]
+	    dx = len(self.func.param_idx)
+	    good_samples = np.zeros((0, dx))
+	    prob = np.zeros(0)
+	    t_start = time.time()
+	    sampled_cnt = 0
 
-        xmin = self.func.x_range[0, self.func.param_idx]
-        xmax = self.func.x_range[1, self.func.param_idx]
-        prob_unif_unit = np.prod(xmax - xmin)
-        x_samples = self.xx[np.squeeze(self.yy)>0][:,self.func.param_idx]
-        if len(self.sampled_xx) == 0:
-            best_x = self.query_best_prob(context)
-            x_samples = np.vstack((x_samples, best_x[self.func.param_idx]))
-        else:
-            x_samples = np.vstack((x_samples, self.sampled_xx[:, self.func.param_idx]))
-        assert(len(x_samples) > 0)
-        good_inds = ac_f(x_samples) > self.beta
-        good_samples = np.vstack((x_samples[good_inds], good_samples))
-        prob = np.hstack(( np.ones(len(good_samples)), prob ))
-        scale = np.array(self.model.kern.lengthscale[self.func.param_idx]) * 1.
-        flag = True
-        while flag or len(good_samples) <= m:
-            flag = False # make sure it samples at least once
-            if time.time() - t_start > self.sample_time_limit:
-                print('Elapsed sampling time = {}, sampling iterations = {}'.format(time.time() - t_start), sampled_cnt)
-                raise ValueError('Not enough good samples.')
-            sampled_cnt += 1
+	    xmin = self.func.x_range[0, self.func.param_idx]
+	    xmax = self.func.x_range[1, self.func.param_idx]
+	    prob_unif_unit = np.prod(xmax - xmin)
+	    x_samples = self.xx[np.squeeze(self.yy)>0][:,self.func.param_idx]
+	    if len(self.sampled_xx) == 0:
+		best_x = self.query_best_prob(context)
+		x_samples = np.vstack((x_samples, best_x[self.func.param_idx]))
+	    else:
+		x_samples = np.vstack((x_samples, self.sampled_xx[:, self.func.param_idx]))
+	    assert(len(x_samples) > 0)
+	    good_inds = ac_f(x_samples) > self.beta
+	    good_samples = np.vstack((x_samples[good_inds], good_samples))
+	    prob = np.hstack(( np.ones(len(good_samples)), prob ))
+	    scale = np.array(self.model.kern.lengthscale[self.func.param_idx]) * 1.
+	    flag = True
+	    while flag or len(good_samples) <= m:
+		flag = False # make sure it samples at least once
+		if time.time() - t_start > self.sample_time_limit:
+		    print('Elapsed sampling time = {}, sampling iterations = {}'.format(time.time() - t_start), sampled_cnt)
+		    raise ValueError('Not enough good samples.')
+		sampled_cnt += 1
 
-            x_samples_unif = np.random.uniform(xmin, xmax, (n, dx))
-            prob_unif = np.ones(n) * prob_unif_unit
-            good_inds = ac_f(x_samples_unif) > self.beta
-            x_samples_unif = x_samples_unif[good_inds]
-            prob_unif = prob_unif[good_inds]
-            good_samples = np.vstack((x_samples_unif, good_samples))
-            prob = np.hstack((prob_unif, prob))
+		x_samples_unif = np.random.uniform(xmin, xmax, (n, dx))
+		prob_unif = np.ones(n) * prob_unif_unit
+		good_inds = ac_f(x_samples_unif) > self.beta
+		x_samples_unif = x_samples_unif[good_inds]
+		prob_unif = prob_unif[good_inds]
+		good_samples = np.vstack((x_samples_unif, good_samples))
+		prob = np.hstack((prob_unif, prob))
 
-            if len(x_samples) > 0 and self.is_adaptive is not None:
-                x_samples_gmm, prob_gmm = helper.sample_tgmm(x_samples, scale, n, xmin, xmax)
-                good_inds = ac_f(x_samples_gmm) > self.beta
-                x_samples_gmm = x_samples_gmm[good_inds]
-                prob_gmm = prob_gmm[good_inds]
-                good_samples = np.vstack((x_samples_gmm, good_samples))
-                prob = np.hstack((prob_gmm, prob))
-                if len(x_samples_gmm) > n/2.:
-                    scale *= 2
-                elif len(x_samples_gmm) < n/10.:
-                    scale *= 0.5
-            if len(good_samples) < m:
-                x_samples = good_samples
-            else:
-                x_samples_inds = np.random.choice(np.arange(len(good_samples)), size=m, replace=False, p=prob/np.sum(prob))
-                x_samples = good_samples[x_samples_inds]
+		if len(x_samples) > 0 and self.is_adaptive is not None:
+                    try:
+			x_samples_gmm, prob_gmm = helper.sample_tgmm(x_samples.astype(np.float32), scale, n, xmin, xmax)
+			good_inds = ac_f(x_samples_gmm) > self.beta
+			x_samples_gmm = x_samples_gmm[good_inds]
+			prob_gmm = prob_gmm[good_inds]
+			good_samples = np.vstack((x_samples_gmm, good_samples))
+			prob = np.hstack((prob_gmm, prob))
+			if len(x_samples_gmm) > n/2.:
+			    scale *= 2
+			elif len(x_samples_gmm) < n/10.:
+			    scale *= 0.5
+                    except:
+                        print("TGMM sampling failed!!! Should investigate")
+                        continue;
+
+		if len(good_samples) < m:
+		    x_samples = good_samples
+		else:
+		    x_samples_inds = np.random.choice(np.arange(len(good_samples)), size=m, replace=False, p=prob/np.sum(prob))
+		    x_samples = good_samples[x_samples_inds]
 
 
-        print('{} samples are generated with the adaptive sampler.'.format(len(good_samples)))
-        self.good_samples = good_samples
+	    print('{} samples are generated with the adaptive sampler.'.format(len(good_samples)))
+	    self.good_samples = good_samples
+        except:
+            pdb.set_trace()
         return x_samples
     def reset_sample(self):
         '''
@@ -177,14 +186,15 @@ class ActiveGP(ActiveLearner):
         Returns one sample from the high probability super level set for a given context,
         using the adaptive sampler.
         '''
+        total_context = helper.tuple_context_to_total_context(context)
         if len(self.sampled_xx) == 0:
             xx = self.gen_adaptive_samples(context)
-            self.unif_samples = np.hstack((xx, np.tile(context, (xx.shape[0], 1))))
+            self.unif_samples = np.hstack((xx, np.tile(total_context, (xx.shape[0], 1))))
             self.sampled_xx = np.array([self.unif_samples[0]])
         else:
             if len(self.unif_samples) < 10: 
                 xx = self.gen_adaptive_samples(context)
-                self.unif_samples = np.hstack((xx, np.tile(context, (xx.shape[0], 1))))
+                self.unif_samples = np.hstack((xx, np.tile(total_context, (xx.shape[0], 1))))
 
             new_s = self.unif_samples[0]
 

@@ -78,8 +78,9 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters):
         sample = active_learner.sample_adaptive(context)
         reward = func(sample)
         reward_list.append(reward)
+        print("reward list", reward_list)
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
  
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
 
-    np.save("rewards_1.npy", reward_list)
+    np.save("rewards_context_3.npy", reward_list)
