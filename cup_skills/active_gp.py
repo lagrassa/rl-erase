@@ -1,7 +1,7 @@
 # Author: Zi Wang
 import numpy as np
 import GPy as gpy
-import pdb
+import ipdb as pdb
 from scipy.stats import norm
 import helper
 from active_learner import ActiveLearner
@@ -164,7 +164,8 @@ class ActiveGP(ActiveLearner):
 
         print('{} samples are generated with the adaptive sampler.'.format(len(good_samples)))
         self.good_samples = good_samples
-        return x_samples
+        sample_diversity = helper.diversity(good_samples, self.func.param_idx)
+        return x_samples, sample_diversity
     def reset_sample(self):
         '''
         Clear the list of samples.
@@ -178,12 +179,12 @@ class ActiveGP(ActiveLearner):
         using the adaptive sampler.
         '''
         if len(self.sampled_xx) == 0:
-            xx = self.gen_adaptive_samples(context)
+            xx, sample_diversity = self.gen_adaptive_samples(context)
             self.unif_samples = np.hstack((xx, np.tile(context, (xx.shape[0], 1))))
             self.sampled_xx = np.array([self.unif_samples[0]])
         else:
             if len(self.unif_samples) < 10: 
-                xx = self.gen_adaptive_samples(context)
+                xx, sample_diversity = self.gen_adaptive_samples(context)
                 self.unif_samples = np.hstack((xx, np.tile(context, (xx.shape[0], 1))))
 
             new_s = self.unif_samples[0]
@@ -191,7 +192,7 @@ class ActiveGP(ActiveLearner):
             self.sampled_xx = np.vstack((self.sampled_xx, new_s))
         
         self.unif_samples = np.delete(self.unif_samples, (0), axis=0)
-        return self.sampled_xx[-1]
+        return self.sampled_xx[-1], sample_diversity
     def sample(self, context):
         '''
         Returns one sample from the high probability super level set for a given context.

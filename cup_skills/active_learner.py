@@ -44,7 +44,7 @@ class RandomSampler(ActiveLearner):
         pass
 
 
-def run_ActiveLearner(active_learner, context, save_fnm, iters):
+def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test"):
     '''
     Actively query a function with active learner.
     Args:
@@ -64,6 +64,8 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters):
         xx = np.zeros((0, func.x_range.shape[1]))
     yy = np.zeros(0)
     reward_list = []
+    diversity_list = []
+    sample_list = []
     # Start active queries
     for i in range(iters):
         try:
@@ -75,11 +77,15 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters):
         yq = func(xq)
         xx = np.vstack((xx, xq))
         yy = np.hstack((yy, yq))
-        sample = active_learner.sample_adaptive(context)
+        sample, sample_diversity = active_learner.sample_adaptive(context)
         reward = func(sample)
         reward_list.append(reward)
+        diversity_list.append(sample_diversity)
+        sample_list.append(sample)
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
- 
+         
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
 
-    np.save("rewards_1.npy", reward_list)
+    np.save("rewards_"+EXP_NAME+".npy", reward_list)
+    np.save("diversity_"+EXP_NAME+".npy", diversity_list)
+    np.save("sample_"+EXP_NAME+".npy", diversity_list)
