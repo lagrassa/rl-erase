@@ -1,6 +1,7 @@
 # Author: Zi Wang
 import cPickle as pickle
 import os
+import sys
 import pdb
 import helper as helper
 from active_learner import run_ActiveLearner
@@ -20,7 +21,7 @@ def gen_data(expid, func, n_data, save_fnm):
     xx, yy = helper.gen_data(func, n_data, parallel=True)
     pickle.dump((xx, yy), open(save_fnm, 'wb'))
 
-def run_exp(expid, exp, method, n_init_data, iters):
+def run_exp(expid, exp, method, n_init_data, iters, exp_name='test'):
     '''
     Run the active learning experiment.
     Args:
@@ -67,7 +68,8 @@ def run_exp(expid, exp, method, n_init_data, iters):
 
     # start running the learner
     print('Start running the learning experiment...')
-    run_ActiveLearner(active_learner, context, learn_fnm, iters)
+    print("exp name", exp_name)
+    run_ActiveLearner(active_learner, context, learn_fnm, iters, exp_name=exp_name)
 
 def sample_exp(expid, exp, method):
     '''
@@ -94,9 +96,10 @@ def main():
     exp = 'pour'
     method = 'gp_lse'
     expid = 0
-    n_init_data = 40
-    iters = 150
-    run_exp(expid, exp, method, n_init_data, iters)
+    n_init_data = 2
+    iters = 4
+    exp_name = sys.argv[1]
+    run_exp(expid, exp, method, n_init_data, iters, exp_name=exp_name)
     sample_exp(expid, exp, method)
 
 if __name__ == '__main__':

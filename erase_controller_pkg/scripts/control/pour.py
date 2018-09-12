@@ -44,11 +44,10 @@ class RealPouringWorld:
 
     def go_to_start(self):
 	#self.uc.start_joint(self.arm)
-        rospy.sleep(0.1)
 	start_joint_angles = [-0.8831416801644028, 0.3696527700454193, -1.5865871699836482, -1.5688534061015482, 5.913809583083913, -0.9149799482346365, 39.09787903807846]
         #start_joint_angles = [-0.8367968810618476, 0.34334374895993397, -1.7849460902031975, -1.7724010263067882, -0.21665115067563817, 0.5939860593928067, 8.826634896625851]
         unwound_config = self.uc.adjust_config(start_joint_angles, self.uc.get_arm_positions(self.arm))
-        self.uc.command_arm(self.arm, unwound_config, 0.2, blocking=True)
+        self.uc.command_arm(self.arm, unwound_config, 1, blocking=True)
         print("Commanded joint pose")
 
     def world_state(self):
@@ -213,10 +212,10 @@ class RealPouringWorld:
         print("pour cup")
         self.pour_cup_general(vel=vel)
     
-def command_pose(uc, pose, arm):
+def command_pose(uc, pose, arm, timeout=0.2):
     angles =  arm_ik('r', pose[0], pose[1], uc.get_torso_position(), current=uc.get_arm_positions('r'))
     unwound_config = uc.adjust_config(angles, uc.get_arm_positions(arm))
-    uc.command_arm('r', unwound_config,  True)
+    uc.command_arm('r', unwound_config,timeout,  True)
     
     
 def get_cam():
