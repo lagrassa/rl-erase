@@ -34,18 +34,6 @@ class PouringWorld():
     def check_legal(self, x):
         return True
 
-    def sampled_x(self, n):
-        i = 0
-        N = 300
-        while i < n:
-            x = np.random.uniform(self.x_range[0], self.x_range[1])
-            legal = self.check_legal(x)
-            if legal:
-                i += 1
-                yield x
-            else:
-                assert(False)
-
     def setup(self):
         #create constraint and a second cup
         self.cupStartPos = (0,-0.4,0)
@@ -134,8 +122,6 @@ class PouringWorld():
     
 
 
-    
-       
 
 if __name__ == "__main__":
     pw = PouringWorld(visualize=False, real_init = True)
