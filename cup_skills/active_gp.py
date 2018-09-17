@@ -201,7 +201,7 @@ class ActiveGP(ActiveLearner):
         
         self.unif_samples = np.delete(self.unif_samples, (0), axis=0)
         
-        return self.sampled_xx[-1], sample_diversity
+        return self.sampled_xx[-1]
     def sample(self, context):
         '''
         Returns one sample from the high probability super level set for a given context.
@@ -224,7 +224,8 @@ class ActiveGP(ActiveLearner):
             new_s = np.hstack((self.good_samples[sid], total_context))
             self.good_samples = np.delete(self.good_samples, (sid), axis=0)
             self.sampled_xx = np.vstack((self.sampled_xx, new_s))
-        return self.sampled_xx[-1]
+        sample_diversity = helper.diversity(self.sampled_xx,self.func.param_idx)
+        return self.sampled_xx[-1], sample_diversity
    
     def query(self, context):
         '''
