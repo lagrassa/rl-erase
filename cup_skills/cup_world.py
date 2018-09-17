@@ -21,6 +21,7 @@ class CupWorld():
         self.visualize=visualize
         self.real_init = real_init
         self.num_droplets = 20
+        self.for_pr2 = for_pr2
         if for_pr2:
             self.radius = k*0.005
         else:
@@ -56,10 +57,10 @@ class CupWorld():
         with open(filename, "wb") as csvfile:
             drop_writer = csv.writer(csvfile) 
 	    for i in range(len(self.droplets)):
-		droplet = self.droplets[i]
-		color = self.droplet_colors[i]
-		pos = p.getBasePositionAndOrientation(droplet)[0] 
-                drop_writer.writerow([color, pos])
+		    droplet = self.droplets[i]
+		    color = self.droplet_colors[i]
+		    pos = p.getBasePositionAndOrientation(droplet)[0] 
+            drop_writer.writerow([color, pos])
 
     def custom_restore_beads(self, teleport=False):
         filename = "bead_poses"
@@ -83,8 +84,7 @@ class CupWorld():
         all_overlapping =  p.getOverlappingObjects(aabbMin, aabbMax) 
         if all_overlapping is None:
             return 0
-        overlapping_objects = [obj for obj in all_overlapping if obj[1] == -1]
-        #If the last coordinate is not -1, then it can't be a bead so get rid of that
+        overlapping_objects = [obj for obj in all_overlapping if obj[0] >= self.droplets[0] and obj[0] <= self.droplets[-1]] # in the range to be a droplet
         
         if overlapping_objects is None:
             num_in = 0
@@ -149,7 +149,7 @@ class CupWorld():
 
 
     def reset(self, new_bead_mass = None):
-        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass, table=self.table)
+        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass, table=self.table, for_pr2 = self.for_pr2 )
     
 
     def create_beads(self, color = (0,0,1,1), offset=(0,0,0)):
@@ -218,7 +218,7 @@ class CupWorld():
             else:
 	        self.cupStartPos = (0,0,0)
 	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
-            self.cup_name = "cup_small.urdf"
+            self.cup_name = "cup_pourer.urdf"
             if self.visualize:
 	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
 	    else:

@@ -265,6 +265,7 @@ def wait_for_duration(duration): #, dt=0):
     # TODO: wait until keypress
 
 def simulate_for_duration(duration, dt=0):
+    pass
     t0 = time.time()
     while (time.time() - t0) <= duration:
         step_simulation()

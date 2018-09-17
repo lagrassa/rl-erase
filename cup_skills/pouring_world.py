@@ -11,9 +11,10 @@ k = 1
 class PouringWorld():
     def __init__(self, visualize=False, real_init=True, new_bead_mass=None, dims=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
-        self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
+        #self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
+        self.cup_to_dims = {"cup_7.urdf":(1.4857, 0.5964), "cup_8.urdf":(1.257, 0.378), "cup_9.urdf":(1.657, 0.6545)} 
         lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
-        upper = [0.75, 0.3, 0.3, 2, 3.14,np.pi]
+        upper = [0.9, 0.3, 0.3, 2, 3.14,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
@@ -35,21 +36,9 @@ class PouringWorld():
     def check_legal(self, x):
         return True
 
-    def sampled_x(self, n):
-        i = 0
-        N = 300
-        while i < n:
-            x = np.random.uniform(self.x_range[0], self.x_range[1])
-            legal = self.check_legal(x)
-            if legal:
-                i += 1
-                yield x
-            else:
-                assert(False)
-
     def setup(self, dims=None):
         #create constraint and a second cup
-        self.cupStartPos = (0,-0.4,0)
+        self.cupStartPos = (0,-0.6,0)
         self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
         #pick random cup
         if dims is None:
@@ -141,11 +130,9 @@ class PouringWorld():
     
 
 
-    
-       
 
 if __name__ == "__main__":
-    sample = [ 0.64536634, -0.17830571, -0.18541563,  0.89087883,  2.84794665,2.97115431,  1.1       ,  0.3       ]
+    sample = [ 0.64536634, -0.17830571, -0.18541563,  0.89087883,  2.84794665,2.97115431, 1.257, 0.378]
     pw = PouringWorld(visualize=True)
     #pw.lift_cup(desired_height=sample[0])
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)

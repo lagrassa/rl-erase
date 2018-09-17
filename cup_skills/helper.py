@@ -413,3 +413,19 @@ def gen_biased_data(func, pos_ratio, N):
     xy = np.vstack((pos, neg))
     xy = shuffle(xy)
     return xy[:, :-1], xy[:, -1]
+
+def function_from_skill(skill):
+    class SkillWrapper:
+        def __init__(self, skill):
+            self.skill = skill #so it can be accessed readily
+
+        def __call__(self, x):
+            self.skill.execute(x)
+            score = self.skill.score(self.skill.get_goal_state(), self.skill.get_current_state())
+            return score
+
+        def check_legal(self, x):
+            return self.skill.check_legal(x)
+
+    return SkillWrapper(skill)
+
