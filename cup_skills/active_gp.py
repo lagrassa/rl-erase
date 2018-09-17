@@ -57,6 +57,7 @@ class ActiveGP(ActiveLearner):
         '''
         x0, x0context = helper.find_closest_positive_context_param(
             context, self.xx, self.yy, self.func.param_idx, self.func.context_idx)
+        pdb.set_trace()
         self.model = self.model
         total_context = helper.tuple_context_to_total_context(context)
         def ac_f(x):
@@ -277,6 +278,7 @@ class ActiveGP(ActiveLearner):
         B. Bryan, R. C. Nichol, C. R. Genovese, J. Schneider, C. J. Miller, and L. Wasserman, 
         "Active learning for identifying function threshold boundaries," in NIPS, 2006.
         '''
+        pdb.set_trace()
         x0, x0context = helper.find_closest_positive_context_param(
             context, self.xx, self.yy, self.func.param_idx, self.func.context_idx)
 
