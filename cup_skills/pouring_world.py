@@ -9,11 +9,12 @@ from utils import set_point
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=False, real_init=True, new_bead_mass=None):
+    def __init__(self, visualize=False, real_init=True, new_bead_mass=None, dims=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
-        self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
+        #self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
+        self.cup_to_dims = {"cup_7.urdf":(1.4857, 0.5964), "cup_8.urdf":(1.257, 0.378), "cup_9.urdf":(1.657, 0.6545)} 
         lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
-        upper = [0.75, 0.3, 0.3, 2, 3.14,np.pi]
+        upper = [0.9, 0.3, 0.3, 2, 3.14,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
@@ -28,7 +29,7 @@ class PouringWorld():
         self.do_gui = False
 
         if real_init:
-            self.setup()
+            self.setup(dims=dims)
         else:
             p.restoreState(self.bullet_id)
 
@@ -37,7 +38,7 @@ class PouringWorld():
 
     def setup(self, dims=None):
         #create constraint and a second cup
-        self.cupStartPos = (0,-0.4,0)
+        self.cupStartPos = (0,-0.6,0)
         self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
         #pick random cup
         if dims is None:
@@ -59,7 +60,6 @@ class PouringWorld():
         return np.array(self.cup_to_dims[self.cup_name])
 
     def reset(self, real_init=False, new_bead_mass=None, dims = None):
-  
         self.base_world.reset(new_bead_mass=new_bead_mass)
         self.setup(dims=dims)      
         #set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
@@ -117,15 +117,14 @@ class PouringWorld():
         #desired_height = other_cup_pos[2]+desired_height
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
-    def __call__(self, x, image_name=None):
-        self.reset(dims=x[-2:]) #discrete context 
+    def __call__(self, x, image_name=None, real_init=False):
+        self.reset(dims=x[-2:], real_init=real_init) #discrete context 
         height, x_offset, y_offset, velocity, yaw, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
         acceptable = 0.98
         beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup) 
-        self.reset()
         return beads_in_cup - acceptable
 
     
@@ -133,23 +132,12 @@ class PouringWorld():
 
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=True, real_init = True)
-    pw.lift_cup(desired_height=0.62)
+    sample = [ 0.64536634, -0.17830571, -0.18541563,  0.89087883,  2.84794665,2.97115431, 1.257, 0.378]
+    pw = PouringWorld(visualize=True)
+    #pw.lift_cup(desired_height=sample[0])
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
-    pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)
-
-    #pw.pour(offset=0.02, velocity=0.02, force=1500, total_diff = np.pi/5.0)
-
-    pw.base_world.ratio_beads_in(cup=pw.target_cup)
-    #actions = np.array([-6.74658884e-01, -3.99184460e-01, -1.97149862e-01, -1.17733128e-01,-1.99983150e+03])
-    #actions = np.array([-6.74658884e-01, -3.99184460e-01, -1.97149862e-01, -1.17733128e-01,-1.99983150e+03])
-    #actions = np.array([-6.25397044e-01, -1.43723112e+00, -1.14753149e+00, -1.23676025e+00,1.99868273e+03])
-    #actions = np.array([-1.16826367e-01,  6.83036833e-01,  4.13037813e-01,  9.31779934e-02,1.99998315e+03])
-    #pw.parameterized_pour(offset=actions[0], desired_height=actions[1], step_size=actions[2], dt=actions[3], force=actions[4])
-    #pw.parameterized_pour(offset=-0.08, velocity=1.2, force=1500, desired_height=0.6)
-
+    #pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)
+    pw(sample, real_init=False)
     print(pw.base_world.ratio_beads_in(cup=pw.target_cup), "beads in")
-
-    pw.reset(new_bead_mass = 1.1)
     
     
