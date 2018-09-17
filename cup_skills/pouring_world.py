@@ -1,4 +1,5 @@
 from cup_world import *
+import pdb as pdb
 import pybullet as p
 import numpy as np
 
@@ -34,13 +35,20 @@ class PouringWorld():
     def check_legal(self, x):
         return True
 
-    def setup(self):
+    def setup(self, dims=None):
         #create constraint and a second cup
         self.cupStartPos = (0,-0.4,0)
         self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0]) 
         #pick random cup
-
-        self.cup_name = np.random.choice(self.cup_to_dims.keys())
+        if dims is None:
+            self.cup_name = np.random.choice(self.cup_to_dims.keys())
+        else:
+            found_cup = False
+            for name in self.cup_to_dims.keys():
+                if self.cup_to_dims[name][0] == dims[0] and self.cup_to_dims[name][1] == dims[1]:
+                    found_cup = True
+                    self.cup_name = name
+            assert(found_cup)
         cup_file = "urdf/cup/"+self.cup_name
         self.target_cup = p.loadURDF(cup_file,self.cupStartPos, self.cupStartOrientation, globalScaling=k*5)
         self.base_world.drop_beads_in_cup()
@@ -50,10 +58,10 @@ class PouringWorld():
     def observe_cup(self):
         return np.array(self.cup_to_dims[self.cup_name])
 
-    def reset(self, real_init=False, new_bead_mass=None):
+    def reset(self, real_init=False, new_bead_mass=None, dims = None):
   
         self.base_world.reset(new_bead_mass=new_bead_mass)
-        self.setup()      
+        self.setup(dims=dims)      
         #set_pose(self.target_cup, (self.cupStartPos, self.cupStartOrientation))
                 
 
@@ -110,11 +118,12 @@ class PouringWorld():
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
     def __call__(self, x, image_name=None):
+        self.reset(dims=x[-2:]) #discrete context 
         height, x_offset, y_offset, velocity, yaw, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
-        acceptable = 0.9
+        acceptable = 0.98
         beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup) 
         self.reset()
         return beads_in_cup - acceptable
@@ -124,7 +133,7 @@ class PouringWorld():
 
 
 if __name__ == "__main__":
-    pw = PouringWorld(visualize=False, real_init = True)
+    pw = PouringWorld(visualize=True, real_init = True)
     pw.lift_cup(desired_height=0.62)
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)
     pw.pour(x_offset = 0.2, y_offset=-0.15, velocity=1.4, force=1500, total_diff = 2.51, yaw=np.pi)
