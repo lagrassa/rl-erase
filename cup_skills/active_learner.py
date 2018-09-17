@@ -64,8 +64,8 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         xx = np.zeros((0, func.x_range.shape[1]))
     yy = np.zeros(0)
     reward_list = []
-    diversity_list = []
     sample_list = []
+    diversity_list = []
     # Start active queries
     for i in range(iters):
         try:
@@ -77,15 +77,16 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         yq = func(xq)
         xx = np.vstack((xx, xq))
         yy = np.hstack((yy, yq))
-        sample, sample_diversity = active_learner.sample_adaptive(context)
+        sample, diversity  = active_learner.sample(context)
         reward = func(sample)
         reward_list.append(reward)
-        diversity_list.append(sample_diversity)
         sample_list.append(sample)
+        diversity_list.append(diversity)
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
          
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
 
-    np.save("rewards_"+EXP_NAME+".npy", reward_list)
-    np.save("diversity_"+EXP_NAME+".npy", diversity_list)
-    np.save("sample_"+EXP_NAME+".npy", diversity_list)
+    EXP_NAME=exp_name
+    np.save("data/rewards_"+EXP_NAME+".npy", reward_list)
+    np.save("data/diversity_"+EXP_NAME+".npy", diversity_list)
+    np.save("data/sample_"+EXP_NAME+".npy", sample_list)

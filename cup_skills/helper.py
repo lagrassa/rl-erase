@@ -315,20 +315,20 @@ def gen_data(func, N, parallel=False):
     '''
     X = np.random.uniform(
         func.x_range[0], func.x_range[1], (N, func.x_range.shape[1]))
-    if parallel:
-        from multiprocessing import Pool
-        import multiprocessing
-        max_cpu = 10 #to not be a terrible person
-        cpu_n = min(multiprocessing.cpu_count(), max_cpu)
-        p = Pool(cpu_n)
-        y = np.array(p.map(func, X))
-    else:
-        y = np.array(map(func, X))
     if len(func.discrete_contexts) > 0:
         random_discrete_contexts = np.zeros((N,len(func.discrete_contexts[0])))
         for i in range(N):
             random_discrete_contexts[i,:] = func.discrete_contexts[np.random.randint(0,len(func.discrete_contexts))]
         X = np.hstack([X,random_discrete_contexts])
+    if parallel:
+        from multiprocessing import Pool
+        import multiprocessing
+        max_cpu = 5 #to not be a terrible person
+        cpu_n = min(multiprocessing.cpu_count(), max_cpu)
+        p = Pool(cpu_n)
+        y = np.array(p.map(func, X))
+    else:
+        y = np.array(map(func, X))
     return X, y
 
 def gen_context(func, N=1):
