@@ -1,5 +1,5 @@
 from __future__ import print_function, division
-import pdb
+import ipdb as pdb
 import numpy as np
 import scipy.optimize
 from sklearn.utils import shuffle
@@ -43,7 +43,8 @@ class RandomSampler(ActiveLearner):
     def reset_sample(self):
         pass
 
-
+def recover_model(self, EXP_NAME="TEST"):
+    self.active_learner.restore_model(EXP_NAME=EXP_NAME)
 def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test"):
     '''
     Actively query a function with active learner.
@@ -54,6 +55,7 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         iters: total number of queries.
     '''
     # Retrieve the function associated with active_learner
+    EXP_NAME=exp_name
     func = active_learner.func
     # Queried x and y
     xq, yq = None, None
@@ -66,22 +68,9 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
     reward_list = []
     sample_list = []
     diversity_list = []
+    SAVE_INTERVAL=2
     #recover model TODO
-    found_xx = False
-    found_yy = False
-    EXP_NAME=exp_name
-    for f in os.listdir("data/"):
-        if EXP_NAME in f and "xx" in f:
-            xx = np.load("data/"+f)
-            found_xx = True
-        if EXP_NAME in f and "yy" in f:
-            yy = np.load("data/"+f)
-            found_yy = True
-    if found_xx and found_yy:
-        print("Loading model...")
-        active_learner.xx = np.vstack([active_learner.xx, xx])
-        active_learner.yy = np.vstack([active_learner.yy, yy.reshape(-1,1)])
-    
+    active_learner.restore_model(EXP_NAME=exp_name)
     # Start active queries
     for i in range(iters):
         try:
@@ -93,7 +82,6 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         yq = func(xq)
         xx = np.vstack((xx, xq))
         yy = np.hstack((yy, yq))
-        print("Context", context)
         sample, diversity  = active_learner.sample(context)
      
         reward = func(sample)
@@ -103,9 +91,9 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
          
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
-
-    np.save("data/rewards_"+EXP_NAME+".npy", reward_list)
-    np.save("data/diversity_"+EXP_NAME+".npy", diversity_list)
-    np.save("data/sample_"+EXP_NAME+".npy", sample_list)
-    np.save("data/xx_"+EXP_NAME+".npy", xx)
-    np.save("data/yy_"+EXP_NAME+".npy", yy)
+        if i % SAVE_INTERVAL == 0:
+	    np.save("data/rewards_"+EXP_NAME+".npy", reward_list)
+	    np.save("data/diversity_"+EXP_NAME+".npy", diversity_list)
+	    np.save("data/sample_"+EXP_NAME+".npy", sample_list)
+	    np.save("data/xx_"+EXP_NAME+".npy", xx)
+	    np.save("data/yy_"+EXP_NAME+".npy", yy)

@@ -110,6 +110,12 @@ class PouringWorld():
 
     def world_state(self):
         return self.base_world.world_state() 
+
+    def get_target_tip(self):
+        _, target_orn = p.getBasePositionAndOrientation(self.target_cup)
+        roll, pitch, _ = p.getEulerFromQuaternion(target_orn)
+        return max(roll, pitch)
+        
     
     def lift_cup(self, desired_height=0.7, force=1600):
         pourer_pos, pourer_orn = p.getBasePositionAndOrientation(self.base_world.cupID)
@@ -124,7 +130,10 @@ class PouringWorld():
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
         acceptable = 0.98
-        beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup) 
+        tip_factor = 200 #how important it is to not tip the bowl
+        bowl_angle = self.get_target_tip()
+        print("bowl_angle", bowl_angle)
+        beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup)-tip_factor*bowl_angle
         return beads_in_cup - acceptable
 
     

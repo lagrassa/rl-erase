@@ -1,5 +1,6 @@
 # Author: Zi Wang
 import numpy as np
+import os
 import GPy as gpy
 import ipdb as pdb
 from scipy.stats import norm
@@ -29,16 +30,18 @@ class ActiveGP(ActiveLearner):
         sample_time_limit: time limit (seconds) for generating samples with (adaptive) 
         rejection sampling.
         '''
-        if inity.ndim == 1:
-            inity = inity[:, None]
-        self.xx = initx
+        if initx is not None and inity is not None:
+	    if inity.ndim == 1:
+	        inity = inity[:, None]
+            self.xx = initx
+            self.yy = inity
+            assert(initx.ndim == 2 and inity.ndim == 2)
+            self.init_len = len(initx)
+
         self.yvals = []
-        self.yy = inity
-        assert(initx.ndim == 2 and inity.ndim == 2)
         self.func = func
         self.query_type = query_type
         self.name = 'gp_{}'.format(query_type)
-        self.init_len = len(initx)
         self.sampled_xx = []
         self.good_samples = []
         if task_lengthscale is None:
@@ -268,6 +271,21 @@ class ActiveGP(ActiveLearner):
         # These GP hyper parameters need to be calibrated for good uncertainty predictions.
         self.model.optimize(messages=False)
         print self.model
+
+    def restore_model(self, EXP_NAME=None):
+        found_xx = False
+        found_yy = False
+        for f in os.listdir("data/"):
+	    if EXP_NAME in f and "xx" in f:
+	        xx = np.load("data/"+f)
+	        found_xx = True
+	    if EXP_NAME in f and "yy" in f:
+	        yy = np.load("data/"+f)
+	        found_yy = True
+        if found_xx and found_yy:
+	    print("Loading model...")
+	    self.xx = xx
+	    self.yy = yy.reshape(-1,1)
 
     def query_lse(self, context):
         '''

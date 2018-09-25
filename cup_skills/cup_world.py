@@ -1,5 +1,6 @@
 from __future__ import division
 import pybullet as p
+import os
 import math
 import csv
 import pdb
@@ -18,6 +19,11 @@ new_world = True
  
 class CupWorld():
     def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False, for_pr2 = False):
+        proj_dir = os.getcwd()
+        if "control" in proj_dir:
+            print("Changing working directory to cup skills")
+            os.chdir(proj_dir+'/../../../cup_skills')
+        
         self.visualize=visualize
         self.real_init = real_init
         self.num_droplets = 20
