@@ -1,5 +1,6 @@
 # Author: Zi Wang
 import cPickle as pickle
+import numpy as np
 import os
 import sys
 import pdb
@@ -18,7 +19,7 @@ def gen_data(expid, func, n_data, save_fnm):
         saved.
     '''
     print('Generating data...')
-    xx, yy = helper.gen_data(func, n_data, parallel=False)
+    xx, yy = helper.gen_data(func, n_data, parallel=True)
     pickle.dump((xx, yy), open(save_fnm, 'wb'))
 
 def run_exp(expid, exp, method, n_init_data, iters, exp_name='test'):
@@ -71,7 +72,7 @@ def run_exp(expid, exp, method, n_init_data, iters, exp_name='test'):
     print("exp name", exp_name)
     run_ActiveLearner(active_learner, context, learn_fnm, iters, exp_name=exp_name)
 
-def sample_exp(expid, exp, method):
+def sample_exp(expid=0, exp='pour', method='gp_lse', N=1, context=None, exp_name=None):
     '''
     Sample from the learned model.
     Args:
@@ -80,27 +81,33 @@ def sample_exp(expid, exp, method):
         method: see run_exp.
     '''
     func = helper.get_func_from_exp(exp)
-    xx, yy, c = helper.get_xx_yy(expid, method, exp=exp)
-    active_learner = helper.get_learner_from_method(method, xx, yy, func)
+    active_learner = helper.get_learner_from_method(method, None, None, func)
+    active_learner.restore_model(EXP_NAME=exp_name)
     active_learner.retrain()
    
     # get a context
-    context = helper.gen_context(func)
-    active_learner.sample(context)
+    if context is None:
+        context = helper.gen_context(func)
     # Enable gui
     func.do_gui = True
-    while raw_input('Continue? [y/n]') == 'y':
-        x = active_learner.sample(c)
-        func(x)
+    samples = []
+    for i in range(N):
+        x, diversity = active_learner.sample(context)
+        samples.append(x)
+    return samples
+        #func(x)
+
+
 def main():
     exp = 'pour'
     method = 'gp_lse'
     expid = 0
-    n_init_data = 5
-    iters = 100
+    n_init_data = 2
+    iters = 2
     exp_name = sys.argv[1]
     run_exp(expid, exp, method, n_init_data, iters, exp_name=exp_name)
-    sample_exp(expid, exp, method)
+    context=(np.array([]), [(1.657, 0.6545)])
+    #print(sample_exp(context=context, exp_name="short"))
 
 if __name__ == '__main__':
     main()

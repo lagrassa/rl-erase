@@ -10,7 +10,6 @@ k = 1
 
 class PouringWorld():
     def __init__(self, visualize=True, real_init=True, new_bead_mass=None, dims=None):
-        visualize=True
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         #self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         self.cup_to_dims = {"cup_7.urdf":(1.4857, 0.5964), "cup_8.urdf":(1.257, 0.378), "cup_9.urdf":(1.657, 0.6545)} 
