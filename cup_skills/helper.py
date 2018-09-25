@@ -122,17 +122,20 @@ def process_gp_sample(expid, flag_lk=False, is_adaptive=True,
     gp.retrain()
     return gp, c
 
-def diversity(xx, active_dim):
+def diversity(xx, active_dim, diverse_dims = None):
     '''
     Returns the diversity of the list xx, with active dimensions active_dim.
     Diversity is measured by log |K/0.01 + I|, where K is the squared 
     exponential gram matrix on xx, with length scale 1.
     '''
     n = len(xx)
+    if diverse_dims is not None:
+        active_dim = [active_dim[i] for i in range(len(active_dim)) if diverse_dims[i]]
     xx = xx[:, active_dim]
     l = np.ones(xx.shape[1]) 
     K = se_kernel(xx, xx, l)
     return np.log(scipy.linalg.det(K/0.01+np.eye(n))) #
+
 def check_close(x, xx):
     '''
     Check if x is close to any item in xx.
@@ -321,6 +324,7 @@ def gen_data(func, N, parallel=False):
             random_discrete_contexts[i,:] = func.discrete_contexts[np.random.randint(0,len(func.discrete_contexts))]
         X = np.hstack([X,random_discrete_contexts])
     if parallel:
+        assert(False)
         from multiprocessing import Pool
         import multiprocessing
         max_cpu = 5 #to not be a terrible person

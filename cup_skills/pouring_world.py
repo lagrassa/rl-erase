@@ -9,22 +9,23 @@ from utils import set_point
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=True, real_init=True, new_bead_mass=None, dims=None):
+    def __init__(self, visualize=False, real_init=True, new_bead_mass=None, dims=None):
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         #self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         self.cup_to_dims = {"cup_7.urdf":(1.4857, 0.5964), "cup_8.urdf":(1.257, 0.378), "cup_9.urdf":(1.657, 0.6545)} 
-        lower =  [0.6, -0.3, -0.3, 0.8, 0,2*np.pi/3]
-        upper = [1.3, 0.3, 0.3, 2, 3.14,np.pi]
-        #height, x_offset, y_offset, velocity, yaw, total_diff = x
+        lower =  [0.1, -0.4, -0.4, 0.5,2*np.pi/3]
+        upper = [1.3, 0.4, 0.4, 6,np.pi]
+        self.diversity_important = [True, True, True, False, False]
+        #height, x_offset, y_offset, velocity,  total_diff = x
         self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
         self.nb_actions = len(lower)
         self.task_lengthscale = np.ones(self.nb_actions)*0.4
-        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.01,0.01, 0.00000001], [0.3, 0.15, 0.5, 0.5, 0.2,0.3, 2]])
+        self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.00000001], [0.3, 0.15, 0.5, 0.5, 2]])
      
         self.context_idx = []
         
-        self.param_idx = [0,1,2,3, 4, 5]
+        self.param_idx = [0,1,2,3, 4]
         self.dx = len(self.x_range[0])
         self.do_gui = False
 
@@ -125,23 +126,27 @@ class PouringWorld():
 
     def __call__(self, x, image_name=None, real_init=False):
         self.reset(dims=x[-2:], real_init=real_init) #discrete context 
-        height, x_offset, y_offset, velocity, yaw, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
+        height, x_offset, y_offset, velocity, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
+        yaw = yaw_to_center(x_offset, y_offset)
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
         acceptable = 0.98
         tip_factor = 5 #how important it is to not tip the bowl
         bowl_angle = self.get_target_tip()
-        print("bowl_angle", bowl_angle)
         beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup)-tip_factor*bowl_angle
         return beads_in_cup - acceptable
 
+def yaw_to_center(x_offset, y_offset):
+    pour_angle = np.arctan2(-y_offset, -x_offset)
+    yaw = pour_angle + np.pi/2
+    return yaw
     
 
 
 
 if __name__ == "__main__":
-    sample = [ 0.64536634, -0.17830571, -0.18541563,  0.89087883,  2.84794665,2.97115431, 1.257, 0.378]
+    sample = [ 0.636634, 0.17830571, 0.18541563,  0.89087883,  2.84794665,2.97115431, 1.257, 0.378]
     pw = PouringWorld(visualize=True)
     #pw.lift_cup(desired_height=sample[0])
     #pw.pour(offset=-0.2, velocity=1.4, force=1500, total_diff = 4*np.pi/5.0)

@@ -172,7 +172,7 @@ class ActiveGP(ActiveLearner):
 
         print('{} samples are generated with the adaptive sampler.'.format(len(good_samples)))
         self.good_samples = good_samples
-        sample_diversity = helper.diversity(good_samples, self.func.param_idx)
+        sample_diversity = helper.diversity(good_samples, self.func.param_idx, diverse_dims = self.func.diversity_important)
         return x_samples, sample_diversity
 
     def reset_sample(self):
