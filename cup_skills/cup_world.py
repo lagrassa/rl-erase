@@ -26,7 +26,7 @@ class CupWorld():
         
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 20
+        self.num_droplets = 35
         self.for_pr2 = for_pr2
         if for_pr2:
             self.radius = k*0.005

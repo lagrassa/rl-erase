@@ -96,8 +96,8 @@ def main():
     exp = 'pour'
     method = 'gp_lse'
     expid = 0
-    n_init_data = 5
-    iters = 100
+    n_init_data = 2
+    iters = 2
     exp_name = sys.argv[1]
     run_exp(expid, exp, method, n_init_data, iters, exp_name=exp_name)
     sample_exp(expid, exp, method)
