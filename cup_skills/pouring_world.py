@@ -9,12 +9,13 @@ from utils import set_point
 k = 1
 
 class PouringWorld():
-    def __init__(self, visualize=False, real_init=True, new_bead_mass=None, dims=None):
+    def __init__(self, visualize=True, real_init=True, new_bead_mass=None, dims=None):
+        visualize=True
         self.base_world = CupWorld(visualize=visualize, beads=False, new_bead_mass=new_bead_mass)
         #self.cup_to_dims = {"cup_1.urdf":(0.5,0.5), "cup_2.urdf":(0.5, 0.2), "cup_3.urdf":(0.7, 0.3), "cup_4.urdf":(1.1,0.3), "cup_5.urdf":(1.1,0.2), "cup_6.urdf":(0.6, 0.7)}#cup name to diameter and height
         self.cup_to_dims = {"cup_7.urdf":(1.4857, 0.5964), "cup_8.urdf":(1.257, 0.378), "cup_9.urdf":(1.657, 0.6545)} 
-        lower =  [0.5, -0.3, -0.3, 0.8, 0,2*np.pi/3]
-        upper = [0.9, 0.3, 0.3, 2, 3.14,np.pi]
+        lower =  [0.6, -0.3, -0.3, 0.8, 0,2*np.pi/3]
+        upper = [1.3, 0.3, 0.3, 2, 3.14,np.pi]
         #height, x_offset, y_offset, velocity, yaw, total_diff = x
         self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
@@ -130,7 +131,7 @@ class PouringWorld():
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
         #returns ratio of beads in cup over the acceptable number
         acceptable = 0.98
-        tip_factor = 200 #how important it is to not tip the bowl
+        tip_factor = 5 #how important it is to not tip the bowl
         bowl_angle = self.get_target_tip()
         print("bowl_angle", bowl_angle)
         beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup)-tip_factor*bowl_angle
