@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import rospy 
 import numpy
 from uber_controller import UberController
@@ -8,11 +10,13 @@ uc = UberController()
 
 def record(total_time = 15):
     step_size = 0.4
-    torso = uc.command_torso(0.1)
+    torso = uc.command_torso(0.1, 4, True)
     times = []
     time = total_time
+    angles = []
     while time >= 0:
         angle = uc.get_joint_positions('r') 
+        angles.append(angle)
         times.append(total_time-time)
         rospy.sleep(step_size)
         time -= step_size
@@ -29,4 +33,4 @@ def replay():
         
         
 
-
+replay()
