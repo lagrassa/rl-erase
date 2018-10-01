@@ -43,8 +43,6 @@ class RandomSampler(ActiveLearner):
     def reset_sample(self):
         pass
 
-def recover_model(self, EXP_NAME="TEST"):
-    self.active_learner.restore_model(EXP_NAME=EXP_NAME)
 def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test"):
     '''
     Actively query a function with active learner.
@@ -70,6 +68,7 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
     diversity_list = []
     SAVE_INTERVAL=2
     #recover model TODO
+    pdb.set_trace()
     active_learner.restore_model(EXP_NAME=exp_name)
     # Start active queries
     for i in range(iters):
@@ -91,7 +90,7 @@ def run_ActiveLearner(active_learner, context, save_fnm, iters, exp_name="test")
         print('i={}, xq={}, yq={}'.format(i, xq, yq))
          
         pickle.dump((xx, yy, context), open(save_fnm, 'wb'))
-        if i % SAVE_INTERVAL == 0:
+        if i % SAVE_INTERVAL == 0 and i > 0:
 	    np.save("data/rewards_"+EXP_NAME+".npy", reward_list)
 	    np.save("data/diversity_"+EXP_NAME+".npy", diversity_list)
 	    np.save("data/sample_"+EXP_NAME+".npy", sample_list)

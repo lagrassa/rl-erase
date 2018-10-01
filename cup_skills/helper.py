@@ -372,14 +372,17 @@ def find_closest_positive_context_param(context, xx, yy, param_idx, context_idx)
     Args:
         context: current context
         xx: training inputs
-        yy: training outpus
+        yy: training outputs 
         param_idx: index of parameters in an input
         context_idx: index of contexts in an input
     '''
     total_context = tuple_context_to_total_context(context)
+    #assert (xx.ndim == 2)
+    #assert (yy.ndim == 2)
     if yy.ndim == 2:
         yy = np.squeeze(yy)
     positive_idx = yy > 0
+    #assert (positive_idx.ndim == 2)
     if np.sum(positive_idx) == 0:
         return xx[0, param_idx], xx[0, context_idx]
     xx = xx[positive_idx]
@@ -422,7 +425,12 @@ def function_from_skill(skill):
     class SkillWrapper:
         def __init__(self, skill):
             self.skill = skill #so it can be accessed readily
-
+            self.x_range = skill.x_range
+            self.param_idx = skill.param_idx
+            self.context_idx = skill.context_idx
+            self.discrete_contexts = skill.discrete_contexts
+            self.task_lengthscale = skill.task_lengthscale
+            self.diversity_important = skill.diversity_important
         def __call__(self, x):
             self.skill.execute(x)
             score = self.skill.score(self.skill.get_goal_state(), self.skill.get_current_state())

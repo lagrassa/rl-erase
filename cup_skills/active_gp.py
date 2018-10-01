@@ -209,6 +209,8 @@ class ActiveGP(ActiveLearner):
         '''
         Returns one sample from the high probability super level set for a given context.
         '''
+        if self.model is None:
+            print("Warning! model uninitialized. active_learn before sampling")
         if self.is_adaptive:
             return self.sample_adaptive(context)
 
@@ -247,8 +249,6 @@ class ActiveGP(ActiveLearner):
             self.xx = np.vstack((self.xx, newx))
             self.yy = np.vstack((self.yy, newy))
             self.yvals.append(newy)
-        print("yvals", self.yvals)
-        np.save("yvals.npy", self.yvals)
         lengthscale = (self.func.x_range[1] - self.func.x_range[0]) * 0.05
         if len(self.func.discrete_contexts) > 0:
             num_discrete = len(self.func.discrete_contexts[0])

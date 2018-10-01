@@ -19,6 +19,7 @@ class PouringWorld():
         #height, x_offset, y_offset, velocity,  total_diff = x
         self.discrete_contexts = self.cup_to_dims.values()
         self.x_range = np.array([lower, upper])
+        self.dx = self.x_range[0]
         self.nb_actions = len(lower)
         self.task_lengthscale = np.ones(self.nb_actions)*0.4
         self.lengthscale_bound = np.array([[0.01, 0.01, 0.01, 0.01, 0.00000001], [0.3, 0.15, 0.5, 0.5, 2]])
@@ -124,18 +125,32 @@ class PouringWorld():
         #desired_height = other_cup_pos[2]+desired_height
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
-    def __call__(self, x, image_name=None, real_init=False):
+    def execute(self, x):
+        pass
         self.reset(dims=x[-2:], real_init=real_init) #discrete context 
         height, x_offset, y_offset, velocity, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
         yaw = yaw_to_center(x_offset, y_offset)
         self.pour(x_offset=x_offset, y_offset=y_offset, velocity=velocity, force=1500, yaw=yaw, total_diff = total_diff)
-        #returns ratio of beads in cup over the acceptable number
+    def get_goal_state(self):
         acceptable = 0.98
+        return acceptable     
+
+    def get_current_state(self):
         tip_factor = 5 #how important it is to not tip the bowl
         bowl_angle = self.get_target_tip()
         beads_in_cup = self.base_world.ratio_beads_in(cup=self.target_cup)-tip_factor*bowl_angle
-        return beads_in_cup - acceptable
+        return beads_in_cup
+        
+    def score(self, goal_state, current_state):
+        return current_state - goal_state
+        
+
+    def __call__(self, x, image_name=None, real_init=False):
+        #returns ratio of beads in cup over the acceptable number
+        self.execute(x)
+        score =  self.score()
+        return score
 
 def yaw_to_center(x_offset, y_offset):
     pour_angle = np.arctan2(-y_offset, -x_offset)
