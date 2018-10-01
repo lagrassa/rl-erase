@@ -1,6 +1,6 @@
 # Author: Zi Wang
 import numpy as np
-import pdb
+import ipdb as pdb
 import scipy.optimize
 from sklearn.utils import shuffle
 import cPickle as pickle
@@ -100,6 +100,8 @@ def get_learner_from_method(method, initx, inity, func):
     elif method is 'random':
         from active_learners.active_learner import RandomSampler
         active_learner = RandomSampler(func)
+    else:
+        assert(False, "Method was "+str(method))
     return active_learner
 
 def process_gp_sample(expid, flag_lk=False, is_adaptive=True, 
@@ -358,7 +360,6 @@ def gen_context(func, N=1):
 
 def tuple_context_to_total_context(context):
     cont_context, discrete_context = context
-    discrete_context = discrete_context[0] #unpack one level
     if len(cont_context) > 0 and len(discrete_context) == 0:
         total_context = cont_context
     elif len(cont_context) == 0 and len(discrete_context) > 0:
@@ -390,7 +391,7 @@ def find_closest_positive_context_param(context, xx, yy, param_idx, context_idx)
     if len(context[1]) == 0:
         num_discrete = 0
     else:
-        num_discrete = len(context[1][0])
+        num_discrete = len(context[1])
     if len(context[1]) == 0:
         distances = np.linalg.norm(xx[:, context_idx] - total_context, axis=1)
     elif len(context[0]) == 0 and len(context[1]) > 0:
@@ -430,7 +431,9 @@ def function_from_skill(skill):
             self.context_idx = skill.context_idx
             self.discrete_contexts = skill.discrete_contexts
             self.task_lengthscale = skill.task_lengthscale
+            self.lengthscale_bound = skill.lengthscale_bound
             self.diversity_important = skill.diversity_important
+            self.dx = skill.dx
         def __call__(self, x):
             self.skill.execute(x)
             score = self.skill.score(self.skill.get_goal_state(), self.skill.get_current_state())

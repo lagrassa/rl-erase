@@ -126,7 +126,6 @@ class PouringWorld():
         self.move_cup((pourer_pos[0], pourer_pos[1], desired_height), duration=3.5, force=force)
 
     def execute(self, x):
-        pass
         self.reset(dims=x[-2:], real_init=real_init) #discrete context 
         height, x_offset, y_offset, velocity, total_diff = x[:self.x_range.shape[1]] #last 2 are cont_context, discrete_context
         self.lift_cup(desired_height=height)
