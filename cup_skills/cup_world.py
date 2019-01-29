@@ -26,12 +26,12 @@ class CupWorld():
         
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 340
+        self.num_droplets = 10
         self.for_pr2 = for_pr2
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.017
+            self.radius = k*0.011
             
         self.table=table
         if real_init:
@@ -43,6 +43,7 @@ class CupWorld():
             except:
                 pdb.set_trace()
         p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+        self.simplify_viz()
         if for_pr2:
             cup_factor = 1.5
         else:
@@ -175,6 +176,7 @@ class CupWorld():
            x = np.random.uniform(*x_range)
            y = np.random.uniform(*y_range)
            set_point(droplet, Point(x, y, z))
+           p.changeVisualShape(droplet, -1, rgbaColor=color)
            p.changeDynamics(droplet, -1, mass=bead_mass)
 
        for i, droplet in enumerate(droplets):
@@ -186,17 +188,14 @@ class CupWorld():
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-        colors = [(0,0,1,1)]
+        colors = [(0,0,1,1), (1,0,0,1)]
         for color in colors:
             new_drops, highest_z = self.create_beads(color = color, offset=offset)
             self.droplets += new_drops 
             self.droplet_colors += self.num_droplets*[color]
             assert(len(self.droplet_colors) == len(self.droplets))
-        time_to_fall = np.sqrt(2*highest_z/9.8)
-        if not self.is_real_time:
-            simulate_for_duration(time_to_fall, dt= 0.01)
-                
-        simulate_for_duration(time_to_fall, dt= 0.001)
+            time_to_fall = np.sqrt(2*highest_z/9.8)+3.0 #(buffer)
+            simulate_for_duration(time_to_fall, dt= 1/240.0)
         #self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
         self.custom_save_beads()
 
