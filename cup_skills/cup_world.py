@@ -26,23 +26,23 @@ class CupWorld():
         
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 35
+        self.num_droplets = 340
         self.for_pr2 = for_pr2
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.021
+            self.radius = k*0.017
             
         self.table=table
         if real_init:
             try:
-		if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
-		    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
-		else:
-		    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
+                if visualize: #doing this for now to workout this weird bug where the physics doesn't work in the non-GUI version
+                    physicsClient = p.connect(p.GUI)#or p.DIRECT for non-graphical version
+                else:
+                    physicsClient = p.connect(p.DIRECT)#or p.DIRECT for non-graphical version
             except:
                 pdb.set_trace()
-	    p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
+        p.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
         if for_pr2:
             cup_factor = 1.5
         else:
@@ -62,11 +62,11 @@ class CupWorld():
         filename = "bead_poses"
         with open(filename, "wb") as csvfile:
             drop_writer = csv.writer(csvfile) 
-	    for i in range(len(self.droplets)):
-		    droplet = self.droplets[i]
-		    color = self.droplet_colors[i]
-		    pos = p.getBasePositionAndOrientation(droplet)[0] 
-            drop_writer.writerow([color, pos])
+            for i in range(len(self.droplets)):
+                droplet = self.droplets[i]
+                color = self.droplet_colors[i]
+                pos = p.getBasePositionAndOrientation(droplet)[0]
+                drop_writer.writerow([color, pos])
 
     def custom_restore_beads(self, teleport=False):
         filename = "bead_poses"
@@ -172,21 +172,21 @@ class CupWorld():
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
        bead_mass = 1.5# 0.75
        for droplet in droplets:
-	   x = np.random.uniform(*x_range)
-	   y = np.random.uniform(*y_range)
-	   set_point(droplet, Point(x, y, z))
+           x = np.random.uniform(*x_range)
+           y = np.random.uniform(*y_range)
+           set_point(droplet, Point(x, y, z))
            p.changeDynamics(droplet, -1, mass=bead_mass)
 
        for i, droplet in enumerate(droplets):
-	   x, y = np.random.normal(0, 1e-3, 2)
-	   set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
+           x, y = np.random.normal(0, 1e-3, 2)
+           set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
        return droplets
 
     def drop_beads_in_cup(self):
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-        time_to_fall = k*self.num_droplets*0.1
+        time_to_fall = k*self.num_droplets*0.03
         colors = [(0,0,1,1)]
         for color in colors:
             new_drops = self.create_beads(color = color, offset=offset)
@@ -206,28 +206,27 @@ class CupWorld():
         NEW = self.real_init #unfortunately
         if NEW:
             #setup world
-	    self.is_real_time = 0
-	    p.setRealTimeSimulation(self.is_real_time)
-	    #p.resetSimulation();
-	    g = 9.8
-	    p.setGravity(0,0,-g)
-	    if self.visualize:
-		self.planeId = p.loadURDF("plane.urdf")
-	    else:
-		self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
-		blacken(self.planeId)
+            self.is_real_time = 0
+            p.setRealTimeSimulation(self.is_real_time)
+            g = 9.8
+            p.setGravity(0,0,-g)
+            if self.visualize:
+                self.planeId = p.loadURDF("plane.urdf")
+            else:
+                self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
+                blacken(self.planeId)
             if table:
                 self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
                 #p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
                 self.cupStartPos = (-0.04,-0.10, 0.708)
                 self.cupStartPos = (-0.17,0,0.6544)
             else:
-	        self.cupStartPos = (0,0,0)
-	    self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
+                self.cupStartPos = (0,0,0)
+                self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             self.cup_name = "cup_pourer.urdf"
             if self.visualize:
-	        self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
-	    else:
+                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
+            else:
                 self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
                 blacken(self.cupID)
             p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
@@ -261,22 +260,22 @@ class CupWorld():
 
 
     def zoom_in_on(self,objID, dist = k*0.7, z_offset = 0):
-	objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        objPos, objQuat = p.getBasePositionAndOrientation(objID)
         adjustedPos = (objPos[0], objPos[1], objPos[2]+z_offset)
-	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(dist, yaw, roll, objPos)
+        roll, pitch, yaw = euler_from_quat(objQuat)
+        p.resetDebugVisualizerCamera(dist, yaw, roll, objPos)
 
     def top_down_zoom_in_on(self,objID):
-	objPos, objQuat = p.getBasePositionAndOrientation(objID)
-	roll, pitch, yaw = euler_from_quat(objQuat)
-	p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
+        objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        roll, pitch, yaw = euler_from_quat(objQuat)
+        p.resetDebugVisualizerCamera(0.5, yaw, -70, objPos)
  
-
-	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
+    #p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
     def simplify_viz(self):
         features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_VR_PICKING, p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]
         for feature in features_to_disable:
-            p.configureDebugVisualizer(feature, 0) 
+            p.configureDebugVisualizer(feature, 0)
+
 #blackens all links in object
 def blacken(objID, end_index =None):
     p.changeVisualShape(objID, -1, rgbaColor=(0,1,0,0))
