@@ -180,22 +180,21 @@ class CupWorld():
        for i, droplet in enumerate(droplets):
            x, y = np.random.normal(0, 1e-3, 2)
            set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
-       return droplets
+       return droplets, z+i*(2*radius+1e-3)
 
     def drop_beads_in_cup(self):
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-        time_to_fall = k*self.num_droplets*0.03
         colors = [(0,0,1,1)]
         for color in colors:
-            new_drops = self.create_beads(color = color, offset=offset)
+            new_drops, highest_z = self.create_beads(color = color, offset=offset)
             self.droplets += new_drops 
             self.droplet_colors += self.num_droplets*[color]
             assert(len(self.droplet_colors) == len(self.droplets))
-            
+        time_to_fall = np.sqrt(2*highest_z/9.8)
         if not self.is_real_time:
-            simulate_for_duration(time_to_fall, dt= 0.001)
+            simulate_for_duration(time_to_fall, dt= 0.01)
                 
         simulate_for_duration(time_to_fall, dt= 0.001)
         #self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
