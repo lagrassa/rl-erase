@@ -8,7 +8,6 @@ from PIL import Image
 from cup_skills.cup_world import *
 import numpy as np
 from cup_skills.reward import reward_func
-import utils
 import time
 import pybullet_data
 from cup_skills.local_setup import path
@@ -37,9 +36,9 @@ class World():
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         max_move = 0.8
-        low_act = [-max_move]*3
-        high_act = [max_move]*3
-        self.action_space = spaces.Box(low=low, high=high, dtype=np.float32)
+        low_act = np.array([-max_move]*3)
+        high_act = np.array([max_move]*3)
+        self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
 
     def step(self, action):
         self.stir(action)
