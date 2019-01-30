@@ -16,9 +16,9 @@ def reward_func(imgs, num_in):
     #k should try to keep the mixness proportions approx equal to the ratios, so like 10
     k = 50
     if imgs is not None:
-	assert(len(imgs) == 2)
-	for img in imgs:
-	    rew += get_mixedness(img)
+        assert(len(imgs) == 2)
+        for img in imgs:
+            rew += get_mixedness(img)
     return rew + k*num_in
 
 def entropy(imgs):
@@ -41,12 +41,12 @@ def get_num_contours(hsv_filtered):
     #max contour
  
     if CONTOUR_DEBUG:
-	for indx in range(len(contours)):
-	    print("Is convex?", cv2.isContourConvex(contours[indx]))
-	    print("area", cv2.contourArea(contours[indx]))
-	    cv2.drawContours(hsv_filtered[:],contours, indx, (0,255,0), 3)
-	    cv2.imshow("keypoints", hsv_filtered)
-	    cv2.waitKey(0)
+        for indx in range(len(contours)):
+            print("Is convex?", cv2.isContourConvex(contours[indx]))
+            print("area", cv2.contourArea(contours[indx]))
+            cv2.drawContours(hsv_filtered[:],contours, indx, (0,255,0), 3)
+            cv2.imshow("keypoints", hsv_filtered)
+            cv2.waitKey(0)
   
     return len(valid_contours), cv2.contourArea(max(valid_contours, key = lambda x: cv2.contourArea(x)))
 

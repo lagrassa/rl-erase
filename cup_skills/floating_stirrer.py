@@ -27,7 +27,9 @@ class World():
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 180 #TAU from thesis
+        self.threshold = 140 #TAU from thesis
+        self.time = 0
+        self.timeout = 40
         self.seed = lambda x: 17
         self.reward_range = (0,-180)
         self.metadata = {"threshold": self.threshold}
@@ -40,12 +42,16 @@ class World():
         high_act = np.array([max_move]*3)
         self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
 
+    #positive when good, negative when bad"
     def step(self, action):
+        self.time += 1
         self.stir(action)
         world_state = self.base_world.world_state()
         ob = self.state()
-        reward = reward_func(world_state, self.base_world.ratio_beads_in())
-        done = reward >= self.threshold
+        reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
+        reward = reward_raw - self.threshold 
+        print("Reward", reward)
+        done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over()
         return ob, reward, done, {}
         
 
