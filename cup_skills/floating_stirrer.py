@@ -1,6 +1,7 @@
 from __future__ import division
 import ipdb
 import pybullet as p
+from reward import reward_func, entropy
 import math
 import csv
 import pdb
@@ -23,7 +24,17 @@ class World():
         self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
         self.visualize=visualize
         self.real_init = real_init
+        self.threshold = 180 #TAU from thesis
         self.setup()
+
+    def step(self, action):
+        self.stir(action)
+        world_state = self.base_world.world_state()
+        ob = self.state()
+        reward = reward_func(world_state, self.base_world.ratio_beads_in())
+        done = reward >= self.threshold
+        return ob, reward, done, {}
+        
 
     """try doing what fetchpush does essentially"""
     def stir(self, action):
@@ -33,41 +44,32 @@ class World():
         print(new_pos)
         p.changeConstraint(self.cid, new_pos, orn, maxForce=120)
         simulate_for_duration(0.8)
+
+    def state(self):
+        world_state = self.base_world.world_state()
+        stirrer_state = self.stirrer_state()
+        #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
+        return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
         
     
-    #adds something of size_step to the current angle
-    def stir_circle(self, size_step=0, time_step = 0):
-        #let's say it takes 1 second t
-        #and find out where x,y is is 
-        current_pos = p.getJointState(self.armID, 6)[0]
-        desired_pos = current_pos + size_step
-        if desired_pos >= 3:
-            desired_pos = -3 #reset
-
+        
+    
     #this function is now a complete lie and has not only the stirrer state but
     #also the vector from the cup
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
-        linkPos = p.getJointState(self.armID, 8)[0]
-         
-        theta_diff_pos, _, _,_ = p.getJointState(self.armID,8)
-        rot_joint_pos, _, _ ,_= p.getJointState(self.armID,6)
-        curl_joint_pos, _, curl_joint_forces,_ = p.getJointState(self.armID,10)
-
         #r, theta, z in pos 
         cupPos=  np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
-        stirrerPos=  np.array(p.getLinkState(self.armID, 10)[0])
+        stirrerPos=  np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         vector_from_cup = cupPos-stirrerPos
-        r_theta_z_pos =  cart2pol(vector_from_cup[0], vector_from_cup[1])+ (vector_from_cup[2],)
         #forces in cup frame
-        r_theta_z_force =  cart2pol(curl_joint_forces[0], curl_joint_forces[1])+ (curl_joint_forces[2],)
-        #return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2], r_theta_z_force[0], r_theta_z_force[1], r_theta_z_force[2]])
-        return np.array([theta_diff_pos, rot_joint_pos, curl_joint_pos, r_theta_z_pos[0], r_theta_z_pos[1], r_theta_z_pos[2]])
+        return vector_from_cup
        
 
-    def reset(self):
+    def reset_model(self):
         self.base_world.reset()
         self.__init__(visualize=self.visualize, real_init=False)
+        return self.state()
 
     def setup(self, beads=True):
         NEW = self.real_init #unfortunately
@@ -79,7 +81,7 @@ class World():
             self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],
                                           [0,0,0,1], [0, 0, 0,1])
             p.changeConstraint(self.cid, start_pos, start_quat)
-            simulate_for_duration(2.0)
+            simulate_for_duration(0.3)
             self.base_world.zoom_in_on(self.stirrer_id, 2)
             self.real_init = False
         else:
@@ -104,11 +106,11 @@ if __name__ == "__main__":
     num_beads = 2
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
-    world = World(visualize=True)
+    world = World(visualize=False)
     world.base_world.drop_beads_in_cup(num_beads)
     actions = [[0,0,-0.7],[0,0,-0.7], [0,0,-0.7], [0,0,-0.7],[0,0.1,0],[0,-0.1,0],[0,0.10,0],[0,-0.10,0]]
     for action in actions:
-        world.stir(action)
+        world.step(action)
 
 
 	
