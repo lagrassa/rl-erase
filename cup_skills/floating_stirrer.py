@@ -27,7 +27,7 @@ class World():
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 140 #TAU from thesis
+        self.threshold = -12 #TAU from thesis
         self.time = 0
         self.timeout = 40
         self.seed = lambda x: 17
@@ -38,37 +38,44 @@ class World():
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         max_move = 0.8
-        low_act = np.array([-max_move]*3)
-        high_act = np.array([max_move]*3)
+        low_act = np.array([-max_move]*4)
+        high_act = np.array([max_move]*4)
+        low_act[3] = 8
+        high_act[3] = 60
         self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
 
     #positive when good, negative when bad"
     def step(self, action):
         self.time += 1
-        self.stir(action)
+        self.stir(action[0:3], maxForce = action[3])
         world_state = self.base_world.world_state()
         ob = self.state()
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
         reward = reward_raw - self.threshold 
         print("Reward", reward)
-        done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over()
+        done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
         return ob, reward, done, {}
         
 
     """try doing what fetchpush does essentially"""
-    def stir(self, action):
+    def stir(self, action, maxForce = 40):
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
         new_pos = np.array((pos[:]))
         new_pos += action
         print(new_pos)
-        p.changeConstraint(self.cid, new_pos, orn, maxForce=120)
-        simulate_for_duration(0.8)
+        p.changeConstraint(self.cid, new_pos, orn, maxForce=maxForce) #120)
+        simulate_for_duration(1.8)
 
     def state(self):
         world_state = self.base_world.world_state()
         stirrer_state = self.stirrer_state()
         #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
+        
+    def stirrer_far(self):
+        dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
+        threshold = 0.5
+        return dist > threshold
         
     
         
@@ -87,7 +94,7 @@ class World():
 
     def reset(self):
         p.resetSimulation()
-        self.__init__(visualize=self.visualize, real_init=True)
+        self.__init__(visualize=self.visualize, real_init=False)
         return self.state()
 
     def setup(self, beads=True):
@@ -98,7 +105,7 @@ class World():
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],[0,0,0,1], [0,0,0,1])
         p.changeConstraint(self.cid, start_pos, start_quat)
         simulate_for_duration(0.1)
-        num_beads = 10
+        num_beads = 50
         self.base_world.drop_beads_in_cup(num_beads)
         self.base_world.zoom_in_on(self.stirrer_id, 2)
         self.real_init = False
@@ -116,8 +123,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
     world = World(visualize=False)
-    actions = [[0,0,-0.7],[0,0,-0.7], [0,0,-0.7], [0,0,-0.7],[0,0.1,0],[0,-0.1,0],[0,0.10,0],[0,-0.10,0]]
-    world.reset()
+    width = 0.16
+    force = 25
+    actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
+    #actions = [[0,0,-0.7],[0,0,-0.7], [0,0,-0.7], [0,0,-0.7],[0,0.6,0],[0,-0.6,0],[0,0.60,0],[0,-0.60,0]]
     for action in actions:
         world.step(action)
 

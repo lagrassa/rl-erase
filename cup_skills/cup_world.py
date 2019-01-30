@@ -33,7 +33,7 @@ class CupWorld():
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.011
+            self.radius = k*0.018#0.011
             
         self.table=table
         if real_init:
@@ -101,7 +101,7 @@ class CupWorld():
         views = [0, 180] #I have no idea why, but these seems to be in degrees
         images = ()
         for view in views:
-            rgbPixels = self.getImageFromDistance(self.cupID, 0.25, z_offset=0.1, theta_offset = view)
+            rgbPixels = self.getImageFromDistance(self.cupID, 0.35, z_offset=0.1, theta_offset = view)
             images += (rgbPixels[:,:,0:3],) # decided against cropping 
         return images
 
@@ -113,7 +113,6 @@ class CupWorld():
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         yaw = yaw + theta_offset
-        cam_distance = k*0.25
         im_w = 50
         im_h = 50
         viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjustedPos, distance=cam_distance, yaw=yaw , pitch=pitch, roll =roll+np.pi, upAxisIndex=2)
@@ -158,7 +157,7 @@ class CupWorld():
            y = np.random.uniform(*y_range)
            set_point(droplet, Point(x, y, z))
            p.changeVisualShape(droplet, -1, rgbaColor=color)
-           p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.1, restitution=0.20)
+           p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.01, restitution=0.10)
 
        for i, droplet in enumerate(droplets):
            x, y = np.random.normal(0, 1e-3, 2)
@@ -196,7 +195,8 @@ class CupWorld():
             g = 9.8
             p.setGravity(0,0,-g)
             if self.visualize:
-                self.planeId = p.loadURDF(path+"plane.urdf")
+                print(path)
+                self.planeId = p.loadURDF(path+"urdf/plane.urdf")
             else:
                 self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
                 blacken(self.planeId)
@@ -214,8 +214,8 @@ class CupWorld():
             else:
                 self.cupID = p.loadURDF(path+"urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
                 blacken(self.cupID)
-            #self.cup_constraint = p.createConstraint(self.cupID, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0], [0,0,0,1], [0,0,0,1])
-            #p.changeConstraint(self.cup_constraint, self.cupStartPos, self.cupStartOrientation)
+            self.cup_constraint = p.createConstraint(self.cupID, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0], [0,0,0,1], [0,0,0,1])
+            p.changeConstraint(self.cup_constraint, self.cupStartPos, self.cupStartOrientation, maxForce=1000)
             p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
                 if new_world:
