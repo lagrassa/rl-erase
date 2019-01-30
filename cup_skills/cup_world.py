@@ -6,15 +6,17 @@ import csv
 import pdb
 from PIL import Image
 import numpy as np
-import utils
+import cup_skills.utils
 import time
 import pybullet_data
 k = 1 #scaling factor
 DEMO =False 
-from utils import add_data_path, connect, enable_gravity, input, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions, get_joint_positions
+from cup_skills.utils import add_data_path, connect, enable_gravity, disconnect, create_sphere, set_point, Point, create_cylinder, enable_real_time, dump_world, load_model, wait_for_interrupt, set_camera, stable_z, set_color, get_lower_upper, wait_for_duration, simulate_for_duration, euler_from_quat, set_pose, set_joint_positions, get_joint_positions
 
 real_init = True
 new_world = True
+
+from cup_skills.local_setup import path
 
  
 class CupWorld():
@@ -59,30 +61,6 @@ class CupWorld():
         p.setRealTimeSimulation(self.is_real_time)
 
     """saves where all the beads are"""
-    def custom_save_beads(self):
-        filename = "bead_poses"
-        with open(filename, "wb") as csvfile:
-            drop_writer = csv.writer(csvfile) 
-            for i in range(len(self.droplets)):
-                droplet = self.droplets[i]
-                color = self.droplet_colors[i]
-                pos = p.getBasePositionAndOrientation(droplet)[0]
-                drop_writer.writerow([color, pos])
-
-    def custom_restore_beads(self, teleport=False):
-        filename = "bead_poses"
-        i = 0
-        with open(filename, "rb") as csvfile:
-            drop_reader = csv.reader(csvfile)
-            for row in drop_reader:
-                color, pos = [parse_tuple(input_tuple) for input_tuple in row]
-                if teleport:
-                    set_point(self.droplets[i], pos)
-                    i += 1
-                else:       
-                    create_sphere(self.radius, color=color, pos = pos)
-                
-
     """Returns the proportion of beads that are still in the cup"""
     def ratio_beads_in(self, cup =None):
         if cup is None:
@@ -128,7 +106,10 @@ class CupWorld():
         return images
 
     def getImageFromDistance(self, objID,cam_distance, z_offset=0,y_offset=0, x_offset= 0, theta_offset = 0):
-        objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        try:
+            objPos, objQuat = p.getBasePositionAndOrientation(objID)
+        except:
+            import ipdb; ipdb.set_trace()
         adjustedPos = (objPos[0]+x_offset, objPos[1]+y_offset, objPos[2]+z_offset)
         roll, pitch, yaw = euler_from_quat(objQuat)
         yaw = yaw + theta_offset
@@ -168,7 +149,7 @@ class CupWorld():
        lower = np.array(lower) + buffer*np.ones(len(lower))
        upper = np.array(upper) - buffer*np.ones(len(upper))
        limits = zip(lower, upper)
-       x_range, y_range = limits[:2]
+       x_range, y_range = list(limits)[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
        bead_mass = 0.002 #actual mass of a kidney bean*2
@@ -204,7 +185,6 @@ class CupWorld():
             time_to_fall = np.sqrt(2*highest_z/9.8)+3.0 #(buffer)
             simulate_for_duration(time_to_fall, dt= 1/240.0)
         #self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
-        self.custom_save_beads()
 
 
     def setup(self, beads=True, cup_offset=(0,0,0), new_bead_mass = None, table=False, cup_factor=5):
@@ -216,12 +196,12 @@ class CupWorld():
             g = 9.8
             p.setGravity(0,0,-g)
             if self.visualize:
-                self.planeId = p.loadURDF("plane.urdf")
+                self.planeId = p.loadURDF(path+"plane.urdf")
             else:
-                self.planeId = p.loadURDF("urdf/invisible_plane.urdf")
+                self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
                 blacken(self.planeId)
             if table:
-                self.table = p.loadURDF("table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
+                self.table = p.loadURDF(path+"table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
                 #p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
                 self.cupStartPos = (-0.04,-0.10, 0.708)
                 self.cupStartPos = (-0.17,0,0.6544)
@@ -230,9 +210,9 @@ class CupWorld():
                 self.cupStartOrientation = p.getQuaternionFromEuler([0,0,0])
             self.cup_name = "cup_pourer.urdf"
             if self.visualize:
-                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
+                self.cupID = p.loadURDF(path+"urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
             else:
-                self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
+                self.cupID = p.loadURDF(path+"urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
                 blacken(self.cupID)
             #self.cup_constraint = p.createConstraint(self.cupID, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0], [0,0,0,1], [0,0,0,1])
             #p.changeConstraint(self.cup_constraint, self.cupStartPos, self.cupStartOrientation)
@@ -240,8 +220,6 @@ class CupWorld():
             if beads:
                 if new_world:
                     self.bullet_id = p.saveState()
-                else:
-                    self.custom_restore_beads()
                 if new_bead_mass is not None:
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
                 #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
