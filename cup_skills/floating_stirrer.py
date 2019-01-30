@@ -25,13 +25,14 @@ class World():
         self.real_init = real_init
         self.setup()
 
-
+    """try doing what fetchpush does essentially"""
     def stir(self, action):
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
-        new_pos = list(pos[:])
-        new_pos[2] -= action[0]
-        p.changeConstraint(self.cid, new_pos, orn)
-        simulate_for_duration(1.0)
+        new_pos = np.array((pos[:]))
+        new_pos += action
+        print(new_pos)
+        p.changeConstraint(self.cid, new_pos, orn, maxForce=120)
+        simulate_for_duration(0.8)
         
     
     #adds something of size_step to the current angle
@@ -93,15 +94,21 @@ class World():
 
 	#p.resetDebugVisualizerCamera(0.5, yaw, roll, objPos)
     def simplify_viz(self):
-        features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_VR_PICKING, p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]
+        features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_RGB_BUFFER_PREVIEW, p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW]
         for feature in features_to_disable:
             p.configureDebugVisualizer(feature, 0) 
 
 
 if __name__ == "__main__":
-    world = World(visualize=False)
-    world.base_world.drop_beads_in_cup()
-    world.stir([0.1]) 
+    import sys
+    num_beads = 2
+    if len(sys.argv) > 1:
+        num_beads = int(sys.argv[1])
+    world = World(visualize=True)
+    world.base_world.drop_beads_in_cup(num_beads)
+    actions = [[0,0,-0.7],[0,0,-0.7], [0,0,-0.7], [0,0,-0.7],[0,0.1,0],[0,-0.1,0],[0,0.10,0],[0,-0.10,0]]
+    for action in actions:
+        world.stir(action)
 
 
 	

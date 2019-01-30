@@ -26,7 +26,7 @@ class CupWorld():
         
         self.visualize=visualize
         self.real_init = real_init
-        self.num_droplets = 10
+        self.num_droplets = 100
         self.for_pr2 = for_pr2
         if for_pr2:
             self.radius = k*0.005
@@ -171,20 +171,27 @@ class CupWorld():
        x_range, y_range = limits[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 1.5# 0.75
+       bead_mass = 0.002 #actual mass of a kidney bean*2
        for droplet in droplets:
            x = np.random.uniform(*x_range)
            y = np.random.uniform(*y_range)
            set_point(droplet, Point(x, y, z))
            p.changeVisualShape(droplet, -1, rgbaColor=color)
-           p.changeDynamics(droplet, -1, mass=bead_mass)
+           p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.1, restitution=0.20)
 
        for i, droplet in enumerate(droplets):
            x, y = np.random.normal(0, 1e-3, 2)
            set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
        return droplets, z+i*(2*radius+1e-3)
 
-    def drop_beads_in_cup(self):
+    def change_all_bead_dynamics(kwargs):
+        for droplet in self.droplets:
+            p.changeDynamics(droplet, -1, **kwargs)
+            
+
+    def drop_beads_in_cup(self, num_droplets = None):
+        if num_droplets is not None:
+            self.num_droplets = num_droplets
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
@@ -227,6 +234,8 @@ class CupWorld():
             else:
                 self.cupID = p.loadURDF("urdf/cup/"+self.cup_name,self.cupStartPos, self.cupStartOrientation, globalScaling=k*cup_factor)
                 blacken(self.cupID)
+            #self.cup_constraint = p.createConstraint(self.cupID, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0], [0,0,0,1], [0,0,0,1])
+            #p.changeConstraint(self.cup_constraint, self.cupStartPos, self.cupStartOrientation)
             p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
             if beads:
                 if new_world:
