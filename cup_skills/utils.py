@@ -10,6 +10,7 @@ import sys
 import time
 
 from collections import defaultdict, deque, namedtuple
+from cup_skills.local_setup import path
 from itertools import product, combinations, count
 
 from transformations import quaternion_from_matrix
@@ -979,9 +980,9 @@ def create_sphere(radius, mass=0, color=(0,0,1,1), pos = None):
     else: 
         filename = 'urdf/sphere/blue_sphere.urdf'
     if pos is None:
-        return p.loadURDF(filename, globalScaling=scale_factor)
+        return p.loadURDF(path+filename, globalScaling=scale_factor)
     else:
-        return p.loadURDF(filename, globalScaling=scale_factor, basePosition = pos)
+        return p.loadURDF(path+filename, globalScaling=scale_factor, basePosition = pos)
 
 def create_marker(radius, mass=STATIC_MASS, color=(0, 0, 1, 1), point = (0,0,0)):
     # mass = 0  => static
@@ -1946,7 +1947,7 @@ def sub_inverse_kinematics(robot, first_joint, target_link, target_pose, selecte
             return None
         """
 	#set_joint_positions(sub_robot, sub_movable_joints, sub_kinematic_conf)
-	set_joint_positions(sub_robot, sub_movable_joints, sub_kinematic_conf)
+        set_joint_positions(sub_robot, sub_movable_joints, sub_kinematic_conf)
         
         link_point, link_quat = get_link_pose(sub_robot, selected_target_link)
         # TODO: let target_quat be None
