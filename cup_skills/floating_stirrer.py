@@ -21,19 +21,19 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 150):
         #make base world 
         self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = -12 #TAU from thesis
+        self.threshold = 140 #TAU from thesis
         self.time = 0
         self.timeout = 40
         self.seed = lambda x: 17
         self.reward_range = (0,-180)
         self.metadata = {"threshold": self.threshold}
-        self.setup()
+        self.setup(num_beads = num_beads)
         high = np.inf*np.ones(self.state().shape[0])
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
@@ -97,7 +97,7 @@ class World():
         self.__init__(visualize=self.visualize, real_init=False)
         return self.state()
 
-    def setup(self, beads=True):
+    def setup(self, beads=True, num_beads = 2):
         start_pos = [0,0,0.3]
         start_quat = (0.0, 1, -1, 0.0) 
         self.stirrer_id = p.loadURDF(path+"urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos, baseOrientation=start_quat)
@@ -105,7 +105,6 @@ class World():
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],[0,0,0,1], [0,0,0,1])
         p.changeConstraint(self.cid, start_pos, start_quat)
         simulate_for_duration(0.1)
-        num_beads = 50
         self.base_world.drop_beads_in_cup(num_beads)
         self.base_world.zoom_in_on(self.stirrer_id, 2)
         self.real_init = False
@@ -115,6 +114,17 @@ class World():
         for feature in features_to_disable:
             p.configureDebugVisualizer(feature, 0) 
 
+    def calibrate_reward(self):
+        #color all droplets randomly
+        colors = [(1,0,0,1),(0,0,1,1)]
+        for droplet in self.base_world.droplets:
+            random_color = colors[np.random.randint(len(colors))]
+            p.changeVisualShape(droplet, -1, rgbaColor = random_color) 
+        reward_raw = reward_func(self.base_world.world_state(), self.base_world.ratio_beads_in())
+        np.save("reward_calibration.npy", reward_raw)
+        print("Calibration complete. Value was", reward_raw)
+
+
 
 
 if __name__ == "__main__":
@@ -122,13 +132,16 @@ if __name__ == "__main__":
     num_beads = 2
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
-    world = World(visualize=False)
-    width = 0.16
-    force = 25
-    actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
-    #actions = [[0,0,-0.7],[0,0,-0.7], [0,0,-0.7], [0,0,-0.7],[0,0.6,0],[0,-0.6,0],[0,0.60,0],[0,-0.60,0]]
-    for action in actions:
-        world.step(action)
+    if len(sys.argv) > 2:
+        world = World(visualize=False, num_beads=num_beads)
+        world.calibrate_reward()
+    else:
+        world = World(visualize=True, num_beads = num_beads)
+        width = 0.16
+        force = 25
+        actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
+        for action in actions:
+            world.step(action)
 
 
 	

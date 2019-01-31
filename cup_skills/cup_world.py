@@ -33,7 +33,7 @@ class CupWorld():
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.018#0.011
+            self.radius = k*0.015#0.011
             
         self.table=table
         if real_init:
@@ -151,7 +151,7 @@ class CupWorld():
        x_range, y_range = list(limits)[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 0.002 #actual mass of a kidney bean*2
+       bead_mass = 0.01 #actual mass of a kidney bean*2
        for droplet in droplets:
            x = np.random.uniform(*x_range)
            y = np.random.uniform(*y_range)
@@ -164,7 +164,7 @@ class CupWorld():
            set_point(droplet, Point(x+offset[0], y+offset[1], z+i*(2*radius+1e-3)))
        return droplets, z+i*(2*radius+1e-3)
 
-    def change_all_bead_dynamics(kwargs):
+    def change_all_bead_dynamics(self, kwargs):
         for droplet in self.droplets:
             p.changeDynamics(droplet, -1, **kwargs)
             
