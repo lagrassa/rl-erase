@@ -181,7 +181,7 @@ class CupWorld():
             self.droplets += new_drops 
             self.droplet_colors += self.num_droplets*[color]
             assert(len(self.droplet_colors) == len(self.droplets))
-            time_to_fall = np.sqrt(2*highest_z/9.8)+3.0 #(buffer)
+            time_to_fall = np.sqrt(2*highest_z/9.8)+1.0 #(buffer)
             simulate_for_duration(time_to_fall, dt= 1/240.0)
         #self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
@@ -196,10 +196,11 @@ class CupWorld():
             p.setGravity(0,0,-g)
             if self.visualize:
                 print(path)
-                self.planeId = p.loadURDF(path+"urdf/plane.urdf")
+                #self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
             else:
-                self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
-                blacken(self.planeId)
+                pass
+                #self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
+                #blacken(self.planeId)
             if table:
                 self.table = p.loadURDF(path+"table/table.urdf", 0, 0, 0, 0, 0, 0.707107, 0.707107)
                 #p.changeDynamics(self.table, -1, lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99) 
@@ -301,6 +302,7 @@ def parse_tuple(input_tuple):
 
 if __name__ == "__main__":
     world = CupWorld(visualize=True, table=True)
+    ipdb.set_trace()
     pdb.set_trace()
     world.reset()
     pdb.set_trace()
