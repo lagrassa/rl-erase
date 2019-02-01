@@ -21,19 +21,20 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 150):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 50):
         #make base world 
-        self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 140 #TAU from thesis
+        self.threshold = 125 #TAU from thesis
         self.time = 0
-        self.timeout = 40
+        self.timeout = 20
         self.seed = lambda x: np.random.randint(10)
         self.reward_range = (-100,100)
         self.metadata = {"threshold": self.threshold}
-        self.setup(num_beads = num_beads)
+        if real_init:
+            self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
+            self.setup(num_beads = num_beads)
         high = np.inf*np.ones(self.state().shape[0])
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
@@ -47,11 +48,14 @@ class World():
     #positive when good, negative when bad"
     def step(self, action):
         self.time += 1
-        #self.stir(action[0:3], maxForce = action[3])
+        print("action", action)
+        scale = 10
+        #self.stir(action[0:3], maxForce = scale*action[3])
         world_state = self.base_world.world_state()
         ob = self.state(world_state = world_state)
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
         reward = reward_raw - self.threshold 
+        print("reward", reward_raw)
         if self.time == self.timeout:
             print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
@@ -95,21 +99,22 @@ class World():
        
 
     def reset(self):
-        p.resetSimulation()
+        p.restoreState(self.bullet_id)
         self.__init__(visualize=self.visualize, real_init=False)
         return self.state()
 
     def setup(self, beads=True, num_beads = 2):
         start_pos = [0,0,0.3]
         start_quat = (0.0, 1, -1, 0.0) 
+        self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path+"urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos, baseOrientation=start_quat)
         stirrer_start_pose = (start_pos, start_quat)
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],[0,0,0,1], [0,0,0,1])
         p.changeConstraint(self.cid, start_pos, start_quat)
         simulate_for_duration(0.005)
-        print("Dropping", num_beads, "in the cup")
         self.base_world.drop_beads_in_cup(num_beads)
         self.base_world.zoom_in_on(self.stirrer_id, 2)
+        self.bullet_id = p.saveState()
         self.real_init = False
 
     def simplify_viz(self):
