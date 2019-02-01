@@ -75,8 +75,11 @@ class CupWorld():
             num_in = 0
         else:
             num_in = len(overlapping_objects)
-        total =  self.num_droplets
-        return num_in/total
+        total =  len(self.droplets)
+
+        ratio= num_in/total
+        assert(ratio <= 1.0)
+        return ratio
 
     def distance_from_cup(self, otherObj, otherLinkIndex):
         cupPos = np.array(p.getBasePositionAndOrientation(self.cupID)[0])
