@@ -23,7 +23,6 @@ real_init = True
 class World():
     def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 150):
         #make base world 
-        self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
@@ -33,7 +32,9 @@ class World():
         self.seed = lambda x: 17
         self.reward_range = (0,-180)
         self.metadata = {"threshold": self.threshold}
-        self.setup(num_beads = num_beads)
+        if real_init:
+            self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
+            self.setup(num_beads = num_beads)
         high = np.inf*np.ones(self.state().shape[0])
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
@@ -93,20 +94,21 @@ class World():
        
 
     def reset(self):
-        p.resetSimulation()
+        p.restoreState(self.bullet_id)
         self.__init__(visualize=self.visualize, real_init=False)
         return self.state()
 
     def setup(self, beads=True, num_beads = 2):
         start_pos = [0,0,0.3]
         start_quat = (0.0, 1, -1, 0.0) 
+        self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path+"urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos, baseOrientation=start_quat)
         stirrer_start_pose = (start_pos, start_quat)
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],[0,0,0,1], [0,0,0,1])
         p.changeConstraint(self.cid, start_pos, start_quat)
         simulate_for_duration(0.1)
-        self.base_world.drop_beads_in_cup(num_beads)
         self.base_world.zoom_in_on(self.stirrer_id, 2)
+        self.bullet_id = p.saveState()
         self.real_init = False
 
     def simplify_viz(self):
@@ -129,7 +131,7 @@ class World():
 
 if __name__ == "__main__":
     import sys
-    num_beads = 2
+    num_beads = 15
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
     if len(sys.argv) > 2:
@@ -137,6 +139,7 @@ if __name__ == "__main__":
         world.calibrate_reward()
     else:
         world = World(visualize=True, num_beads = num_beads)
+        world.reset()
         width = 0.16
         force = 25
         actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
