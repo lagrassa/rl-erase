@@ -124,11 +124,12 @@ class World():
     def calibrate_reward(self, control = None):
         #color all droplets randomly
         colors = [(1,0,0,1),(0,0,1,1)]
-        for droplet in self.base_world.droplets:
-            random_color = colors[np.random.randint(len(colors))]
-            p.changeVisualShape(droplet, -1, rgbaColor = random_color) 
+        if not control:
+            for droplet in self.base_world.droplets:
+                random_color = colors[np.random.randint(len(colors))]
+                p.changeVisualShape(droplet, -1, rgbaColor = random_color) 
         reward_raw = reward_func(self.base_world.world_state(), self.base_world.ratio_beads_in())
-        #print("Calibration complete. Value was", reward_raw)
+        print("Calibration complete. Value was", reward_raw)
         return reward_raw
 
 
@@ -139,10 +140,13 @@ if __name__ == "__main__":
     num_beads = 150
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
-    if len(sys.argv) > 2:
+    if "slurm" in sys.argv:
+        job_to_num_beads = {1:50, 2:80, 3:110, 4:140, 5:170, 6:200}
+        num_beads  = job_to_num_beads[int(sys.argv[1])]
+    if "calibrate" in sys.argv:
         controls = []
         mixed = []
-        for i in range(5):
+        for i in range(10):
             world = World(visualize=False, num_beads=num_beads)
             print("Before mixing", i)
             controls.append(world.calibrate_reward(control=True))
@@ -157,7 +161,7 @@ if __name__ == "__main__":
         print("Mixed")
         print("Standard deviation", np.std(mixed))
         print("Mean", np.mean(mixed))
-        np.save("reward_calibration.npy", np.mean(mixed))
+        np.save(str(num_beads)+"_reward_calibration.npy", np.mean(mixed))
     else:
         world = World(visualize=True, num_beads = num_beads)
         width = 0.16
