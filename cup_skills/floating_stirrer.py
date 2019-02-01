@@ -21,16 +21,16 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 150):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 50):
         #make base world 
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 140 #TAU from thesis
+        self.threshold = 125 #TAU from thesis
         self.time = 0
-        self.timeout = 40
-        self.seed = lambda x: 17
-        self.reward_range = (0,-180)
+        self.timeout = 20
+        self.seed = lambda x: np.random.randint(10)
+        self.reward_range = (-100,100)
         self.metadata = {"threshold": self.threshold}
         if real_init:
             self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
@@ -48,12 +48,16 @@ class World():
     #positive when good, negative when bad"
     def step(self, action):
         self.time += 1
-        self.stir(action[0:3], maxForce = action[3])
+        print("action", action)
+        scale = 10
+        #self.stir(action[0:3], maxForce = scale*action[3])
         world_state = self.base_world.world_state()
-        ob = self.state()
+        ob = self.state(world_state = world_state)
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
         reward = reward_raw - self.threshold 
-        print("Reward", reward)
+        print("reward", reward_raw)
+        if self.time == self.timeout:
+            print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
         return ob, reward, done, {}
         
@@ -67,8 +71,9 @@ class World():
         p.changeConstraint(self.cid, new_pos, orn, maxForce=maxForce) #120)
         simulate_for_duration(1.8)
 
-    def state(self):
-        world_state = self.base_world.world_state()
+    def state(self, world_state = None):
+        if world_state is None:
+            world_state = self.base_world.world_state()
         stirrer_state = self.stirrer_state()
         #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
@@ -106,7 +111,7 @@ class World():
         stirrer_start_pose = (start_pos, start_quat)
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0],[0,0,0],[0,0,0,1], [0,0,0,1])
         p.changeConstraint(self.cid, start_pos, start_quat)
-        simulate_for_duration(0.1)
+        simulate_for_duration(0.005)
         self.base_world.zoom_in_on(self.stirrer_id, 2)
         self.bullet_id = p.saveState()
         self.real_init = False
@@ -131,7 +136,7 @@ class World():
 
 if __name__ == "__main__":
     import sys
-    num_beads = 15
+    num_beads = 150
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
     if len(sys.argv) > 2:
@@ -139,7 +144,6 @@ if __name__ == "__main__":
         world.calibrate_reward()
     else:
         world = World(visualize=True, num_beads = num_beads)
-        world.reset()
         width = 0.16
         force = 25
         actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]

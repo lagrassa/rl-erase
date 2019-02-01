@@ -196,7 +196,7 @@ class CupWorld():
             p.setGravity(0,0,-g)
             if self.visualize:
                 print(path)
-                #self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
+                #self.planeId = p.loadURDF(path+"urdf/plane.urdf")
             else:
                 pass
                 #self.planeId = p.loadURDF(path+"urdf/invisible_plane.urdf")
