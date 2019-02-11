@@ -33,7 +33,7 @@ class CupWorld():
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.015#0.011
+            self.radius = k*0.011#0.015
             
         self.table=table
         if real_init:

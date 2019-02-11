@@ -1,5 +1,5 @@
 from __future__ import division
-import ipdb
+#import ipdb
 import pybullet as p
 import math
 import csv
@@ -21,12 +21,12 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 50):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 200):
         #make base world 
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 125 #TAU from thesis
+        self.threshold = 83 #TAU from thesis
         self.time = 0
         self.timeout = 20
         self.seed = lambda x: np.random.randint(10)
@@ -41,25 +41,27 @@ class World():
         max_move = 0.8
         low_act = np.array([-max_move]*4)
         high_act = np.array([max_move]*4)
-        low_act[3] = 8
-        high_act[3] = 60
+        self.scale = 40.
+        low_act[3] = 8./self.scale
+        low_act[3] = -40./self.scale #for ddpg
+        high_act[3] = 40/self.scale
         self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
 
     #positive when good, negative when bad"
     def step(self, action):
         self.time += 1
-        print("action", action)
-        scale = 10
-        #self.stir(action[0:3], maxForce = scale*action[3])
+        self.stir(action[0:3], maxForce = self.scale*action[3])
         world_state = self.base_world.world_state()
         ob = self.state(world_state = world_state)
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
         reward = reward_raw - self.threshold 
-        print("reward", reward_raw)
         if self.time == self.timeout:
+            print("action", action)
             print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
-        return ob, reward, done, {}
+        info = {"is_success":float(reward >= 0)}
+        info["reward_raw"] = reward_raw
+        return ob, reward, done, info
         
 
     """try doing what fetchpush does essentially"""
@@ -67,16 +69,16 @@ class World():
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
         new_pos = np.array((pos[:]))
         new_pos += action
-        print(new_pos)
         p.changeConstraint(self.cid, new_pos, orn, maxForce=maxForce) #120)
-        simulate_for_duration(1.8)
+        simulate_for_duration(0.1)
 
     def state(self, world_state = None):
         if world_state is None:
             world_state = self.base_world.world_state()
         stirrer_state = self.stirrer_state()
         #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
-        return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
+        #return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
+        return stirrer_state.flatten()
         
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -146,22 +148,28 @@ if __name__ == "__main__":
     if "calibrate" in sys.argv:
         controls = []
         mixed = []
-        for i in range(10):
+        for i in range(50):
             world = World(visualize=False, num_beads=num_beads)
             print("Before mixing", i)
             controls.append(world.calibrate_reward(control=True))
             print("After mixing")
             mixed.append(world.calibrate_reward(control=False))
             p.disconnect()
-        print(controls)
-        print(mixed)
+        data = {}
+        data["num_beads"] = num_beads
+        data["control_mean"] = np.mean(controls)
+        data["mixed_mean"] = np.mean(mixed)
+        data["control_std"] = np.std(controls)
+        data["mixed_std"] = np.std(mixed)
+    
+        
         print("Control")
         print("Standard deviation", np.std(controls))
         print("Mean", np.mean(controls))
         print("Mixed")
         print("Standard deviation", np.std(mixed))
         print("Mean", np.mean(mixed))
-        np.save(str(num_beads)+"_reward_calibration.npy", np.mean(mixed))
+        np.save(str(num_beads)+"_reward_calibration_more_samples.npy", data)
     else:
         world = World(visualize=True, num_beads = num_beads)
         width = 0.16
