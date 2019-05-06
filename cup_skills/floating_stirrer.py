@@ -21,16 +21,17 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 200):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 70, distance_threshold=None):
         #make base world 
         self.visualize=visualize
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 83 #TAU from thesis
+        self.threshold = distance_threshold #TAU from thesis
         self.time = 0
         self.timeout = 20
         self.seed = lambda x: np.random.randint(10)
         self.reward_range = (-100,100)
+        self.reward_scale = 0.05
         self.metadata = {"threshold": self.threshold}
         if real_init:
             self.base_world = CupWorld(visualize=visualize, real_init = real_init, beads=beads)
@@ -54,10 +55,10 @@ class World():
         world_state = self.base_world.world_state()
         ob = self.state(world_state = world_state)
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
-        reward = reward_raw - self.threshold 
-        if self.time == self.timeout:
-            print("action", action)
-            print("reward", reward_raw)
+        reward = self.reward_scale*(reward_raw - self.threshold )
+        #if self.time == self.timeout:
+        #    print("action", action)
+        #    print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
         info = {"is_success":float(reward >= 0)}
         info["reward_raw"] = reward_raw
@@ -102,7 +103,7 @@ class World():
 
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False)
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold = self.threshold)
         return self.state()
 
     def setup(self, beads=True, num_beads = 2):
@@ -131,7 +132,7 @@ class World():
                 random_color = colors[np.random.randint(len(colors))]
                 p.changeVisualShape(droplet, -1, rgbaColor = random_color) 
         reward_raw = reward_func(self.base_world.world_state(), self.base_world.ratio_beads_in())
-        print("Calibration complete. Value was", reward_raw)
+        #print("Calibration complete. Value was", reward_raw)
         return reward_raw
 
 
@@ -148,14 +149,18 @@ if __name__ == "__main__":
     if "calibrate" in sys.argv:
         controls = []
         mixed = []
-        for i in range(50):
+        for i in range(20):
+            if i % 10 == 0:
+                print("Iter", i)
             world = World(visualize=False, num_beads=num_beads)
-            print("Before mixing", i)
+            #print("Before mixing", i)
             controls.append(world.calibrate_reward(control=True))
-            print("After mixing")
+            #print("After mixing")
             mixed.append(world.calibrate_reward(control=False))
             p.disconnect()
         data = {}
+        print("controls", controls)
+        print("mixed", mixed)
         data["num_beads"] = num_beads
         data["control_mean"] = np.mean(controls)
         data["mixed_mean"] = np.mean(mixed)
