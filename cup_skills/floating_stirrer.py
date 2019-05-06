@@ -21,7 +21,7 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 70, distance_threshold=None):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 70, distance_threshold=85):
         #make base world 
         self.visualize=visualize
         self.unwrapped = self
@@ -42,7 +42,7 @@ class World():
         max_move = 0.8
         low_act = np.array([-max_move]*4)
         high_act = np.array([max_move]*4)
-        self.scale = 40.
+        self.scale = 20.
         low_act[3] = 8./self.scale
         low_act[3] = -40./self.scale #for ddpg
         high_act[3] = 40/self.scale
@@ -177,8 +177,8 @@ if __name__ == "__main__":
         np.save(str(num_beads)+"_reward_calibration_more_samples.npy", data)
     else:
         world = World(visualize=True, num_beads = num_beads)
-        width = 0.16
-        force = 25
+        width = 0.76
+        force = 1
         actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
         for action in actions:
             world.step(action)
