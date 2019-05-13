@@ -265,7 +265,7 @@ def wait_for_duration(duration): #, dt=0):
         disable_gravity()
     # TODO: wait until keypress
 
-def simulate_for_duration(duration, dt=1/300.0):
+def simulate_for_duration(duration, dt=1/120.0):
     p.setTimeStep(dt)
     for i in range(int(duration/dt)):
         step_simulation()
