@@ -1,5 +1,5 @@
 from __future__ import division
-from math import log
+from math import log, sqrt
 #helper function: takes in a img and calculates the current reward
 #reward is based on the intended number of beads and the amount mixed
 import pdb
@@ -14,12 +14,16 @@ def reward_func(imgs, num_in):
     #calculate mixedness
     rew = 0
     #k should try to keep the mixness proportions approx equal to the ratios, so like 10
-    k = 50
+    k = 10
     if imgs is not None:
         assert(len(imgs) == 2)
         for img in imgs:
             rew += get_mixedness(img)
-    return rew + k*num_in
+
+    total_rew =  rew -k*(1-num_in)**0.5
+    print(total_rew)
+    print("num in", num_in)
+    return total_rew
 
 def entropy(imgs):
     assert(len(imgs) == 2)

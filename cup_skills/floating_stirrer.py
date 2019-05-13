@@ -42,7 +42,7 @@ class World():
         max_move = 0.8
         low_act = np.array([-max_move]*4)
         high_act = np.array([max_move]*4)
-        self.scale = 20.
+        self.scale = 45.
         low_act[3] = 8./self.scale
         low_act[3] = -40./self.scale #for ddpg
         high_act[3] = 40/self.scale
@@ -71,7 +71,7 @@ class World():
         new_pos = np.array((pos[:]))
         new_pos += action
         p.changeConstraint(self.cid, new_pos, orn, maxForce=maxForce) #120)
-        simulate_for_duration(0.1)
+        simulate_for_duration(0.8)
 
     def state(self, world_state = None):
         if world_state is None:
@@ -107,7 +107,7 @@ class World():
         return self.state()
 
     def setup(self, beads=True, num_beads = 2):
-        start_pos = [0,0,0.3]
+        start_pos = [0,0,0.2]
         start_quat = (0.0, 1, -1, 0.0) 
         self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path+"urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos, baseOrientation=start_quat)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     if "calibrate" in sys.argv:
         controls = []
         mixed = []
-        for i in range(20):
+        for i in range(10):
             if i % 10 == 0:
                 print("Iter", i)
             world = World(visualize=False, num_beads=num_beads)
@@ -176,10 +176,11 @@ if __name__ == "__main__":
         print("Mean", np.mean(mixed))
         np.save(str(num_beads)+"_reward_calibration_more_samples.npy", data)
     else:
-        world = World(visualize=True, num_beads = num_beads)
-        width = 0.76
-        force = 1
-        actions = [[0,0,-0.7, force],[0,0,-0.7, force],  [0,0,-0.7, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width,-width, force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [-width,0,0, force]]
+        visual = "visual" in sys.argv
+        world = World(visualize=visual, num_beads = num_beads)
+        width = 0.4
+        force = 0.7
+        actions = [[0,0,-0.2, force],[0,0,-0.2, force],  [0,0,-0.2, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width, 0,force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [0,-width,0, force], [0, -width, 0, force], [0, width, 0, force], [0,width, 0, force]]
         for action in actions:
             world.step(action)
 
