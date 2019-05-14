@@ -14,13 +14,13 @@ def reward_func(imgs, num_in):
     #calculate mixedness
     rew = 0
     #k should try to keep the mixness proportions approx equal to the ratios, so like 10
-    k = 10
+    k = 50
     if imgs is not None:
         assert(len(imgs) == 2)
         for img in imgs:
             rew += get_mixedness(img)
 
-    total_rew =  rew -k*(1-num_in)**0.5
+    total_rew =  rew+k*num_in
     print(total_rew)
     print("num in", num_in)
     return total_rew

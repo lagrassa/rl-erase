@@ -54,14 +54,13 @@ class World():
         self.stir(action[0:3], maxForce = self.scale*action[3])
         world_state = self.base_world.world_state()
         ob = self.state(world_state = world_state)
-        reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
-        reward = self.reward_scale*(reward_raw - self.threshold )
+        reward = ob[-1]
         #if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
         info = {"is_success":float(reward >= 0)}
-        info["reward_raw"] = reward_raw
+        #info["reward_raw"] = reward_raw
         return ob, reward, done, info
         
 
@@ -79,7 +78,9 @@ class World():
         stirrer_state = self.stirrer_state()
         #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         #return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
-        return stirrer_state.flatten()
+        reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
+        reward = self.reward_scale*(reward_raw - self.threshold )
+        return np.hstack([stirrer_state.flatten(),reward])
         
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -91,14 +92,17 @@ class World():
     
     #this function is now a complete lie and has not only the stirrer state but
     #also the vector from the cup
+    #also velocity relative to cup
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
         #r, theta, z in pos 
         cupPos=  np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         stirrerPos=  np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
-        vector_from_cup = cupPos-stirrerPos
+        vector_from_cup = stirrerPos-cupPos
+
         #forces in cup frame
-        return vector_from_cup
+        velocity_vec = np.array(p.getBaseVelocity(self.stirrer_id)[0]) - np.array(p.getBaseVelocity(self.base_world.cupID)[0])
+        return np.hstack([vector_from_cup, velocity_vec])
        
 
     def reset(self):
