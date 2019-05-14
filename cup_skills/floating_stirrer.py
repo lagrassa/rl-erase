@@ -21,7 +21,7 @@ real_init = True
 
  
 class World():
-    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 70, distance_threshold=85):
+    def __init__(self, visualize=False, real_init=True, beads=True, num_beads = 56, distance_threshold=79):
         #make base world 
         self.visualize=visualize
         self.unwrapped = self
