@@ -54,15 +54,13 @@ class World():
         self.stir(action[0:3], maxForce = self.scale*action[3])
         world_state = self.base_world.world_state()
         ob = self.state(world_state = world_state)
-        reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
-        reward = self.reward_scale*(reward_raw - self.threshold )
-        ob = np.hstack([ob, np.array(reward)])
+        reward = ob[-1]
         #if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
         done = reward >= self.threshold or self.time > self.timeout or self.base_world.cup_knocked_over() or self.stirrer_far()
         info = {"is_success":float(reward >= 0)}
-        info["reward_raw"] = reward_raw
+        #info["reward_raw"] = reward_raw
         return ob, reward, done, info
         
 
@@ -80,7 +78,9 @@ class World():
         stirrer_state = self.stirrer_state()
         #you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         #return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
-        return stirrer_state.flatten()
+        reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
+        reward = self.reward_scale*(reward_raw - self.threshold )
+        return np.hstack([stirrer_state.flatten(),reward])
         
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
