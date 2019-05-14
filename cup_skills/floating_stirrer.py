@@ -56,6 +56,7 @@ class World():
         ob = self.state(world_state = world_state)
         reward_raw = reward_func(world_state, self.base_world.ratio_beads_in())
         reward = self.reward_scale*(reward_raw - self.threshold )
+        ob = np.hstack([ob, np.array(reward)])
         #if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
@@ -91,14 +92,17 @@ class World():
     
     #this function is now a complete lie and has not only the stirrer state but
     #also the vector from the cup
+    #also velocity relative to cup
     def stirrer_state(self):
         #returns position and velocity of stirrer flattened
         #r, theta, z in pos 
         cupPos=  np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         stirrerPos=  np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
-        vector_from_cup = cupPos-stirrerPos
+        vector_from_cup = stirrerPos-cupPos
+
         #forces in cup frame
-        return vector_from_cup
+        velocity_vec = np.array(p.getBaseVelocity(self.stirrer_id)[0]) - np.array(p.getBaseVelocity(self.base_world.cupID)[0])
+        return np.hstack([vector_from_cup, velocity_vec])
        
 
     def reset(self):
