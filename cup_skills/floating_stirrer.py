@@ -43,7 +43,7 @@ class World():
         max_move = 0.8
         low_act = np.array([-max_move]*4)
         high_act = np.array([max_move]*4)
-        self.scale = 45.
+        self.scale = 5#45.
         low_act[3] = 8./self.scale
         low_act[3] = -40./self.scale #for ddpg
         high_act[3] = 40/self.scale
@@ -107,22 +107,23 @@ class World():
 
     #keep track of period with velocity: go in the direction the velocity is already going but once the pos is getting far, reverse it
     #if velocity is low, gain momentum by moving to some random direction
+    #does z pid control
     def manual_policy(self, state):
         pos_vec = state[0:2]
         velocity_vec = state[3:6]
         max_dist = 0.03 #tunable
         slow = 0.01
-        maxForce = 20
+        maxForce = 0.8
+        zdes = 0.08
         #print("vel", np.linalg.norm(velocity_vec))
         #print("vel_vec", velocity_vec.round(3))
-        import ipdb; ipdb.set_trace()
         if np.linalg.norm(pos_vec) > max_dist:
-            print("too far, reversing direction")
             velocity_vec = np.hstack([-pos_vec[0:2],0])
         elif np.linalg.norm(velocity_vec) < slow:
-            print("picking up momentum")
-            return [0.1,0,0, maxForce]
-        overshoot = 20
+            velocity_vec =  np.array([0.1,0,0])
+        #zpid
+        velocity_vec[2] = zdes-state[2]
+        overshoot = 10
         dt = overshoot*self.dt
         dpos = dt*velocity_vec
         return np.hstack([dpos, maxForce])
@@ -213,7 +214,7 @@ if __name__ == "__main__":
         force = 0.7
         #actions = [[0,0,-0.2, force],[0,0,-0.2, force],  [0,0,-0.2, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width, 0,force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [0,-width,0, force], [0, -width, 0, force], [0, width, 0, force], [0,width, 0, force]]
         ob = world.state()
-        for i in range(30):
+        for i in range(60):
             action = world.manual_policy(ob)
             print([round(i,3) for i in action])
             ob, reward, _, _ = world.step(action)
