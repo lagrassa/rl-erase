@@ -2,13 +2,13 @@
 <robot name="urdf_robot">
   <link name="baseLink">
   	<contact>
-      <rolling_friction value="0.03"/>
-      <spinning_friction value="0.03"/>
+      <rolling_friction value="0.01"/>
+      <spinning_friction value="0.01"/>
     </contact>
 
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-       <mass value="0.003"/>
+       <mass value="0.03"/>
        <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
     <visual>

@@ -33,7 +33,7 @@ class CupWorld():
         if for_pr2:
             self.radius = k*0.005
         else:
-            self.radius = k*0.019#0.011
+            self.radius = k*0.019#0.019
             
         self.table=table
         if real_init:
@@ -154,13 +154,14 @@ class CupWorld():
        x_range, y_range = list(limits)[:2]
        z = upper[2]-0.08
        droplets = [create_sphere(radius, color=color) for _ in range(self.num_droplets)]
-       bead_mass = 0.005 #actual mass of a kidney bean*2
+       bead_mass = 0.002 #0.005 actual mass of a kidney bean*2
        for droplet in droplets:
            x = np.random.uniform(*x_range)
            y = np.random.uniform(*y_range)
            set_point(droplet, Point(x, y, z))
            p.changeVisualShape(droplet, -1, rgbaColor=color)
-           p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0, rollingFriction = 0,spinningFriction=0, restitution=0.05)
+           #p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0, rollingFriction = 0,spinningFriction=0, restitution=0.05)
+           p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.2, rollingFriction = 0.2,spinningFriction=0.2, restitution=0.7)
 
        for i, droplet in enumerate(droplets):
            x, y = np.random.normal(0, 1e-3, 2)
@@ -220,7 +221,7 @@ class CupWorld():
                 blacken(self.cupID)
             self.cup_constraint = p.createConstraint(self.cupID, -1, -1, -1, p.JOINT_FIXED, [0,0,1], [0,0,0], [0,0,0], [0,0,0,1], [0,0,0,1])
             p.changeConstraint(self.cup_constraint, self.cupStartPos, self.cupStartOrientation, maxForce=1000)
-            p.changeDynamics(self.cupID, -1, mass = 10,  lateralFriction=0.99, spinningFriction=0.99, rollingFriction=0.99, restitution=0.10) 
+            p.changeDynamics(self.cupID, -1, mass = 5,  lateralFriction=0.1, spinningFriction=0.1, rollingFriction=0.1, restitution=0.7) 
             if beads:
                 if new_world:
                     self.bullet_id = p.saveState()
