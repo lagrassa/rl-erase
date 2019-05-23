@@ -39,6 +39,7 @@ class World():
         high = np.inf*np.ones(self.state().shape[0])
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
+        self.dt = 0.1
         max_move = 0.8
         low_act = np.array([-max_move]*4)
         high_act = np.array([max_move]*4)
@@ -70,7 +71,8 @@ class World():
         new_pos = np.array((pos[:]))
         new_pos += action
         p.changeConstraint(self.cid, new_pos, orn, maxForce=maxForce) #120)
-        simulate_for_duration(0.8)
+        #simulate_for_duration(0.8)
+        simulate_for_duration(self.dt)
 
     def state(self, world_state = None):
         if world_state is None:
@@ -99,11 +101,36 @@ class World():
         cupPos=  np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         stirrerPos=  np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         vector_from_cup = stirrerPos-cupPos
-
         #forces in cup frame
         velocity_vec = np.array(p.getBaseVelocity(self.stirrer_id)[0]) - np.array(p.getBaseVelocity(self.base_world.cupID)[0])
         return np.hstack([vector_from_cup, velocity_vec])
-       
+
+    #keep track of period with velocity: go in the direction the velocity is already going but once the pos is getting far, reverse it
+    #if velocity is low, gain momentum by moving to some random direction
+    def manual_policy(self, state):
+        pos_vec = state[0:2]
+        velocity_vec = state[3:6]
+        max_dist = 0.03 #tunable
+        slow = 0.01
+        maxForce = 20
+        #print("vel", np.linalg.norm(velocity_vec))
+        #print("vel_vec", velocity_vec.round(3))
+        import ipdb; ipdb.set_trace()
+        if np.linalg.norm(pos_vec) > max_dist:
+            print("too far, reversing direction")
+            velocity_vec = np.hstack([-pos_vec[0:2],0])
+        elif np.linalg.norm(velocity_vec) < slow:
+            print("picking up momentum")
+            return [0.1,0,0, maxForce]
+        overshoot = 20
+        dt = overshoot*self.dt
+        dpos = dt*velocity_vec
+        return np.hstack([dpos, maxForce])
+           
+        
+
+
+
 
     def reset(self):
         p.restoreState(self.bullet_id)
@@ -184,9 +211,13 @@ if __name__ == "__main__":
         world = World(visualize=visual, num_beads = num_beads)
         width = 0.4
         force = 0.7
-        actions = [[0,0,-0.2, force],[0,0,-0.2, force],  [0,0,-0.2, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width, 0,force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [0,-width,0, force], [0, -width, 0, force], [0, width, 0, force], [0,width, 0, force]]
-        for action in actions:
-            world.step(action)
+        #actions = [[0,0,-0.2, force],[0,0,-0.2, force],  [0,0,-0.2, force],[0,width,-0.05, force],[0,-width,0, force],[0,width,0, force],[0,-width, 0,force], [width,0,0, force],[-width,0,0, force],[width,0,0, force], [0,-width,0, force], [0, -width, 0, force], [0, width, 0, force], [0,width, 0, force]]
+        ob = world.state()
+        for i in range(30):
+            action = world.manual_policy(ob)
+            print([round(i,3) for i in action])
+            ob, reward, _, _ = world.step(action)
+
 
 
 	
