@@ -4,7 +4,7 @@ from cup_skills.cup_world import *
 from cup_skills.local_setup import path
 from cup_skills.reward import stir_reward
 from gym import spaces
-from cup_skills.utils import simulate_for_duration
+from cup_skills.utils import simulate_for_duration, threshold_img
 
 k = 1  # scaling factor
 DEMO = False
@@ -16,6 +16,7 @@ class World:
     def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=70, distance_threshold=81):
         # make base world
         self.visualize = visualize
+        self.stirring = stirring
         self.unwrapped = self
         self.real_init = real_init
         self.threshold = distance_threshold  # TAU from thesis
@@ -32,7 +33,10 @@ class World:
         if real_init:
             self.base_world = CupWorld(visualize=visualize, real_init=real_init, beads=beads)
             self.setup(num_beads=num_beads)
-        high = np.inf * np.ones(self.state_function().shape[0])
+        state = self.state_function()
+        if isinstance(state, tuple):
+            state = state[1]
+        high = np.inf * np.ones(state.shape[0])
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         self.dt = 0.1
@@ -48,9 +52,12 @@ class World:
     # positive when good, negative when bad
     def step(self, action_taken):
         self.time += 1
-        self.move_spoon(action_taken[0:3], max_force=self.scale * action_taken[3])
+        self.move_spoon(action_taken[0:-1], max_force=self.scale * action_taken[-1])
         ob = self.state_function()
-        reward = ob[-1]
+        if isinstance(ob, tuple):
+            reward = ob[-1][-1]
+        else:
+            reward = ob[-1]
         # if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
@@ -64,9 +71,20 @@ class World:
 
     def move_spoon(self, action, max_force=40):
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
+        if len(action) < 6:
+            new_orn = orn
+        else:
+            delta_euler= np.array(action[3:])
+            euler = delta_euler + np.array(p.getEulerFromQuaternion(orn))
+            new_orn = p.getQuaternionFromEuler(euler)
         new_pos = np.array((pos[:]))
-        new_pos += action
-        p.changeConstraint(self.cid, new_pos, orn, maxForce=max_force)  # 120)
+        new_pos += action[0:3]
+        if action[2] < 0:
+            color = (1,0,0)
+        else:
+            color = (0,1,0)
+        p.addUserDebugLine(pos, new_pos, lineColorRGB=color, lifeTime=1)
+        p.changeConstraint(self.cid, new_pos, new_orn, maxForce=max_force)  # 120)
         simulate_for_duration(self.dt)
 
     def stirring_state(self):
@@ -91,7 +109,8 @@ class World:
             #world_state = self.base_world.world_state()
             reward_for_state = self.reward_scale * (ratio_beads_in_scoop - self.threshold)
         stirrer_state = self.stirrer_state()
-        return np.hstack([stirrer_state.flatten(), reward_for_state])
+        world_state = self.base_world.world_state()
+        return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
 
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -111,10 +130,11 @@ class World:
         velocity_vec = np.array(p.getBaseVelocity(self.stirrer_id)[0]) - np.array(
             p.getBaseVelocity(self.base_world.cupID)[0])
         return np.hstack([vector_from_cup, velocity_vec])
-
-    # keep track of period with velocity: go in the direction the velocity is already going but once the pos is
-    # getting far, reverse it if velocity is low, gain momentum by moving to some random direction does z pid control
-    def manual_policy(self, state):
+    '''
+    keep track of period with velocity: go in the direction the velocity is already going but once the pos is
+    getting far, reverse it if velocity is low, gain momentum by moving to some random direction does z pid control
+    '''
+    def manual_stir_policy(self, state):
         pos_vec = state[0:2]
         velocity_vec = state[3:6]
         max_dist = 0.03  # tunable
@@ -133,11 +153,47 @@ class World:
         dt = overshoot * self.dt
         dpos = dt * velocity_vec
         return np.hstack([dpos, max_force])
+    """
+    manual scoop policy
+    while the reward is low, dip the spoon in the cup at an angle
+    bring the spoon out at that same angle once it's in
+    """
+    def manual_scoop_policy(self, obs_tuple):
+        imgs, obs = obs_tuple
+        #from PIL import Image
+        #Image.fromarray(img).show()
+        lower_green = np.array([59,0,0])
+        upper_green = np.array([61,400,400])
+        spoon_submerged = False
+        for img in imgs:
+            spoon_img = threshold_img(img, lower_green, upper_green)
+            beads_img = threshold_img(img, np.array([119,0,0]),np.array([122,400,400])) + threshold_img(img, np.array([119,0,0]),np.array([150,400,400]))
+            green_xs, green_ys = np.nonzero(spoon_img)
+            bead_xs, bead_ys = np.nonzero(beads_img)
+            if len(bead_xs) and len(green_xs) and min(bead_xs) <= max(green_xs):
+                spoon_submerged = True
+
+        #if the lowest green pixel is below red and blue pixels
+
+        if spoon_submerged:
+            target_z = 0.6
+            kp2 = 0.3
+            new_pos = [0,0,kp2*(target_z-obs[2])]
+
+            target_euler = [-1.971,0,0]
+            target_euler = [-2.7,0,0]
+        else:
+            new_pos = [0,0,-0.1]
+            target_euler = [-1.75,0,0]
+        euler = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.stirrer_id)[1])
+        kp = 0.3
+        new_euler = kp*np.subtract(target_euler, euler)
+        return np.hstack([new_pos, new_euler,0.7])
 
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold)
-        return self.state()
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
+        return self.state_function()
 
     def setup(self, num_beads=2):
         start_pos = [0, 0, 0.2]
@@ -169,6 +225,7 @@ class World:
         reward_raw = stir_reward(self.base_world.world_state(), self.base_world.ratio_beads_in_cup())
         # print("Calibration comlplete. Value was", reward_raw)
         return reward_raw
+
 def run_full_calibration():
     controls = []
     mixed = []
@@ -198,24 +255,25 @@ def run_full_calibration():
     print("Mean", np.mean(mixed))
     np.save(str(num_beads) + "_reward_calibration_more_samples.npy", data)
 
-def run_manual_stir():
-    width = 0.4
-    force = 0.7
+def run_policy(policy, world):
     rew_of_rews = []
     for j in range(40):
         rews = []
-        ob = world.state()
-        for i in range(60):
-            action = world.manual_policy(ob)
+        ob = world.state_function()
+        for i in range(20):
+            action = policy(ob)
             ob, reward, _, _ = world.step(action)
+            if reward != -1:
+                print("reward", reward)
             rews.append(reward)
         rew_of_rews.append(rews)
+        world.reset()
         print("j", j)
-    np.save("rew_of_rews.npy", rew_of_rews)
+
+
 
 if __name__ == "__main__":
     import sys
-
     num_beads = 150
     if len(sys.argv) > 1:
         num_beads = int(sys.argv[1])
@@ -227,7 +285,5 @@ if __name__ == "__main__":
     else:
         visual = "visual" in sys.argv
         world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=1)
-        actions = ([0,0,0.2,0.5],[0,0,0.2,0.5],[0,0,0.2,0.5])
-        for action in range(0,10):
-            action = [0,0,0.1,0.8]
-            print(world.step(action))
+        run_policy(world.manual_scoop_policy,world)
+

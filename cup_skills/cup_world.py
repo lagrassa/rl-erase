@@ -37,7 +37,7 @@ class CupWorld:
         if for_pr2:
             self.radius = k * 0.005
         else:
-            self.radius = k * 0.019  # 0.019
+            self.radius = k * 0.013  # 0.019
 
         self.table = table
         if real_init:
@@ -102,7 +102,7 @@ class CupWorld:
         views = [0, 180]  # I have no idea why, but these seems to be in degrees
         images = ()
         for view in views:
-            rgb_pixels = self.get_image_from_distance(self.cupID, 0.35, z_offset=0.1, theta_offset=view)
+            rgb_pixels = self.get_image_from_distance(self.cupID, 0.7, z_offset=0.3, theta_offset=view)
             images += (rgb_pixels[:, :, 0:3],)  # decided against cropping
         return images
 
@@ -111,8 +111,8 @@ class CupWorld:
         adjusted_pos = (obj_pos[0] + x_offset, obj_pos[1] + y_offset, obj_pos[2] + z_offset)
         roll, pitch, yaw = euler_from_quat(obj_quat)
         yaw = yaw + theta_offset
-        im_w = 50
-        im_h = 50
+        im_w = 200
+        im_h = 200
         view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjusted_pos, distance=cam_distance,
                                                          yaw=yaw, pitch=pitch, roll=roll + np.pi, upAxisIndex=2)
         if self.visualize:
@@ -174,7 +174,7 @@ class CupWorld:
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-        colors = [(0, 0, 1, 1), (1, 0, 0, 1)]
+        colors = [(1, 0.2, 1, 1), (1, 0, 0, 1)]
         for color in colors:
             new_drops, highest_z = self.create_beads(color=color, offset=offset)
             self.droplets += new_drops
