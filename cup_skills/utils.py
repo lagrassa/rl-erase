@@ -8,6 +8,7 @@ import pybullet as p
 import numpy as np
 import sys
 import time
+import cv2
 
 from collections import defaultdict, deque, namedtuple
 from cup_skills.local_setup import path
@@ -86,6 +87,19 @@ def ensure_dir(f):
         os.makedirs(d)
 
 #####################################
+#computer vision
+#####################################
+def threshold_img(img, lower, upper):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # define range of blue color in HSV
+    # Threshold the HSV image to get only blue colors
+    mask = cv2.inRange(hsv, lower, upper)
+    #import ipdb; ipdb.set_trace()
+    # Bitwise-AND mask and original image
+    res = cv2.bitwise_and(img,img, mask= mask)
+    gray =  cv2.cvtColor(res, cv2.COLOR_RGB2GRAY)
+    return gray
+
 
 class Verbose(object):
     def __init__(self, verbose):
