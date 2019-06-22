@@ -1,6 +1,6 @@
 import pdb
 import random
-from reward import reward_func, entropy
+from cup_skills.reward import stir_reward, entropy
 import numpy as np
 from stirring_world_pybullet import World
 import logging
@@ -40,7 +40,7 @@ class StirEnv():
         
 
     def progress_state(self, action=300):
-        self.world.stir(action)
+        self.world.move_spoon(action)
 	vel_iters, pos_iters = 6, 2
 	timeStep = 0.01
 	self.world.base_world.step(timeStep, vel_iters, pos_iters)
@@ -97,7 +97,7 @@ class StirEnv():
         episode_over = False
         reward= self.process_reward()
         entropies = entropy(self.world_state)  
-        beads = self.world.base_world.ratio_beads_in()
+        beads = self.world.base_world.ratio_beads_in_cup()
         
         if self.replay_counter == 0: #never end episode during experience replay
             """
@@ -151,7 +151,7 @@ class StirEnv():
         if self.world.base_world.cup_knocked_over():
             return -30
         #fun enough, world_state should now be a tuple
-        rew =  reward_func(self.world_state, self.world.base_world.ratio_beads_in())
+        rew =  stir_reward(self.world_state, self.world.base_world.ratio_beads_in_cup())
         self.counter +=1
         return rew
 

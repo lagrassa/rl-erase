@@ -9,7 +9,7 @@ import numpy as np
 CONTOUR_DEBUG = False
 
 small_reward = False 
-def reward_func(imgs, num_in):
+def stir_reward(imgs, num_in):
     #calculate number of beads outside of cup
     #calculate mixedness
     rew = 0
@@ -21,8 +21,8 @@ def reward_func(imgs, num_in):
             rew += get_mixedness(img)
 
     total_rew =  rew+k*num_in
-    print(total_rew)
-    print("num in", num_in)
+    #print(total_rew)
+    #print("num in", num_in)
     return total_rew
 
 def entropy(imgs):
