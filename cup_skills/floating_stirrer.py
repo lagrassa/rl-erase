@@ -36,7 +36,8 @@ class World:
         state = self.state_function()
         if isinstance(state, tuple):
             state = state[1]
-        high = np.inf * np.ones(state.shape[0])
+        #high = np.inf * np.ones(state.shape[0])
+        high = np.inf * np.ones(state.shape)
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         self.dt = 0.1
@@ -56,6 +57,8 @@ class World:
         ob = self.state_function()
         if isinstance(ob, tuple):
             reward = ob[-1][-1]
+        elif not self.stirring and len(ob.shape) == 3: # is 3 dimensional
+            reward = self.get_scooping_reward()
         else:
             reward = ob[-1]
         # if self.time == self.timeout:
@@ -98,19 +101,26 @@ class World:
 
     #reward for spoon being out of the cup, nothing otherwise
     def scooping_state(self):
+        stirrer_state = self.stirrer_state()
+        world_state = self.base_world.world_state()
+        reward_for_state = self.get_scooping_reward()
+        return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
+        #return world_state[0]
+
+    def get_scooping_reward(self):
         aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
         all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
         spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
+        k = 5
         if spoon_in_cup:
             reward_for_state = -1
         else:
-            print("out of scoop")
             ratio_beads_in_scoop =  self.base_world.ratio_beads_in_scoop(self.stirrer_id)
             #world_state = self.base_world.world_state()
-            reward_for_state = self.reward_scale * (ratio_beads_in_scoop - self.threshold)
-        stirrer_state = self.stirrer_state()
-        world_state = self.base_world.world_state()
-        return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
+            reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_scoop)**k
+            if reward_for_state < -1:
+                import ipdb; ipdb.set_trace()
+        return reward_for_state
 
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -257,19 +267,24 @@ def run_full_calibration():
 
 def run_policy(policy, world):
     rew_of_rews = []
-    for j in range(40):
-        rews = []
+    for j in range(10):
+        rews = 0
         ob = world.state_function()
-        for i in range(20):
+        for i in range(18):
             action = policy(ob)
             ob, reward, _, _ = world.step(action)
             if reward != -1:
                 print("reward", reward)
-            rews.append(reward)
+            rews += reward
         rew_of_rews.append(rews)
         world.reset()
         print("j", j)
+        print(rew_of_rews)
 
+class ScoopWorld(World):
+    def __init__(self, **kwargs):
+        kwargs['stirring'] = False
+        super(ScoopWorld, self).__init__(**kwargs)
 
 
 if __name__ == "__main__":

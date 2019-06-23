@@ -37,7 +37,7 @@ class CupWorld:
         if for_pr2:
             self.radius = k * 0.005
         else:
-            self.radius = k * 0.013  # 0.019
+            self.radius = k * 0.015  # 0.019
 
         self.table = table
         if real_init:
@@ -220,7 +220,7 @@ class CupWorld:
                 # p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             # to be realistic
             # p.setTimeStep(1/1200.)
-            p.setTimeStep(1 / 200.)
+            p.setTimeStep(1 / 300.)
             self.real_init = False
         else:
             self.real_init = True
