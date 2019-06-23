@@ -13,9 +13,10 @@ real_init = True
 
 
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=70, distance_threshold=81):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=70, distance_threshold=0.4):
         # make base world
         self.visualize = visualize
+        self.distance_threshold = distance_threshold
         self.stirring = stirring
         self.unwrapped = self
         self.real_init = real_init
@@ -74,6 +75,7 @@ class World:
 
     def move_spoon(self, action, max_force=40):
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
+        
         if len(action) < 6:
             new_orn = orn
         else:
@@ -104,15 +106,20 @@ class World:
         stirrer_state = self.stirrer_state()
         world_state = self.base_world.world_state()
         reward_for_state = self.get_scooping_reward()
-        return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
-        #return world_state[0]
+        #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
+        return world_state[0]
 
     def get_scooping_reward(self):
-        aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
-        all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
-        spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
         k = 5
-        if spoon_in_cup:
+        #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
+        #all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
+        #spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
+        cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
+        scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
+        distance = scoop_pos[2]-cup_pos[2] 
+        #print("Distance",distance)
+        scoop_too_low = distance < self.distance_threshold  
+        if scoop_too_low:
             reward_for_state = -1
         else:
             ratio_beads_in_scoop =  self.base_world.ratio_beads_in_scoop(self.stirrer_id)
@@ -211,6 +218,7 @@ class World:
         self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
+        
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 1], [0, 0, 0], [0, 0, 0],
                                       [0, 0, 0, 1], [0, 0, 0, 1])
         p.changeConstraint(self.cid, start_pos, start_quat)
