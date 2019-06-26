@@ -33,11 +33,12 @@ class World:
         self.metadata = {"threshold": self.threshold}
         if real_init:
             self.base_world = CupWorld(visualize=visualize, real_init=real_init, beads=beads)
-            self.setup(num_beads=num_beads)
+            self.setup(num_beads=num_beads, scooping_world=not stirring)
         state = self.state_function()
         if isinstance(state, tuple):
             state = state[1]
-        high = np.inf * np.ones(state.shape[0])
+        #high = np.inf * np.ones(state.shape[0])
+        high = np.inf * np.ones(state.shape)
         low = -high
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         self.dt = 0.1
@@ -57,6 +58,8 @@ class World:
         ob = self.state_function()
         if isinstance(ob, tuple):
             reward = ob[-1][-1]
+        elif not self.stirring and len(ob.shape) == 3: # is 3 dimensional
+            reward = self.get_scooping_reward()
         else:
             reward = ob[-1]
         # if self.time == self.timeout:
@@ -100,23 +103,33 @@ class World:
 
     #reward for spoon being out of the cup, nothing otherwise
     def scooping_state(self):
+        stirrer_state = self.stirrer_state()
+        world_state = self.base_world.world_state()
+        reward_for_state = self.get_scooping_reward()
+        #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
+        return world_state[0]
+
+    def get_scooping_reward(self):
+        k = 5
         #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
         #all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
         #spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
         cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
-        distance = scoop_pos[2]-cup_pos[2] 
-        scoop_too_low = distance < self.distance_threshold
-        if scoop_too_low:
-            reward_for_state = -1
-        else:
-            print("out of scoop")
-            ratio_beads_in_scoop =  self.base_world.ratio_beads_in_scoop(self.stirrer_id)
-            #world_state = self.base_world.world_state()
-            reward_for_state = self.reward_scale * (ratio_beads_in_scoop - self.threshold)
-        stirrer_state = self.stirrer_state()
-        world_state = self.base_world.world_state()
-        return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
+        override = False
+        if self.scoop_target == self.stirrer_id:
+            distance = scoop_pos[2]-cup_pos[2]
+            scoop_too_low = distance < self.distance_threshold
+            if scoop_too_low:
+                reward_for_state = -1
+                override = True
+        ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
+        #world_state = self.base_world.world_state()
+        if not override:
+            reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)**k
+        if reward_for_state < -1:
+            import ipdb; ipdb.set_trace()
+        return reward_for_state
 
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -201,13 +214,18 @@ class World:
         self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
         return self.state_function()
 
-    def setup(self, num_beads=2):
+    def setup(self, num_beads=2, scooping_world = False):
         start_pos = [0, 0, 0.2]
         start_quat = (0.0, 1, -1, 0.0)
         self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
-        
+        if scooping_world:
+            bowl_start_pos = (0.3,0.1,0)
+            bowl_start_orn = (0,0,1,0)
+            self.scoop_target =  p.loadURDF(path + "urdf/bowl.urdf", globalScaling=1.6, basePosition=bowl_start_pos,
+                                     baseOrientation=bowl_start_orn)
+
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 1], [0, 0, 0], [0, 0, 0],
                                       [0, 0, 0, 1], [0, 0, 0, 1])
         p.changeConstraint(self.cid, start_pos, start_quat)
@@ -264,19 +282,24 @@ def run_full_calibration():
 
 def run_policy(policy, world):
     rew_of_rews = []
-    for j in range(40):
-        rews = []
+    for j in range(10):
+        rews = 0
         ob = world.state_function()
-        for i in range(20):
+        for i in range(18):
             action = policy(ob)
             ob, reward, _, _ = world.step(action)
             if reward != -1:
                 print("reward", reward)
-            rews.append(reward)
+            rews += reward
         rew_of_rews.append(rews)
         world.reset()
         print("j", j)
+        print(rew_of_rews)
 
+class ScoopWorld(World):
+    def __init__(self, **kwargs):
+        kwargs['stirring'] = False
+        super(ScoopWorld, self).__init__(**kwargs)
 
 
 if __name__ == "__main__":
@@ -292,5 +315,6 @@ if __name__ == "__main__":
     else:
         visual = "visual" in sys.argv
         world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=1)
+        world.get_scooping_reward()
         run_policy(world.manual_scoop_policy,world)
 
