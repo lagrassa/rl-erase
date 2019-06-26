@@ -106,8 +106,7 @@ class World:
         cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         distance = scoop_pos[2]-cup_pos[2] 
-        print("Distance",distance)
-        scoop_too_low = distance < self.distance_threshold  
+        scoop_too_low = distance < self.distance_threshold
         if scoop_too_low:
             reward_for_state = -1
         else:
