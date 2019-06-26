@@ -75,7 +75,7 @@ class CupWorld:
         assert (ratio <= 1.0)
         return ratio
 
-    def ratio_beads_in_scoop(self, scoop):
+    def ratio_beads_in_target(self, scoop):
         return self.ratio_beads_in_cup(scoop)
 
 
