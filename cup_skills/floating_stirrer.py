@@ -178,6 +178,7 @@ class World:
     bring the spoon out at that same angle once it's in
     """
     def manual_scoop_policy(self, obs_tuple):
+        import ipdb; ipdb.set_trace()
         imgs, obs = obs_tuple
         #from PIL import Image
         #Image.fromarray(img).show()
@@ -209,6 +210,7 @@ class World:
         new_euler = kp*np.subtract(target_euler, euler)
         return np.hstack([new_pos, new_euler,0.7])
 
+        import ipdb; ipdb.set_trace()
     def reset(self):
         p.restoreState(self.bullet_id)
         self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
@@ -221,10 +223,12 @@ class World:
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
         if scooping_world:
-            bowl_start_pos = (0.3,0.1,0)
+            bowl_start_pos = (0.3,0.1,0.)
             bowl_start_orn = (0,0,1,0)
-            self.scoop_target =  p.loadURDF(path + "urdf/bowl.urdf", globalScaling=1.6, basePosition=bowl_start_pos,
+            self.scoop_target =  p.loadURDF(path + "urdf/cup/cup_4.urdf", globalScaling=4, basePosition=bowl_start_pos,
                                      baseOrientation=bowl_start_orn)
+            p.changeDynamics(self.scoop_target,-1, mass=0)
+
 
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 1], [0, 0, 0], [0, 0, 0],
                                       [0, 0, 0, 1], [0, 0, 0, 1])
@@ -233,6 +237,7 @@ class World:
         self.base_world.zoom_in_on(self.stirrer_id, 2)
         self.bullet_id = p.saveState()
         self.real_init = False
+
 
     def simplify_viz(self):
         features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_RGB_BUFFER_PREVIEW,

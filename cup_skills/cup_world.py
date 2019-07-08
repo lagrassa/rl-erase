@@ -184,7 +184,7 @@ class CupWorld:
             simulate_for_duration(time_to_fall, dt=1 / 240.0)
         # self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
-    def setup(self, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None, table=False, cup_factor=5):
+    def setup(self, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None, table=False, cup_factor=4):
         if self.real_init:
             # setup world
             self.is_real_time = 0
@@ -198,7 +198,7 @@ class CupWorld:
             else:
                 self.cupStartPos = (0, 0, 0)
                 self.cupStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            self.cup_name = "cup_pourer.urdf"
+            self.cup_name = "cup_3.urdf"
             if self.visualize:
                 self.cupID = p.loadURDF(path + "urdf/cup/" + self.cup_name, self.cupStartPos, self.cupStartOrientation,
                                         globalScaling=k * cup_factor)
