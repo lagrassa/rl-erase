@@ -31,8 +31,18 @@ class World:
         self.reward_range = (-100, 100)
         self.reward_scale = 1
         self.metadata = {"threshold": self.threshold}
+        if stirring:
+            cup_name = "cup_small.urdf"
+            bead_radius = 0.011
+            camera_z_offset = 0.05
+            camera_distance = 0.2
+        else:
+            cup_name = "cup_3.urdf"
+            bead_radius = 0.015
+            camera_z_offset = 0.3
+            camera_distance = 0.7
         if real_init:
-            self.base_world = CupWorld(visualize=visualize, real_init=real_init, beads=beads)
+            self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
         state = self.state_function()
         if isinstance(state, tuple):
@@ -180,6 +190,7 @@ class World:
     bring the spoon out at that same angle once it's in
     """
     def manual_scoop_policy(self, obs_tuple):
+        import ipdb; ipdb.set_trace()
         imgs, obs = obs_tuple
         #from PIL import Image
         #Image.fromarray(img).show()
@@ -211,6 +222,7 @@ class World:
         new_euler = kp*np.subtract(target_euler, euler)
         return np.hstack([new_pos, new_euler,0.7])
 
+        import ipdb; ipdb.set_trace()
     def reset(self):
         p.restoreState(self.bullet_id)
         self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
@@ -223,10 +235,12 @@ class World:
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
         if scooping_world:
-            bowl_start_pos = (0.3,0.1,0)
+            bowl_start_pos = (0.3,0.1,-0.1)
             bowl_start_orn = (0,0,1,0)
-            self.scoop_target =  p.loadURDF(path + "urdf/bowl.urdf", globalScaling=1.6, basePosition=bowl_start_pos,
+            self.scoop_target =  p.loadURDF(path + "urdf/cup/cup_4.urdf", globalScaling=4, basePosition=bowl_start_pos,
                                      baseOrientation=bowl_start_orn)
+            p.changeDynamics(self.scoop_target,-1, mass=0)
+
 
         self.cid = p.createConstraint(self.stirrer_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 1], [0, 0, 0], [0, 0, 0],
                                       [0, 0, 0, 1], [0, 0, 0, 1])
@@ -235,6 +249,7 @@ class World:
         self.base_world.zoom_in_on(self.stirrer_id, 2)
         self.bullet_id = p.saveState()
         self.real_init = False
+
 
     def simplify_viz(self):
         features_to_disable = [p.COV_ENABLE_WIREFRAME, p.COV_ENABLE_SHADOWS, p.COV_ENABLE_RGB_BUFFER_PREVIEW,
@@ -256,8 +271,8 @@ class World:
 def run_full_calibration():
     controls = []
     mixed = []
-    for i in range(30):
-        if i % 10 == 0:
+    for i in range(10):
+        if i % 2 == 0:
             print("Iter", i)
         world = World(visualize=False, num_beads=num_beads)
         # print("Before mixing", i)
@@ -316,7 +331,7 @@ if __name__ == "__main__":
         run_full_calibration()
     else:
         visual = "visual" in sys.argv
-        world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=1)
-        world.get_scooping_reward()
+        world = World(visualize=visual, num_beads=num_beads, stirring=True, distance_threshold=1)
+        #world.get_scooping_reward()
         run_policy(world.manual_scoop_policy,world)
 
