@@ -180,7 +180,7 @@ class CupWorld:
             self.droplets += new_drops
             self.droplet_colors += self.num_droplets * [color]
             assert (len(self.droplet_colors) == len(self.droplets))
-            time_to_fall = np.sqrt(2 * highest_z / 9.8) + 1.0  # (buffer)
+            time_to_fall = np.sqrt(2 * highest_z / 9.8) + 2.0  # (buffer)
             simulate_for_duration(time_to_fall, dt=1 / 240.0)
         # self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 

@@ -223,7 +223,7 @@ class World:
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
         if scooping_world:
-            bowl_start_pos = (0.3,0.1,0.)
+            bowl_start_pos = (0.3,0.1,-0.1)
             bowl_start_orn = (0,0,1,0)
             self.scoop_target =  p.loadURDF(path + "urdf/cup/cup_4.urdf", globalScaling=4, basePosition=bowl_start_pos,
                                      baseOrientation=bowl_start_orn)
