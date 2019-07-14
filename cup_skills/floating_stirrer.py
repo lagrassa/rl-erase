@@ -20,7 +20,7 @@ class World:
         self.stirring = stirring
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = distance_threshold  # TAU from thesis
+        self.threshold = 1  # TAU from thesis
         self.time = 0
         if stirring:
             self.state_function = self.stirring_state
@@ -65,7 +65,7 @@ class World:
         # if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
-        done = not reward < self.threshold or self.time > self.timeout or \
+        done = self.time > self.timeout or \
                self.base_world.cup_knocked_over() or self.stirrer_far()
         info = {"is_success": float(reward >= 0)}
         # info["reward_raw"] = reward_raw
@@ -98,7 +98,7 @@ class World:
         # you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         # return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
         reward_raw = stir_reward(world_state, self.base_world.ratio_beads_in_cup())
-        reward_for_state = self.reward_scale * (reward_raw - self.threshold)
+        reward_for_state = self.reward_scale * (reward_raw - self.distance_threshold)
         return np.hstack([stirrer_state.flatten(), reward_for_state])
 
     #reward for spoon being out of the cup, nothing otherwise
@@ -124,6 +124,8 @@ class World:
                 reward_for_state = -1
                 override = True
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
+        if ratio_beads_in_target > 0.0:
+            print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
         if not override:
             reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)**k
