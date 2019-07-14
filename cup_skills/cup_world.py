@@ -19,25 +19,25 @@ k = 1  # scaling factor
 DEMO = False
 
 class CupWorld:
-    def __init__(self, visualize=False, real_init=True, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None,
+    def __init__(self, cup_name = "cup_3.urdf", visualize=False, real_init=True, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None,bead_radius=0.015, camera_distance=0.7, camera_z_offset = 0.3,
                  table=False, for_pr2=False):
         proj_dir = os.getcwd()
+        self.cup_name = cup_name
         if "control" in proj_dir:
             print("Changing working directory to cup skills")
             os.chdir(proj_dir + '/../../../cup_skills')
 
         self.visualize = visualize
+        self.camera_z_offset = camera_z_offset
         if visualize:
             p.connect(p.GUI)
         else:
             p.connect(p.DIRECT)
         self.real_init = real_init
+        self.camera_distance = camera_distance
         self.num_droplets = 2
         self.for_pr3 = for_pr2
-        if for_pr2:
-            self.radius = k * 0.005
-        else:
-            self.radius = k * 0.015  # 0.019
+        self.radius = bead_radius
 
         self.table = table
         if real_init:
@@ -102,7 +102,7 @@ class CupWorld:
         views = [0, 180]  # I have no idea why, but these seems to be in degrees
         images = ()
         for view in views:
-            rgb_pixels = self.get_image_from_distance(self.cupID, 0.7, z_offset=0.3, theta_offset=view)
+            rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, theta_offset=view)
             images += (rgb_pixels[:, :, 0:3],)  # decided against cropping
         return images
 
@@ -174,7 +174,7 @@ class CupWorld:
         offset = p.getBasePositionAndOrientation(self.cupID)[0]
         self.droplets = []
         self.droplet_colors = []
-        colors = [(1, 0.2, 1, 1), (1, 0, 0, 1)]
+        colors = [(0, 0, 1, 1), (1, 0, 0, 1)]
         for color in colors:
             new_drops, highest_z = self.create_beads(color=color, offset=offset)
             self.droplets += new_drops
@@ -198,7 +198,6 @@ class CupWorld:
             else:
                 self.cupStartPos = (0, 0, 0)
                 self.cupStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-            self.cup_name = "cup_3.urdf"
             if self.visualize:
                 self.cupID = p.loadURDF(path + "urdf/cup/" + self.cup_name, self.cupStartPos, self.cupStartOrientation,
                                         globalScaling=k * cup_factor)
