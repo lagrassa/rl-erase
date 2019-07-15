@@ -17,10 +17,11 @@ class World:
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
+        self.reward_threshold = 81 #distance_threshold
         self.stirring = stirring
         self.unwrapped = self
         self.real_init = real_init
-        self.threshold = 1  # TAU from thesis
+        self.threshold = 0.2  # TAU from thesis
         self.time = 0
         if stirring:
             self.state_function = self.stirring_state
@@ -72,6 +73,7 @@ class World:
             reward = self.get_scooping_reward()
         else:
             reward = ob[-1]
+
         # if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
@@ -108,7 +110,7 @@ class World:
         # you don't need to worry about features or invariance.....so just make it a row vector and roll with it.
         # return np.hstack([np.array(world_state).flatten(),stirrer_state.flatten()]) #yolo
         reward_raw = stir_reward(world_state, self.base_world.ratio_beads_in_cup())
-        reward_for_state = self.reward_scale * (reward_raw - self.distance_threshold)
+        reward_for_state = self.reward_scale * (reward_raw - self.reward_threshold)
         return np.hstack([stirrer_state.flatten(), reward_for_state])
 
     #reward for spoon being out of the cup, nothing otherwise
@@ -120,27 +122,16 @@ class World:
         return world_state[0]
 
     def get_scooping_reward(self):
-        k = 5
         #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
         #all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
         #spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
         cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
-        override = False
-        if self.scoop_target == self.stirrer_id:
-            distance = scoop_pos[2]-cup_pos[2]
-            scoop_too_low = distance < self.distance_threshold
-            if scoop_too_low:
-                reward_for_state = -1
-                override = True
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
-        if ratio_beads_in_target > 0.0:
+        if ratio_beads_in_target > 0.1:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        if not override:
-            reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)**k
-        if reward_for_state < -1:
-            import ipdb; ipdb.set_trace()
+        reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)
         return reward_for_state
 
     def stirrer_far(self):
