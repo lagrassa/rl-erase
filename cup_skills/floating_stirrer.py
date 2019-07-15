@@ -226,7 +226,7 @@ class World:
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
         if scooping_world:
-            bowl_start_pos = (0.3,0.1,-0.1)
+            bowl_start_pos = (self.distance_threshold,0.1,-0.1)
             bowl_start_orn = (0,0,1,0)
             self.scoop_target =  p.loadURDF(path + "urdf/cup/cup_4.urdf", globalScaling=4, basePosition=bowl_start_pos,
                                      baseOrientation=bowl_start_orn)
@@ -322,7 +322,7 @@ if __name__ == "__main__":
         run_full_calibration()
     else:
         visual = "visual" in sys.argv
-        world = World(visualize=visual, num_beads=num_beads, stirring=True, distance_threshold=1)
+        world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=0.5)
         #world.get_scooping_reward()
         run_policy(world.manual_scoop_policy,world)
 
