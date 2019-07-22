@@ -128,10 +128,15 @@ class World:
         cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
+        ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
+        ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
+        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
+        out_penalty = 1-(total_beads_accounted_for)
+
         if ratio_beads_in_target > 0.1:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)
+        reward_for_state  = ratio_beads_in_target+ out_penalty
         return reward_for_state
 
     def stirrer_far(self):
