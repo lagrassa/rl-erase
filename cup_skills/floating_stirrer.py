@@ -131,7 +131,7 @@ class World:
         if ratio_beads_in_target > 0.1:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state = -1*self.reward_scale * (self.threshold - ratio_beads_in_target)
+        reward_for_state = ratio_beads_in_target
         return reward_for_state
 
     def stirrer_far(self):
