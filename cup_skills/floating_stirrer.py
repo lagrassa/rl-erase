@@ -1,4 +1,5 @@
 from __future__ import division
+from collections import OrderedDict
 from gym.spaces import Dict
 
 from cup_skills.cup_world import *
@@ -24,7 +25,10 @@ class World:
         self.unwrapped = self
         self.real_init = real_init
         self.threshold = 0.2  # TAU from thesis
+        self.scale = 5
         self.time = 0
+        self.states = []
+        self.force_states = []
         if stirring:
             self.state_function = self.stirring_state
         else:
@@ -48,23 +52,27 @@ class World:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
          
-        state = self.state_function()
-        ob_space_dict = {}
-        for space_name in state.keys():
-            high = np.inf * np.ones(state[space_name].shape)
-            low = -high
-            ob_space_dict[space_name] = spaces.Box(low, high, dtype=np.float32)
-        self.observation_space = Dict(ob_space_dict)
-            
+        self.gen_obs_space()
         self.dt = 0.1
         max_move = 0.8
         low_act = np.array([-max_move] * 4)
         high_act = np.array([max_move] * 4)
-        self.scale = 5  # 45.
-        low_act[3] = 8. / self.scale
-        low_act[3] = -40. / self.scale  # for ddpg
-        high_act[3] = 40 / self.scale
         self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
+
+    def gen_obs_space(self,encoder_dict=None):
+        state = self.state_function()
+        ob_space_dict = OrderedDict()
+    
+        for space_name in state.keys():
+            if encoder_dict is not None and space_name in encoder_dict.keys():
+                shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+            else:
+                shape = state[space_name].shape
+            high = np.inf * np.ones(shape)
+            low = -high
+            ob_space_dict[space_name] = spaces.Box(low, high, dtype=np.float32)
+        self.observation_space = Dict(ob_space_dict)
+
 
     # positive when good, negative when bad
     def step(self, action_taken):
@@ -83,8 +91,7 @@ class World:
         # if self.time == self.timeout:
         #    print("action", action)
         #    print("reward", reward_raw)
-        done = self.time > self.timeout or \
-               self.base_world.cup_knocked_over() or self.stirrer_far()
+        done = False
         info = {"is_success": float(reward >= 0)}
         # info["reward_raw"] = reward_raw
         return ob, reward, done, info
@@ -126,7 +133,11 @@ class World:
         reward_for_state = self.get_scooping_reward()
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
-        return {'im':world_state[0], 'forces':np.array(joint_reactions)}
+        self.states.append(world_state[0])
+        self.force_states.append(np.array(joint_reactions))
+        #np.save("states.npy",self.states)
+        #np.save("force_states.npy",self.force_states)
+        return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
 
     def get_scooping_reward(self):
