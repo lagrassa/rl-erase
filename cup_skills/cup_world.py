@@ -189,6 +189,7 @@ class CupWorld:
             # setup world
             self.is_real_time = 0
             p.setRealTimeSimulation(self.is_real_time)
+            p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/lagrassa/pour_demo.mp4")
             g = 9.8
             p.setGravity(0, 0, -g)
             if table:
@@ -216,7 +217,6 @@ class CupWorld:
                 if new_bead_mass is not None:
                     [p.changeDynamics(droplet, -1, mass=float(new_bead_mass), lateralFriction=0.99,
                                       spinningFriction=0.99, rollingFriction=0.99) for droplet in self.droplets]
-                # p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "pour_heavy_demo.mp4")
             # to be realistic
             # p.setTimeStep(1/1200.)
             p.setTimeStep(1 / 300.)

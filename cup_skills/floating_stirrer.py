@@ -15,7 +15,7 @@ real_init = True
 
 #was 70
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=70, distance_threshold=0.4):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4):
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
@@ -47,6 +47,7 @@ class World:
         if real_init:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
+         
         state = self.state_function()
         ob_space_dict = {}
         for space_name in state.keys():
@@ -138,7 +139,7 @@ class World:
         ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
         ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
         total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
-        out_penalty = 1-(total_beads_accounted_for)
+        out_penalty = -(total_beads_accounted_for)
 
         if ratio_beads_in_target > 0.1:
             print("ratio beads in target", ratio_beads_in_target)
