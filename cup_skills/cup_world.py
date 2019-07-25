@@ -111,8 +111,8 @@ class CupWorld:
         adjusted_pos = (obj_pos[0] + x_offset, obj_pos[1] + y_offset, obj_pos[2] + z_offset)
         roll, pitch, yaw = euler_from_quat(obj_quat)
         yaw = yaw + theta_offset
-        im_w = 20
-        im_h = 20
+        im_w = 50
+        im_h = 50
         view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjusted_pos, distance=cam_distance,
                                                          yaw=yaw, pitch=pitch, roll=roll + np.pi, upAxisIndex=2)
         if self.visualize:

@@ -1,4 +1,5 @@
 from __future__ import division
+from gym.spaces import Dict
 
 from cup_skills.cup_world import *
 from cup_skills.local_setup import path
@@ -12,6 +13,7 @@ DEMO = False
 real_init = True
 
 
+#was 70
 class World:
     def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=70, distance_threshold=0.4):
         # make base world
@@ -46,12 +48,13 @@ class World:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
         state = self.state_function()
-        if isinstance(state, tuple):
-            state = state[1]
-        #high = np.inf * np.ones(state.shape[0])
-        high = np.inf * np.ones(state.shape)
-        low = -high
-        self.observation_space = spaces.Box(low, high, dtype=np.float32)
+        ob_space_dict = {}
+        for space_name in state.keys():
+            high = np.inf * np.ones(state[space_name].shape)
+            low = -high
+            ob_space_dict[space_name] = spaces.Box(low, high, dtype=np.float32)
+        self.observation_space = Dict(ob_space_dict)
+            
         self.dt = 0.1
         max_move = 0.8
         low_act = np.array([-max_move] * 4)
@@ -69,6 +72,8 @@ class World:
         ob = self.state_function()
         if isinstance(ob, tuple):
             reward = ob[-1][-1]
+        elif isinstance(ob, dict):
+            reward = self.get_scooping_reward()
         elif not self.stirring and len(ob.shape) == 3: # is 3 dimensional
             reward = self.get_scooping_reward()
         else:
@@ -118,8 +123,10 @@ class World:
         stirrer_state = self.stirrer_state()
         world_state = self.base_world.world_state()
         reward_for_state = self.get_scooping_reward()
+        joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
-        return world_state[0]
+        return {'im':world_state[0], 'forces':np.array(joint_reactions)}
+
 
     def get_scooping_reward(self):
         #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
@@ -128,10 +135,15 @@ class World:
         cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
+        ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
+        ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
+        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
+        out_penalty = 1-(total_beads_accounted_for)
+
         if ratio_beads_in_target > 0.1:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state = ratio_beads_in_target
+        reward_for_state  = ratio_beads_in_target+ out_penalty
         return reward_for_state
 
     def stirrer_far(self):
@@ -225,8 +237,9 @@ class World:
         self.base_world.drop_beads_in_cup(num_beads)
         self.stirrer_id = p.loadURDF(path + "urdf/green_spoon.urdf", globalScaling=1.6, basePosition=start_pos,
                                      baseOrientation=start_quat)
+        p.enableJointForceTorqueSensor(self.stirrer_id, 0)
         if scooping_world:
-            bowl_start_pos = (0.3,0.1,-0.1)
+            bowl_start_pos = (self.distance_threshold,0.1,-0.1)
             bowl_start_orn = (0,0,1,0)
             self.scoop_target =  p.loadURDF(path + "urdf/cup/cup_4.urdf", globalScaling=4, basePosition=bowl_start_pos,
                                      baseOrientation=bowl_start_orn)
@@ -322,7 +335,7 @@ if __name__ == "__main__":
         run_full_calibration()
     else:
         visual = "visual" in sys.argv
-        world = World(visualize=visual, num_beads=num_beads, stirring=True, distance_threshold=1)
+        world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=0.5)
         #world.get_scooping_reward()
         run_policy(world.manual_scoop_policy,world)
 
