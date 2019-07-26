@@ -55,23 +55,30 @@ class World:
         self.gen_obs_space()
         self.dt = 0.1
         max_move = 0.8
-        low_act = np.array([-max_move] * 4)
-        high_act = np.array([max_move] * 4)
+        low_act = np.array([-max_move] * 7)
+        high_act = np.array([max_move] * 7)
+        low_act[-1] = -40
+        high_act[-1] = 40
         self.action_space = spaces.Box(low=low_act, high=high_act, dtype=np.float32)
 
     def gen_obs_space(self,encoder_dict=None):
         state = self.state_function()
-        ob_space_dict = OrderedDict()
-    
-        for space_name in state.keys():
-            if encoder_dict is not None and space_name in encoder_dict.keys():
-                shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
-            else:
-                shape = state[space_name].shape
-            high = np.inf * np.ones(shape)
+        if isinstance(state, dict):
+            ob_space_dict = OrderedDict()
+            for space_name in state.keys():
+                if encoder_dict is not None and space_name in encoder_dict.keys():
+                    shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+                else:
+                    shape = state[space_name].shape
+                high = np.inf * np.ones(shape)
+                low = -high
+                ob_space_dict[space_name] = spaces.Box(low, high, dtype=np.float32)
+            self.observation_space = Dict(ob_space_dict)
+        else:
+            high = np.inf * np.ones(state.shape)
             low = -high
-            ob_space_dict[space_name] = spaces.Box(low, high, dtype=np.float32)
-        self.observation_space = Dict(ob_space_dict)
+            self.observation_space = spaces.Box(low, high, dtype=np.float32)
+
 
 
     # positive when good, negative when bad
@@ -137,7 +144,8 @@ class World:
         self.force_states.append(np.array(joint_reactions))
         #np.save("states.npy",self.states)
         #np.save("force_states.npy",self.force_states)
-        return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
+        return world_state[0]
+        #return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
 
     def get_scooping_reward(self):
