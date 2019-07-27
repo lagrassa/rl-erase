@@ -102,7 +102,7 @@ class CupWorld:
         views = [0, 180]  # I have no idea why, but these seems to be in degrees
         images = ()
         for view in views:
-            rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, theta_offset=view)
+            rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, theta_offset=view, x_offset=0.25)
             images += (rgb_pixels[:, :, 0:3],)  # decided against cropping
         return images
 
@@ -111,8 +111,8 @@ class CupWorld:
         adjusted_pos = (obj_pos[0] + x_offset, obj_pos[1] + y_offset, obj_pos[2] + z_offset)
         roll, pitch, yaw = euler_from_quat(obj_quat)
         yaw = yaw + theta_offset
-        im_w = 64
-        im_h = 64
+        im_w = 128
+        im_h = 128
         view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjusted_pos, distance=cam_distance,
                                                          yaw=yaw, pitch=pitch, roll=roll + np.pi, upAxisIndex=2)
         if self.visualize:

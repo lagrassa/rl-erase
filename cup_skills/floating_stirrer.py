@@ -46,8 +46,8 @@ class World:
         else:
             cup_name = "cup_3.urdf"
             bead_radius = 0.015
-            camera_z_offset = 0.3
-            camera_distance = 0.7
+            camera_z_offset = 0.1
+            camera_distance = 0.8
         if real_init:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
@@ -144,8 +144,8 @@ class World:
         self.force_states.append(np.array(joint_reactions))
         #np.save("states.npy",self.states)
         #np.save("force_states.npy",self.force_states)
-        return world_state[0]
-        #return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
+        #return world_state[0]
+        return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
 
     def get_scooping_reward(self):
