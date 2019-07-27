@@ -16,7 +16,7 @@ real_init = True
 
 #was 70
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4, states=[], force_states=[]):
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
@@ -27,8 +27,8 @@ class World:
         self.threshold = 0.2  # TAU from thesis
         self.scale = 5
         self.time = 0
-        self.states = []
-        self.force_states = []
+        self.states = states
+        self.force_states = force_states
         if stirring:
             self.state_function = self.stirring_state
         else:
@@ -46,8 +46,8 @@ class World:
         else:
             cup_name = "cup_3.urdf"
             bead_radius = 0.015
-            camera_z_offset = 0.3
-            camera_distance = 0.7
+            camera_z_offset = 0.1
+            camera_distance = 0.8
         if real_init:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
@@ -65,9 +65,18 @@ class World:
         state = self.state_function()
         if isinstance(state, dict):
             ob_space_dict = OrderedDict()
+            
             for space_name in state.keys():
-                if encoder_dict is not None and space_name in encoder_dict.keys():
-                    shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+                if encoder_dict is not None and space_name =="im":
+                    if "im" in encoder_dict.keys():
+                        shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+                    else:
+                        shape = state["im"].shape
+                elif encoder_dict is not None and space_name == "forces":
+                    if "forces" in encoder_dict.keys():
+                        shape = (encoder_dict[space_name].flow[-1].output_dim,)
+                    else:
+                        shape = state["forces"].shape
                 else:
                     shape = state[space_name].shape
                 high = np.inf * np.ones(shape)
@@ -142,10 +151,10 @@ class World:
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
         self.states.append(world_state[0])
         self.force_states.append(np.array(joint_reactions))
-        #np.save("states.npy",self.states)
-        #np.save("force_states.npy",self.force_states)
-        return world_state[0]
-        #return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
+        np.save("states.npy",self.states)
+        np.save("force_states.npy",self.force_states)
+        #return world_state[0]
+        return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
 
     def get_scooping_reward(self):
@@ -248,7 +257,7 @@ class World:
         import ipdb; ipdb.set_trace()
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=self.states, force_states = self.force_states)
         return self.state_function()
 
     def setup(self, num_beads=2, scooping_world = False):
