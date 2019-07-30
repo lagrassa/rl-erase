@@ -159,8 +159,8 @@ class CupWorld:
             y = np.random.uniform(*y_range)
             set_point(droplet, Point(x, y, z))
             p.changeVisualShape(droplet, -1, rgbaColor=color)
-            p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.2, rollingFriction=0.2,
-                             spinningFriction=0.2, restitution=0.7)
+            p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.8, rollingFriction=0.8,
+                             spinningFriction=0.8, restitution=0.6)
         i = 0
         for i, droplet in enumerate(droplets):
             x, y = np.random.normal(0, 1e-3, 2)
