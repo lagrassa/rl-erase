@@ -16,19 +16,20 @@ real_init = True
 
 #was 70
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4, states=[], force_states=[]):
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
         self.reward_threshold = 81 #distance_threshold
         self.stirring = stirring
+        self.env=self #sorry
         self.unwrapped = self
         self.real_init = real_init
         self.threshold = 0.2  # TAU from thesis
         self.scale = 5
         self.time = 0
-        self.states = []
-        self.force_states = []
+        self.states = states
+        self.force_states = force_states
         if stirring:
             self.state_function = self.stirring_state
         else:
@@ -65,9 +66,18 @@ class World:
         state = self.state_function()
         if isinstance(state, dict):
             ob_space_dict = OrderedDict()
+            
             for space_name in state.keys():
-                if encoder_dict is not None and space_name in encoder_dict.keys():
-                    shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+                if encoder_dict is not None and space_name =="im":
+                    if "im" in encoder_dict.keys():
+                        shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
+                    else:
+                        shape = state["im"].shape
+                elif encoder_dict is not None and space_name == "forces":
+                    if "forces" in encoder_dict.keys():
+                        shape = (encoder_dict[space_name].flow[-1].output_dim,)
+                    else:
+                        shape = state["forces"].shape
                 else:
                     shape = state[space_name].shape
                 high = np.inf * np.ones(shape)
@@ -139,11 +149,13 @@ class World:
         world_state = self.base_world.world_state()
         reward_for_state = self.get_scooping_reward()
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
+        if reward_for_state > -0.9:
+            print("reward", reward_for_state)
+            self.states.append(world_state[0])
+            self.force_states.append(np.array(joint_reactions))
+            np.save("states.npy",self.states)
+            np.save("force_states.npy",self.force_states)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
-        self.states.append(world_state[0])
-        self.force_states.append(np.array(joint_reactions))
-        #np.save("states.npy",self.states)
-        #np.save("force_states.npy",self.force_states)
         #return world_state[0]
         return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
@@ -158,9 +170,8 @@ class World:
         ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
         ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
         total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
-        out_penalty = -(total_beads_accounted_for)
-
-        if ratio_beads_in_target > 0.1:
+        out_penalty = -1*(1-total_beads_accounted_for)
+        if ratio_beads_in_target > 0.01:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
         reward_for_state  = ratio_beads_in_target+ out_penalty
@@ -248,7 +259,7 @@ class World:
         import ipdb; ipdb.set_trace()
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring)
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=self.states, force_states = self.force_states)
         return self.state_function()
 
     def setup(self, num_beads=2, scooping_world = False):
