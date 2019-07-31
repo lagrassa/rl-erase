@@ -46,10 +46,10 @@ class World:
         else:
             cup_name = "cup_3.urdf"
             bead_radius = 0.015
-            camera_z_offset = 0.1
+            camera_z_offset = 0.0
             camera_distance = 0.8
         if real_init:
-            self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance)
+            self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance, for_scoop=not self.stirring)
             self.setup(num_beads=num_beads, scooping_world=not stirring)
          
         self.gen_obs_space()
@@ -364,7 +364,7 @@ if __name__ == "__main__":
         run_full_calibration()
     else:
         visual = "visual" in sys.argv
-        world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=0.5)
+        world = World(visualize=visual, num_beads=num_beads, stirring=False, distance_threshold=0.3)
         #world.get_scooping_reward()
         run_policy(world.manual_scoop_policy,world)
 
