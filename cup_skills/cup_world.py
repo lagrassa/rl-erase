@@ -160,7 +160,7 @@ class CupWorld:
             set_point(droplet, Point(x, y, z))
             p.changeVisualShape(droplet, -1, rgbaColor=color)
             p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.8, rollingFriction=0.8,
-                             spinningFriction=0.8, restitution=0.6)
+                             spinningFriction=0.8, restitution=0.5)
         i = 0
         for i, droplet in enumerate(droplets):
             x, y = np.random.normal(0, 1e-3, 2)
@@ -192,7 +192,7 @@ class CupWorld:
             # setup world
             self.is_real_time = 0
             p.setRealTimeSimulation(self.is_real_time)
-            #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/lagrassa/pour_demo.mp4")
+            p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/gridsan/alagrassa/scoop_demo.mp4")
             g = 9.8
             p.setGravity(0, 0, -g)
             if table:

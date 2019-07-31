@@ -149,12 +149,11 @@ class World:
         world_state = self.base_world.world_state()
         reward_for_state = self.get_scooping_reward()
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
-        if reward_for_state > -0.9:
-            print("reward", reward_for_state)
-            self.states.append(world_state[0])
-            self.force_states.append(np.array(joint_reactions))
-            np.save("states.npy",self.states)
-            np.save("force_states.npy",self.force_states)
+        print("reward", reward_for_state)
+        self.states.append(world_state[0])
+        self.force_states.append(np.array(joint_reactions))
+        np.save("states.npy",self.states)
+        np.save("force_states.npy",self.force_states)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
         #return world_state[0]
         return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
@@ -171,7 +170,7 @@ class World:
         ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
         total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
         out_penalty = -1*(1-total_beads_accounted_for)
-        if ratio_beads_in_target > 0.01:
+        if ratio_beads_in_target > 0.5:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
         reward_for_state  = ratio_beads_in_target+ out_penalty
