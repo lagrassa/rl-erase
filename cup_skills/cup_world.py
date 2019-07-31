@@ -19,7 +19,7 @@ k = 1  # scaling factor
 DEMO = False
 
 class CupWorld:
-    def __init__(self, cup_name = "cup_3.urdf", visualize=False, real_init=True, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None,bead_radius=0.015, camera_distance=0.7, camera_z_offset = 0.3,
+    def __init__(self, cup_name = "cup_3.urdf", visualize=False, real_init=True, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None,bead_radius=0.015, camera_distance=0.7, camera_z_offset = 0.3, for_scoop=False,
                  table=False, for_pr2=False):
         proj_dir = os.getcwd()
         self.cup_name = cup_name
@@ -35,6 +35,7 @@ class CupWorld:
             p.connect(p.DIRECT)
         self.real_init = real_init
         self.camera_distance = camera_distance
+        self.for_scoop=for_scoop
         self.num_droplets = 2
         self.for_pr3 = for_pr2
         self.radius = bead_radius
@@ -102,6 +103,7 @@ class CupWorld:
         views = [0, 180]  # I have no idea why, but these seems to be in degrees
         images = ()
         for view in views:
+            
             rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, x_offset = 0.25, theta_offset=view)
             #from PIL import Image
             #Image.fromarray(rgb_pixels).show()
@@ -114,6 +116,8 @@ class CupWorld:
         adjusted_pos = (obj_pos[0] + x_offset, obj_pos[1] + y_offset, obj_pos[2] + z_offset)
         roll, pitch, yaw = euler_from_quat(obj_quat)
         yaw = yaw + theta_offset
+        if self.for_scoop:
+            pitch = 90
         im_w = 128
         im_h = 128
         view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjusted_pos, distance=cam_distance,
@@ -139,7 +143,8 @@ class CupWorld:
         Image.fromarray(rgbPixels[:, :, 0:3]).show()
 
     def reset(self, new_bead_mass=None):
-        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass, table=self.table)
+        self.__init__(visualize=self.visualize, real_init=False, new_bead_mass=new_bead_mass, table=self.table, camera_distance = self.camera_distance, camera_z_offset = self.camera_z_offset, for_scoop=self.for_scoop)
+        
 
     def create_beads(self, color=(0, 0, 1, 1), offset=(0, 0, 0)):
         radius = self.radius  # formerly 0.010
