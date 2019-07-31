@@ -110,6 +110,7 @@ class World:
         #    print("reward", reward_raw)
         done = False
         info = {"is_success": float(reward >= 0)}
+        info['r'] = reward
         # info["reward_raw"] = reward_raw
         return ob, reward, done, info
 
@@ -147,19 +148,20 @@ class World:
     def scooping_state(self):
         stirrer_state = self.stirrer_state()
         world_state = self.base_world.world_state()
-        reward_for_state = self.get_scooping_reward()
+        reward_for_state,  ratio_beads_in_target, ratio_beads_in_origin= self.get_scooping_reward(ret_tuple=True)
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
-        print("reward", reward_for_state)
-        self.states.append(world_state[0])
-        self.force_states.append(np.array(joint_reactions))
-        np.save("states.npy",self.states)
-        np.save("force_states.npy",self.force_states)
+        if reward_for_state > 0.01:
+            print("reward", reward_for_state)
+            self.states.append(world_state[0])
+            self.force_states.append(np.array(joint_reactions))
+            np.save("good_states.npy",self.states)
+            np.save("force_states.npy",self.force_states)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
         #return world_state[0]
         return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
 
 
-    def get_scooping_reward(self):
+    def get_scooping_reward(self, ret_tuple=False):
         #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
         #all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
         #spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
@@ -167,14 +169,18 @@ class World:
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
         ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
-        ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
-        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
+        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin 
         out_penalty = -1*(1-total_beads_accounted_for)
         if ratio_beads_in_target > 0.5:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state  = ratio_beads_in_target+ out_penalty
-        return reward_for_state
+        reward_for_state  = 15*ratio_beads_in_target+ out_penalty
+        if ret_tuple:
+            #print("reward_for_state", reward_for_state) 
+            return reward_for_state,ratio_beads_in_target, ratio_beads_in_origin
+        else:
+            #print("reward_for_state", reward_for_state) 
+            return reward_for_state
 
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
