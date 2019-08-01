@@ -16,7 +16,7 @@ real_init = True
 
 #was 70
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4, states=[], force_states=[]):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=15, distance_threshold=0.4, states=[[],[]], force_states=[]):
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
@@ -28,7 +28,7 @@ class World:
         self.threshold = 0.2  # TAU from thesis
         self.scale = 5
         self.time = 0
-        self.states = states
+        self.side_states, self.top_states = states
         self.force_states = force_states
         if stirring:
             self.state_function = self.stirring_state
@@ -46,8 +46,8 @@ class World:
             camera_distance = 0.2
         else:
             cup_name = "cup_3.urdf"
-            bead_radius = 0.015
-            camera_z_offset = 0.0
+            bead_radius = 0.012
+            camera_z_offset = 0.15
             camera_distance = 0.8
         if real_init:
             self.base_world = CupWorld(visualize=visualize, camera_z_offset=camera_z_offset,  bead_radius = bead_radius, real_init=real_init, beads=beads, cup_name = cup_name, camera_distance=camera_distance, for_scoop=not self.stirring)
@@ -68,11 +68,11 @@ class World:
             ob_space_dict = OrderedDict()
             
             for space_name in state.keys():
-                if encoder_dict is not None and space_name =="im":
+                if encoder_dict is not None and "im" in space_name:
                     if "im" in encoder_dict.keys():
                         shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
                     else:
-                        shape = state["im"].shape
+                        shape = state[space_name].shape
                 elif encoder_dict is not None and space_name == "forces":
                     if "forces" in encoder_dict.keys():
                         shape = (encoder_dict[space_name].flow[-1].output_dim,)
@@ -118,7 +118,7 @@ class World:
 
     def move_spoon(self, action, max_force=40):
         pos, orn = p.getBasePositionAndOrientation(self.stirrer_id)
-        
+
         if len(action) < 6:
             new_orn = orn
         else:
@@ -150,15 +150,18 @@ class World:
         world_state = self.base_world.world_state()
         reward_for_state,  ratio_beads_in_target, ratio_beads_in_origin= self.get_scooping_reward(ret_tuple=True)
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
-        if reward_for_state > 0.01:
+        if reward_for_state > 0.1:
             print("reward", reward_for_state)
-            self.states.append(world_state[0])
+            self.side_states.append(world_state[0])
+            self.top_states.append(world_state[1])
             self.force_states.append(np.array(joint_reactions))
-            np.save("good_states.npy",self.states)
-            np.save("force_states.npy",self.force_states)
+            np.save("side_states2.npy",self.side_states)
+            np.save("top_states2.npy",self.top_states)
+            np.save("force_states2.npy",self.force_states)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
         #return world_state[0]
-        return OrderedDict({'im':world_state[0], 'forces':np.array(joint_reactions)})
+        return OrderedDict({'imside':world_state[0],'imtop':world_state[1], 'forces':np.array(joint_reactions), 'qeulerqdot':stirrer_state})
+        #return OrderedDict({'imside':world_state[0],'imtop':world_state[1], 'forces':np.array(joint_reactions)})
 
 
     def get_scooping_reward(self, ret_tuple=False):
@@ -174,7 +177,7 @@ class World:
         if ratio_beads_in_target > 0.5:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state  = 15*ratio_beads_in_target+ out_penalty
+        reward_for_state  = 5*ratio_beads_in_target+ out_penalty
         if ret_tuple:
             #print("reward_for_state", reward_for_state) 
             return reward_for_state,ratio_beads_in_target, ratio_beads_in_origin
@@ -193,18 +196,22 @@ class World:
     def stirrer_state(self):
         # returns position and velocity of stirrer flattened
         # r, theta, z in pos
-        cup_pos = np.array(p.getBasePositionAndOrientation(self.base_world.cupID)[0])
+        cup_pos, cup_quat  = p.getBasePositionAndOrientation(self.base_world.cupID)
+        cup_pos = np.array(cup_pos)
+        cup_euler = np.array(p.getEulerFromQuaternion(cup_quat))
         stirrer_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
+
         vector_from_cup = stirrer_pos - cup_pos
         # forces in cup frame
         velocity_vec = np.array(p.getBaseVelocity(self.stirrer_id)[0]) - np.array(
             p.getBaseVelocity(self.base_world.cupID)[0])
-        return np.hstack([vector_from_cup, velocity_vec])
+        return np.hstack([vector_from_cup, cup_euler, velocity_vec])
     '''
     keep track of period with velocity: go in the direction the velocity is already going but once the pos is
     getting far, reverse it if velocity is low, gain momentum by moving to some random direction does z pid control
     '''
     def manual_stir_policy(self, state):
+        state = state["qqdot"]
         pos_vec = state[0:2]
         velocity_vec = state[3:6]
         max_dist = 0.03  # tunable
@@ -228,43 +235,66 @@ class World:
     while the reward is low, dip the spoon in the cup at an angle
     bring the spoon out at that same angle once it's in
     """
-    def manual_scoop_policy(self, obs_tuple):
-        import ipdb; ipdb.set_trace()
-        imgs, obs = obs_tuple
+    def manual_scoop_policy(self, obs_dict):
+        imgtop = obs_dict["imtop"]
+        imgside = obs_dict["imside"]
+        obs = obs_dict["qeulerqdot"]
+        forces = obs_dict["forces"]
+        spoon_submerged = False
+        coming_up = True
+        #print(np.round(obs[-1],5))
+            
+        
         #from PIL import Image
         #Image.fromarray(img).show()
         lower_green = np.array([59,0,0])
         upper_green = np.array([61,400,400])
         spoon_submerged = False
-        for img in imgs:
-            spoon_img = threshold_img(img, lower_green, upper_green)
-            beads_img = threshold_img(img, np.array([119,0,0]),np.array([122,400,400])) + threshold_img(img, np.array([119,0,0]),np.array([150,400,400]))
-            green_xs, green_ys = np.nonzero(spoon_img)
-            bead_xs, bead_ys = np.nonzero(beads_img)
-            if len(bead_xs) and len(green_xs) and min(bead_xs) <= max(green_xs):
-                spoon_submerged = True
+        spoon_img = threshold_img(imgside, lower_green, upper_green)
+        beads_img = threshold_img(imgside, np.array([119,0,0]),np.array([122,400,400])) + threshold_img(imgside, np.array([119,0,0]),np.array([150,400,400]))
+        green_xs, green_ys = np.nonzero(spoon_img)
+        bead_xs, bead_ys = np.nonzero(beads_img)
+        euler = obs[3:6]
+        euler = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.stirrer_id)[1])
+        if len(bead_xs) and len(green_xs) and min(bead_xs) <= max(green_xs):
+            spoon_submerged = True
 
-        #if the lowest green pixel is below red and blue pixels
 
+        kp = 0.3
         if spoon_submerged:
-            target_z = 0.6
+            target_z = 0.2
             kp2 = 0.3
             new_pos = [0,0,kp2*(target_z-obs[2])]
-
+        #
             target_euler = [-1.971,0,0]
             target_euler = [-2.7,0,0]
+            target_euler = [-2.6,0,0]
+            target_euler[1] = euler[1]
+            target_euler[2] = euler[2]
+            current_z = obs[2]
+            current_x = obs[0]
+            if abs(current_z-target_z)< 0.03:
+                print("at level")
+            target_x = 0.4
+            new_pos = [kp2*(target_x-current_x),0,kp2*(target_z-current_z)]
+            if abs(current_x-target_x) < 0.04:
+                target_euler[0] = euler[0]
+                print("at loc", euler)
+                kp = 0.7
+                target_euler[1] = 3*np.pi/4.0
+
         else:
             new_pos = [0,0,-0.1]
-            target_euler = [-1.75,0,0]
-        euler = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.stirrer_id)[1])
-        kp = 0.3
-        new_euler = kp*np.subtract(target_euler, euler)
-        return np.hstack([new_pos, new_euler,0.7])
+            target_euler = [-2.2,0,0]
+            target_euler[1] = euler[1]
+            target_euler[2] = euler[2]
 
-        import ipdb; ipdb.set_trace()
+        new_euler = kp*np.subtract(target_euler, euler)
+        return np.hstack([new_pos, new_euler,2.7])
+
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=self.states, force_states = self.force_states)
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=(self.side_states, self.top_states), force_states = self.force_states)
         return self.state_function()
 
     def setup(self, num_beads=2, scooping_world = False):
@@ -339,19 +369,17 @@ def run_full_calibration():
 
 def run_policy(policy, world):
     rew_of_rews = []
-    for j in range(10):
+    for j in range(400):
         rews = 0
         ob = world.state_function()
-        for i in range(18):
+        for i in range(50):
             action = policy(ob)
             ob, reward, _, _ = world.step(action)
-            if reward != -1:
-                print("reward", reward)
             rews += reward
         rew_of_rews.append(rews)
         world.reset()
-        print("j", j)
-        print(rew_of_rews)
+        #print("j", j)
+        #print(rew_of_rews)
 
 class ScoopWorld(World):
     def __init__(self, **kwargs):

@@ -101,23 +101,34 @@ class CupWorld:
     def world_state(self):
         # crop to only relevant parts
         views = [0, 180]  # I have no idea why, but these seems to be in degrees
+        if self.for_scoop:
+            views = [0,90]
         images = ()
         for view in views:
-            
-            rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, x_offset = 0.25, theta_offset=view)
-            #from PIL import Image
-            #Image.fromarray(rgb_pixels).show()
-            #import ipdb; ipdb.set_trace()
+            if self.for_scoop:
+                if view == 90:
+                    z_offset = 0
+                    theta_offset = 0
+                else:
+                    z_offset = self.camera_z_offset
+                    theta_offset = 180
+                rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=z_offset, x_offset = 0.25, pitch = view, theta_offset= theta_offset)
+            else:
+                rgb_pixels = self.get_image_from_distance(self.cupID, self.camera_distance, z_offset=self.camera_z_offset, x_offset = 0.25, theta_offset = view)
+
+            """
+            from PIL import Image
+            Image.fromarray(rgb_pixels).show()
+            import ipdb; ipdb.set_trace()
+            """
             images += (rgb_pixels[:, :, 0:3],)  # decided against cropping
         return images
 
-    def get_image_from_distance(self, obj_id, cam_distance, z_offset=0, y_offset=0, x_offset=0, theta_offset=0):
+    def get_image_from_distance(self, obj_id, cam_distance, z_offset=0, y_offset=0, x_offset=0, theta_offset=0, pitch=0):
         obj_pos, obj_quat = p.getBasePositionAndOrientation(obj_id)
         adjusted_pos = (obj_pos[0] + x_offset, obj_pos[1] + y_offset, obj_pos[2] + z_offset)
-        roll, pitch, yaw = euler_from_quat(obj_quat)
+        roll, _, yaw = euler_from_quat(obj_quat)
         yaw = yaw + theta_offset
-        if self.for_scoop:
-            pitch = 90
         im_w = 128
         im_h = 128
         view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=adjusted_pos, distance=cam_distance,
@@ -164,8 +175,8 @@ class CupWorld:
             y = np.random.uniform(*y_range)
             set_point(droplet, Point(x, y, z))
             p.changeVisualShape(droplet, -1, rgbaColor=color)
-            p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.8, rollingFriction=0.8,
-                             spinningFriction=0.8, restitution=0.5)
+            p.changeDynamics(droplet, -1, mass=bead_mass, lateralFriction=0.6, rollingFriction=0.6,
+                             spinningFriction=0.6, restitution=0.7)
         i = 0
         for i, droplet in enumerate(droplets):
             x, y = np.random.normal(0, 1e-3, 2)
@@ -183,6 +194,8 @@ class CupWorld:
         self.droplets = []
         self.droplet_colors = []
         colors = [(0, 0, 1, 1), (1, 0, 0, 1)]
+        if self.for_scoop:
+            colors = [(1, 0, 0, 1), (1, 0, 0.1, 1), (1,0,0,1)]
         for color in colors:
             new_drops, highest_z = self.create_beads(color=color, offset=offset)
             self.droplets += new_drops
