@@ -16,18 +16,19 @@ real_init = True
 
 #was 70
 class World:
-    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=50, distance_threshold=0.4, states=[], force_states=[]):
+    def __init__(self, visualize=False, real_init=True, stirring=True, beads=True, num_beads=15, distance_threshold=0.4, states=[[],[]], force_states=[]):
         # make base world
         self.visualize = visualize
         self.distance_threshold = distance_threshold
         self.reward_threshold = 81 #distance_threshold
         self.stirring = stirring
+        self.env=self #sorry
         self.unwrapped = self
         self.real_init = real_init
         self.threshold = 0.2  # TAU from thesis
         self.scale = 5
         self.time = 0
-        self.states = states
+        self.side_states, self.top_states = states
         self.force_states = force_states
         if stirring:
             self.state_function = self.stirring_state
@@ -67,11 +68,11 @@ class World:
             ob_space_dict = OrderedDict()
             
             for space_name in state.keys():
-                if encoder_dict is not None and space_name =="im":
+                if encoder_dict is not None and "im" in space_name:
                     if "im" in encoder_dict.keys():
                         shape = encoder_dict[space_name].get_output_shape_at(0)[1:]
                     else:
-                        shape = state["im"].shape
+                        shape = state[space_name].shape
                 elif encoder_dict is not None and space_name == "forces":
                     if "forces" in encoder_dict.keys():
                         shape = (encoder_dict[space_name].flow[-1].output_dim,)
@@ -109,6 +110,7 @@ class World:
         #    print("reward", reward_raw)
         done = False
         info = {"is_success": float(reward >= 0)}
+        info['r'] = reward
         # info["reward_raw"] = reward_raw
         return ob, reward, done, info
 
@@ -146,18 +148,23 @@ class World:
     def scooping_state(self):
         stirrer_state = self.stirrer_state()
         world_state = self.base_world.world_state()
-        reward_for_state = self.get_scooping_reward()
+        reward_for_state,  ratio_beads_in_target, ratio_beads_in_origin= self.get_scooping_reward(ret_tuple=True)
         joint_pos, joint_vel, joint_reactions, _ = p.getJointState(self.stirrer_id, 0)
+        if reward_for_state > 0.1:
+            print("reward", reward_for_state)
+            self.side_states.append(world_state[0])
+            self.top_states.append(world_state[1])
+            self.force_states.append(np.array(joint_reactions))
+            np.save("side_states2.npy",self.side_states)
+            np.save("top_states2.npy",self.top_states)
+            np.save("force_states2.npy",self.force_states)
         #return world_state, np.hstack([stirrer_state.flatten(), reward_for_state])
-        self.states.append(world_state[0])
-        self.force_states.append(np.array(joint_reactions))
-        np.save("states.npy",self.states)
-        np.save("force_states.npy",self.force_states)
         #return world_state[0]
         return OrderedDict({'imside':world_state[0],'imtop':world_state[1], 'forces':np.array(joint_reactions), 'qeulerqdot':stirrer_state})
+        #return OrderedDict({'imside':world_state[0],'imtop':world_state[1], 'forces':np.array(joint_reactions)})
 
 
-    def get_scooping_reward(self):
+    def get_scooping_reward(self, ret_tuple=False):
         #aabbMin, aabbMax = p.getAABB(self.base_world.cupID)
         #all_overlapping = p.getOverlappingObjects(aabbMin, aabbMax)
         #spoon_in_cup = (self.stirrer_id,-1) in all_overlapping
@@ -165,15 +172,18 @@ class World:
         scoop_pos = np.array(p.getBasePositionAndOrientation(self.stirrer_id)[0])
         ratio_beads_in_target =  self.base_world.ratio_beads_in_target(self.scoop_target)
         ratio_beads_in_origin =  self.base_world.ratio_beads_in_target(self.base_world.cupID)
-        ratio_beads_in_spoon =  self.base_world.ratio_beads_in_target(self.stirrer_id)
-        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin+ratio_beads_in_spoon
-        out_penalty = -(total_beads_accounted_for)
-
-        if ratio_beads_in_target > 0.01:
+        total_beads_accounted_for = ratio_beads_in_target+ratio_beads_in_origin 
+        out_penalty = -1*(1-total_beads_accounted_for)
+        if ratio_beads_in_target > 0.5:
             print("ratio beads in target", ratio_beads_in_target)
         #world_state = self.base_world.world_state()
-        reward_for_state  = 20*ratio_beads_in_target+ out_penalty
-        return reward_for_state
+        reward_for_state  = 5*ratio_beads_in_target+ out_penalty
+        if ret_tuple:
+            #print("reward_for_state", reward_for_state) 
+            return reward_for_state,ratio_beads_in_target, ratio_beads_in_origin
+        else:
+            #print("reward_for_state", reward_for_state) 
+            return reward_for_state
 
     def stirrer_far(self):
         dist = self.base_world.distance_from_cup(self.stirrer_id, -1)
@@ -274,7 +284,6 @@ class World:
                 target_euler[1] = 3*np.pi/4.0
 
         else:
-            print('not submerged')
             new_pos = [0,0,-0.1]
             target_euler = [-2.2,0,0]
             target_euler[1] = euler[1]
@@ -285,7 +294,7 @@ class World:
 
     def reset(self):
         p.restoreState(self.bullet_id)
-        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=self.states, force_states = self.force_states)
+        self.__init__(visualize=self.visualize, real_init=False, distance_threshold=self.threshold, stirring = self.stirring, states=(self.side_states, self.top_states), force_states = self.force_states)
         return self.state_function()
 
     def setup(self, num_beads=2, scooping_world = False):
@@ -360,7 +369,7 @@ def run_full_calibration():
 
 def run_policy(policy, world):
     rew_of_rews = []
-    for j in range(10):
+    for j in range(400):
         rews = 0
         ob = world.state_function()
         for i in range(50):
@@ -369,8 +378,8 @@ def run_policy(policy, world):
             rews += reward
         rew_of_rews.append(rews)
         world.reset()
-        print("j", j)
-        print(rew_of_rews)
+        #print("j", j)
+        #print(rew_of_rews)
 
 class ScoopWorld(World):
     def __init__(self, **kwargs):

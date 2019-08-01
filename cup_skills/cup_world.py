@@ -201,8 +201,8 @@ class CupWorld:
             self.droplets += new_drops
             self.droplet_colors += self.num_droplets * [color]
             assert (len(self.droplet_colors) == len(self.droplets))
-            time_to_fall = np.sqrt(2 * highest_z / 9.8) + 2.0  # (buffer)
-            simulate_for_duration(time_to_fall, dt=1 / 240.0)
+            time_to_fall = np.sqrt(2 * highest_z / 9.8) + 5.0  # (buffer)
+            simulate_for_duration(time_to_fall, dt=1 / 280.0)
         # self.zoom_in_on(self.cupID, k*0.6, z_offset=k*0.1)
 
     def setup(self, beads=True, cup_offset=(0, 0, 0), new_bead_mass=None, table=False, cup_factor=4):
@@ -210,7 +210,7 @@ class CupWorld:
             # setup world
             self.is_real_time = 0
             p.setRealTimeSimulation(self.is_real_time)
-            #p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/lagrassa/pour_demo.mp4")
+            p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/gridsan/alagrassa/scoop_demo.mp4")
             g = 9.8
             p.setGravity(0, 0, -g)
             if table:
