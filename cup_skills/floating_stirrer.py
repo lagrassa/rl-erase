@@ -45,7 +45,7 @@ class World:
             camera_distance = 0.2
         else:
             cup_name = "cup_3.urdf"
-            bead_radius = 0.012
+            bead_radius = 0.014
             camera_z_offset = 0.15
             camera_distance = 0.8
         if real_init:
